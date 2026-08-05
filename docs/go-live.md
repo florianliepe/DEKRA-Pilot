@@ -30,6 +30,7 @@ Add the following settings and save/restart the app:
 | `APP_SHARED_SECRET` | A new random value of at least 32 bytes | Yes |
 | `PMO_GITHUB_TOKEN` | Fine-grained GitHub PAT for `DEKRA-Pilot` | Yes |
 | `N8N_WEBHOOK_URL` | Production webhook URL for the active n8n workflow | Yes |
+| `N8N_WEBHOOK_SECRET` | Separate Header Auth value for the n8n webhook | Yes |
 | `GITHUB_OWNER` | `florianliepe` | No |
 | `GITHUB_REPO` | `DEKRA-Pilot` | No |
 | `GITHUB_BRANCH` | `main` | No |
@@ -89,12 +90,15 @@ In the production n8n workflow:
 
 1. Keep the existing production webhook URL and store it in Azure as
    `N8N_WEBHOOK_URL`.
-2. Configure the Webhook node to respond with the final JSON from the **Respond
-   to Webhook** node, including `wpId`, `markdown`, and `json`.
-3. Ensure one system owns each GitHub write. The frontend currently normalises
+2. Create an n8n Header Auth credential with header name
+   `x-n8n-webhook-secret`, attach it to `PMO-Intake`, and store the same random
+   value in Azure as `N8N_WEBHOOK_SECRET`.
+3. Configure the Webhook node to return the final node's JSON, including `wpId`,
+   `markdown`, and `json`.
+4. Ensure one system owns each GitHub write. The frontend currently normalises
    n8n output and commits the canonical PMO document; n8n should return extracted
    data rather than create a second commit.
-4. Activate the workflow and run one non-production sample document through it.
+5. Activate the workflow and run one non-production sample document through it.
 
 The n8n management API key previously shared outside the n8n credential store
 must be revoked and replaced before production. It is not an application runtime

@@ -23,6 +23,7 @@ Create `.env.local` with:
 
 ```env
 N8N_WEBHOOK_URL=<production webhook URL>
+N8N_WEBHOOK_SECRET=<separate n8n Header Auth secret>
 APP_SHARED_SECRET=<workspace publishing secret>
 PMO_GITHUB_TOKEN=<fine-grained token with contents read/write>
 GITHUB_OWNER=florianliepe
@@ -43,4 +44,5 @@ npm run test:e2e
 ```
 
 See [docs/architecture.md](docs/architecture.md) for the data flow and extension model and
-[docs/go-live.md](docs/go-live.md) for the production deployment checklist.
+[docs/go-live.md](docs/go-live.md) for the production deployment checklist. The production
+[n8n redesign](docs/n8n-redesign.md) records the workflow audit and verification evidence.

@@ -7,7 +7,7 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: "npm run dev",
+    command: "node node_modules/next/dist/bin/next dev",
     url: "http://localhost:3000",
     reuseExistingServer: true,
     timeout: 120000,

@@ -1,8 +1,8 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { bootstrapPmoData } from "@/lib/pmo-fixtures";
 import { PmoDocumentSchema } from "@/lib/pmo-schema";
 import { readPmoDocument, writePmoDocument } from "@/lib/github-store";
+import { isAuthorized } from "@/lib/request-auth";
 
 export async function GET() {
   try {
@@ -17,14 +17,6 @@ export async function GET() {
     const message = error instanceof Error ? error.message : "Unable to load PMO data.";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });
   }
-}
-
-function isAuthorized(provided: string | null) {
-  const expected = process.env.APP_SHARED_SECRET;
-  if (!expected || !provided) return false;
-  const left = Buffer.from(provided);
-  const right = Buffer.from(expected);
-  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 export async function PUT(request: Request) {

@@ -32,6 +32,19 @@ test("captures a new risk and marks the workspace dirty", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Publish changes" })).toBeEnabled();
 });
 
+test("opens the secured n8n evidence intake", async ({ page }) => {
+  await page.getByRole("button", { name: "Import evidence" }).click();
+  await expect(page.getByRole("heading", { name: "Normalize work-package evidence" })).toBeVisible();
+  await expect(page.getByLabel("Work-package ID")).toBeVisible();
+  await expect(page.getByLabel("Evidence files")).toHaveAttribute("multiple", "");
+  await expect(page.getByLabel("Workspace secret")).toHaveAttribute("type", "password");
+});
+
+test("rejects unauthenticated workflow intake", async ({ request }) => {
+  const response = await request.post("/api/intake", { multipart: { meta: JSON.stringify({ wpId: "WP-TEST" }) } });
+  expect(response.status()).toBe(401);
+});
+
 test("supports mobile navigation", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Open navigation" }).click();

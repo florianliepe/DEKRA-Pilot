@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import Tesseract from "tesseract.js";
+import { isAuthorized } from "@/lib/request-auth";
 
 const MAX_BATCH_BYTES = 29 * 1024 * 1024;
 const ALLOWED_EXT = [".md", ".txt", ".csv", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"];
@@ -45,12 +46,18 @@ function unwrapN8nData(raw: unknown): CanonicalResponse {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAuthorized(req.headers.get("x-app-secret"))) {
+    return NextResponse.json({ error: "A valid app secret is required." }, { status: 401 });
+  }
+
   try {
     const form = await req.formData();
     const metaRaw = String(form.get("meta") || "{}");
     const meta = JSON.parse(metaRaw);
 
     const files = form.getAll("files").filter(Boolean) as File[];
+    if (files.length === 0) return NextResponse.json({ error: "At least one evidence file is required." }, { status: 400 });
+    if (files.length > 20) return NextResponse.json({ error: "A maximum of 20 evidence files is allowed." }, { status: 400 });
     let totalBytes = 0;
     for (const f of files) totalBytes += f.size;
     if (totalBytes > MAX_BATCH_BYTES) {
@@ -82,12 +89,14 @@ export async function POST(req: NextRequest) {
 
     const n8nUrl = process.env.N8N_WEBHOOK_URL;
     if (!n8nUrl) return NextResponse.json({ error: "N8N_WEBHOOK_URL missing" }, { status: 500 });
+    const n8nSecret = process.env.N8N_WEBHOOK_SECRET;
 
     const upstream = await fetch(n8nUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(n8nSecret ? { "x-n8n-webhook-secret": n8nSecret } : {}) },
       body: JSON.stringify({ mode: "ingest", meta, extracted }),
       cache: "no-store",
+      signal: AbortSignal.timeout(90_000),
     });
 
     const ctype = upstream.headers.get("content-type") || "";

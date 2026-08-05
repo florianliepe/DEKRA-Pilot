@@ -7,6 +7,7 @@ import type { Deliverable, Meeting, PmoDocument, Rag, Risk } from "@/lib/pmo-sch
 type View = "overview" | "plan" | "risks" | "meetings" | "activity" | "method";
 type IntakeType = "risk" | "deliverable" | "meeting";
 type ApiResponse = { ok: boolean; source?: "github" | "bootstrap"; storageConfigured?: boolean; document?: PmoDocument; error?: string; commit?: { sha?: string; url?: string } };
+type WorkflowIntakeResponse = { ok?: boolean; error?: string; wpId?: string; committedFiles?: string[]; needs_review?: string[] };
 
 const navigation: Array<{ id: View; label: string; icon: keyof typeof Icons }> = [
   { id: "overview", label: "Executive overview", icon: "dashboard" },
@@ -65,7 +66,10 @@ export default function ControlTower({ initialData, initialSource, initialStorag
   const [mobileNav, setMobileNav] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [workflowSaving, setWorkflowSaving] = useState(false);
+  const [workflowResult, setWorkflowResult] = useState("");
   const [dirty, setDirty] = useState(false);
 
   async function loadData() {
@@ -93,6 +97,21 @@ export default function ControlTower({ initialData, initialSource, initialStorag
       setData(payload.document); setSource("github"); setDirty(false); setPublishOpen(false);
     } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : "Publish failed."); }
     finally { setSaving(false); }
+  }
+
+  async function runWorkflowIntake(formData: FormData, secret: string) {
+    setWorkflowSaving(true); setError(""); setWorkflowResult("");
+    try {
+      const response = await fetch("/api/intake", { method: "POST", headers: { "x-app-secret": secret }, body: formData });
+      const payload = await response.json() as WorkflowIntakeResponse;
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Workflow intake failed.");
+      const wpId = payload.wpId || "work package";
+      const reviewCount = payload.needs_review?.length ?? 0;
+      setWorkflowResult(`${wpId} committed through n8n${reviewCount ? ` with ${reviewCount} review item${reviewCount === 1 ? "" : "s"}` : ""}.`);
+      setWorkflowOpen(false);
+      mutate((current) => ({ ...current, activity: [{ id: `ACT-${Date.now()}`, timestamp: new Date().toISOString(), type: "automation", actor: "n8n PMO Assistant", message: `Normalized and committed evidence for ${wpId}.`, entityId: wpId }, ...current.activity] }));
+    } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : "Workflow intake failed."); }
+    finally { setWorkflowSaving(false); }
   }
 
   function addRecord(type: IntakeType, values: Record<string, string>) {
@@ -138,10 +157,11 @@ export default function ControlTower({ initialData, initialSource, initialStorag
       </aside>
 
       <main className="main-area">
-        <header className="topbar"><button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icons.menu/></button><div className="search-box"><Icons.search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search risks, deliverables, meetings…" aria-label="Search project"/><kbd>⌘ K</kbd></div><div className="top-actions"><button className="sync-state" onClick={loadData}><span className={source === "github" ? "sync-live" : "sync-seed"}/>{source === "github" ? "GitHub live" : "Starter data"}<Icons.refresh/></button><button className="button secondary" onClick={() => setPublishOpen(true)} disabled={!dirty}><Icons.github/>{dirty ? "Publish changes" : "All changes saved"}</button><button className="button primary" onClick={() => setIntakeOpen(true)}><Icons.plus/>Add update</button></div></header>
+        <header className="topbar"><button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icons.menu/></button><div className="search-box"><Icons.search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search risks, deliverables, meetings…" aria-label="Search project"/><kbd>⌘ K</kbd></div><div className="top-actions"><button className="sync-state" onClick={loadData}><span className={source === "github" ? "sync-live" : "sync-seed"}/>{source === "github" ? "GitHub live" : "Starter data"}<Icons.refresh/></button><button className="button secondary" onClick={() => setWorkflowOpen(true)}><span className="n8n-button-mark">n8n</span>Import evidence</button><button className="button secondary" onClick={() => setPublishOpen(true)} disabled={!dirty}><Icons.github/>{dirty ? "Publish changes" : "All changes saved"}</button><button className="button primary" onClick={() => setIntakeOpen(true)}><Icons.plus/>Add update</button></div></header>
 
         <div className="content-wrap">
           {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError("")}><Icons.close/></button></div>}
+          {workflowResult && <div className="success-banner"><span>{workflowResult}</span><button onClick={() => setWorkflowResult("")}><Icons.close/></button></div>}
           <div className="page-heading"><div><span className="eyebrow">{meta.eyebrow}</span><h1>{meta.title}</h1><p>{meta.description}</p></div><div className="heading-meta"><span>Last synced</span><b>{new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(data.project.updatedAt))}</b></div></div>
 
           {view === "overview" && <Overview data={data} exposure={exposure} openActions={openActions} completedDeliverables={completedDeliverables} setView={setView}/>} 
@@ -155,6 +175,9 @@ export default function ControlTower({ initialData, initialSource, initialStorag
 
       {intakeOpen && <UpdateDialog onClose={() => setIntakeOpen(false)} onSubmit={addRecord} workstreams={data.workstreams.map((item) => ({ id: item.id, name: item.shortName }))}/>} 
       {publishOpen && <PublishDialog saving={saving} revision={data.revision} onClose={() => setPublishOpen(false)} onPublish={publish}/>} 
+      {workflowOpen && (
+        <WorkflowIntakeDialog saving={workflowSaving} onClose={() => setWorkflowOpen(false)} onRun={runWorkflowIntake}/>
+      )}
     </div>
   );
 }
@@ -223,4 +246,11 @@ function UpdateDialog({ onClose, onSubmit, workstreams }: { onClose: () => void;
 function PublishDialog({ saving, revision, onClose, onPublish }: { saving: boolean; revision: number; onClose: () => void; onPublish: (secret: string) => void }) {
   const [secret, setSecret] = useState("");
   return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal publish-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void onPublish(secret); }}><header><div><span className="section-kicker">GITHUB PUBLISH</span><h2>Create revision {revision + 1}</h2></div><button type="button" className="icon-button" onClick={onClose}><Icons.close/></button></header><div className="publish-summary"><Icons.github/><div><b>knowledge/pmo/control-tower.json</b><span>Validated and committed directly to the configured branch.</span></div></div><label><span>Workspace secret</span><input type="password" autoFocus required value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="APP_SHARED_SECRET"/><small>Used for this request only. It is never stored in the browser.</small></label><footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary" disabled={saving}>{saving ? "Publishing…" : "Publish to GitHub"}</button></footer></form></div>;
+}
+
+function WorkflowIntakeDialog({ saving, onClose, onRun }: { saving: boolean; onClose: () => void; onRun: (formData: FormData, secret: string) => void }) {
+  const [values, setValues] = useState({ wpId: "", title: "", owner_role: "PMO Lead", secret: "" });
+  const [files, setFiles] = useState<File[]>([]);
+  const set = (key: keyof typeof values, value: string) => setValues((current) => ({ ...current, [key]: value }));
+  return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); const formData = new FormData(); formData.set("meta", JSON.stringify({ wpId: values.wpId, title: values.title, owner_role: values.owner_role, project: "DEKRA SBO Pilot", status: "active", rag: "amber" })); files.forEach((file) => formData.append("files", file)); void onRun(formData, values.secret); }}><header><div><span className="section-kicker">N8N EVIDENCE INTAKE</span><h2>Normalize work-package evidence</h2></div><button type="button" className="icon-button" onClick={onClose}><Icons.close/></button></header><div className="workflow-intro"><span className="n8n-logo">n8n</span><p>Files are extracted on the server, normalized by the PMO Assistant, and committed as canonical GitHub artifacts.</p></div><div className="form-row"><label><span>Work-package ID</span><input required value={values.wpId} onChange={(event) => set("wpId", event.target.value)} placeholder="WP-4.3" pattern="[A-Za-z0-9][A-Za-z0-9._-]{1,49}"/></label><label><span>Owner role</span><input required value={values.owner_role} onChange={(event) => set("owner_role", event.target.value)} placeholder="PMO Lead"/></label></div><label><span>Title</span><input required value={values.title} onChange={(event) => set("title", event.target.value)} placeholder="Work package title"/></label><label><span>Evidence files</span><input type="file" required multiple accept=".md,.txt,.csv,.xls,.xlsx,.png,.jpg,.jpeg" onChange={(event) => setFiles(Array.from(event.target.files || []))}/><small>Up to 20 files and 29 MB total. Supported: Markdown, text, CSV, Excel and images.</small></label><label><span>Workspace secret</span><input type="password" required value={values.secret} onChange={(event) => set("secret", event.target.value)} placeholder="APP_SHARED_SECRET"/><small>Used for this request only and never retained by the browser.</small></label><footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary" disabled={saving || files.length === 0}>{saving ? "Processing…" : "Run PMO workflow"}</button></footer></form></div>;
 }

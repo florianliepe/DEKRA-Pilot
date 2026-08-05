@@ -99,6 +99,10 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; }
 .error-banner { padding: 11px 14px; border: 1px solid #f2bcbc; background: var(--red-soft); color: #973939; border-radius: 6px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
 .error-banner button { border: 0; background: none; cursor: pointer; }
 .error-banner svg { width: 14px; }
+.success-banner { padding: 11px 14px; border: 1px solid #a8dbc3; background: #edf9f3; color: #08663f; border-radius: 6px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+.success-banner button { border: 0; background: none; color: inherit; cursor: pointer; }
+.success-banner svg { width: 14px; }
+.n8n-button-mark { color: #ea4b71; font-weight: 900; letter-spacing: -.4px; }
 .project-hero { padding: 22px 24px; color: #fff; background: linear-gradient(110deg, #163126 0%, #0c6c47 72%, #0d8f59 100%); border-radius: 9px; display: flex; align-items: flex-end; justify-content: space-between; box-shadow: var(--shadow); overflow: hidden; position: relative; }
 .project-hero::after { content: ""; position: absolute; right: -45px; top: -100px; width: 300px; height: 300px; border: 50px solid rgb(255 255 255 / 4%); border-radius: 50%; }
 .hero-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
@@ -259,3 +263,7 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; }
   .timeline { display: grid; grid-template-columns: 1fr; gap: 12px; padding-left: 5px; }.timeline::before { left: 20px; right: auto; top: 18px; bottom: 18px; height: auto; width: 2px; }.timeline-item { grid-template-columns: 32px 1fr; place-items: center start; text-align: left; gap: 12px; }.timeline-item > div:last-child span { margin-top: 0; }
   .meeting-evidence { grid-template-columns: 1fr; }.method-hero { padding: 24px 20px; }.method-flow { overflow: auto; }.method-flow span { white-space: nowrap; }.form-row { grid-template-columns: 1fr; gap: 0; }
 }
+
+.workflow-intro { display: grid; grid-template-columns: 42px 1fr; gap: 12px; align-items: center; background: #fff4f6; border: 1px solid #f7d8df; border-radius: 6px; padding: 13px; margin: 18px 0; }
+.workflow-intro .n8n-logo { display: grid; place-items: center; height: 34px; border-radius: 5px; background: #fff; color: #ea4b71; font-size: 10px; font-weight: 900; }
+.workflow-intro p { margin: 0; color: #6e7772; font-size: 9px; line-height: 1.5; }

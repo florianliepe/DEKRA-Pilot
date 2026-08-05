@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorized } from "@/lib/request-auth";
 
 type FileItem = { path: string; content: string };
 
@@ -31,16 +32,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
 
-    const headerSecretRaw = req.headers.get("x-app-secret") ?? "";
-    const bodySecretRaw = (body?.appSecret as string) ?? "";
-    const expectedRaw = process.env.APP_SHARED_SECRET ?? "";
-
-    const headerSecret = headerSecretRaw.trim();
-    const bodySecret = bodySecretRaw.trim();
-    const expected = expectedRaw.trim();
-
-    const provided = headerSecret || bodySecret;
-    if (!provided || !expected || provided !== expected) {
+    const provided = req.headers.get("x-app-secret") || (body?.appSecret as string) || null;
+    if (!isAuthorized(provided)) {
       return NextResponse.json(
         {
           error: "Unauthorized",
@@ -49,7 +42,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const token = process.env.GITHUB_TOKEN;
+    const token = process.env.PMO_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
     const owner = process.env.GITHUB_OWNER;
     const repo = process.env.GITHUB_REPO;
     const branch = process.env.GITHUB_BRANCH || "main";
