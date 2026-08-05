@@ -73,11 +73,11 @@ returned HTTP 204 with the exact allowed origin.
 
 Header Authentication was enabled after the functional redesign:
 
-- credential: `DEKRA PMO Webhook Auth` (`hqbZsOSnREOYj7M9`);
+- credential: `DEKRA PMO Webhook Auth` (`XeRspTWURk5bdcPi`);
 - header: `x-n8n-webhook-secret`;
 - unauthenticated production request: HTTP 403;
 - authenticated production request: successful canonical response for
-  `WP-AUTH-FINAL`;
+  `WP-AUTH-GOLIVE`;
 - matching GitHub environment secret: `N8N_WEBHOOK_SECRET`.
 
 The same secret must be stored in Azure App Service as `N8N_WEBHOOK_SECRET`.
