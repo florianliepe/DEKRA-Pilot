@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DEKRA × Eraneos SBO Pilot Control Tower
 
-## Getting Started
+A responsive project-management workspace for the Skill-Based Organisation pilot. It combines delivery status, gates, deliverables, risks, meeting evidence and an audit log in one GitHub-backed application.
 
-First, run the development server:
+## Product surface
+
+- Executive overview with project health and workstream pulse
+- Gate roadmap and interactive deliverable register
+- Prioritised risk register with probability-impact matrix
+- Meeting summaries, decisions and action capture
+- Human and automation activity trail
+- Method Studio extension architecture for Skill Designer, Taxonomy and Job-to-Skill Mapping
+- n8n intake adapter for document extraction and canonical normalisation
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create `.env.local` with:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+N8N_WEBHOOK_URL=<production webhook URL>
+APP_SHARED_SECRET=<workspace publishing secret>
+GITHUB_TOKEN=<fine-grained token with contents read/write>
+GITHUB_OWNER=florianliepe
+GITHUB_REPO=DEKRA-Pilot
+GITHUB_BRANCH=main
+PMO_DATA_PATH=knowledge/pmo/control-tower.json
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Secrets are server-only. The workspace secret is supplied for an individual publish request and is not retained in browser storage. Authentication is intentionally deferred; the API boundary is ready to be placed behind a credential vault and session layer later.
 
-## Learn More
+## Verification
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm run test:e2e
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See [docs/architecture.md](docs/architecture.md) for the data flow and extension model.
