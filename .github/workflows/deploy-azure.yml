@@ -1,6 +1,9 @@
 name: Deploy production to Azure
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -10,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: production-deployment
+  group: production-deployment-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -58,6 +61,7 @@ jobs:
           retention-days: 3
 
   deploy:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     needs: build
     environment:
