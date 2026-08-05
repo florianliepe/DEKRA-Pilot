@@ -7,7 +7,7 @@ const DEFAULT_PATH = "knowledge/pmo/control-tower.json";
 type GitHubContent = { content?: string; sha?: string };
 
 function config() {
-  const token = process.env.GITHUB_TOKEN;
+  const token = process.env.PMO_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
   const owner = process.env.GITHUB_OWNER;
   const repo = process.env.GITHUB_REPO;
   const branch = process.env.GITHUB_BRANCH || "main";

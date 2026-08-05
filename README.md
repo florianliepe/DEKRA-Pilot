@@ -24,7 +24,7 @@ Create `.env.local` with:
 ```env
 N8N_WEBHOOK_URL=<production webhook URL>
 APP_SHARED_SECRET=<workspace publishing secret>
-GITHUB_TOKEN=<fine-grained token with contents read/write>
+PMO_GITHUB_TOKEN=<fine-grained token with contents read/write>
 GITHUB_OWNER=florianliepe
 GITHUB_REPO=DEKRA-Pilot
 GITHUB_BRANCH=main
@@ -42,4 +42,5 @@ npm run build
 npm run test:e2e
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the data flow and extension model.
+See [docs/architecture.md](docs/architecture.md) for the data flow and extension model and
+[docs/go-live.md](docs/go-live.md) for the production deployment checklist.
