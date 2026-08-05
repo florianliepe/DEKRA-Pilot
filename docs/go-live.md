@@ -90,9 +90,8 @@ In the production n8n workflow:
 
 1. Keep the existing production webhook URL and store it in Azure as
    `N8N_WEBHOOK_URL`.
-2. Create an n8n Header Auth credential with header name
-   `x-n8n-webhook-secret`, attach it to `PMO-Intake`, and store the same random
-   value in Azure as `N8N_WEBHOOK_SECRET`.
+2. The `DEKRA PMO Webhook Auth` credential is already attached to `PMO-Intake`.
+   Store its matching value in Azure as `N8N_WEBHOOK_SECRET`.
 3. Configure the Webhook node to return the final node's JSON, including `wpId`,
    `markdown`, and `json`.
 4. Ensure one system owns each GitHub write. The frontend currently normalises

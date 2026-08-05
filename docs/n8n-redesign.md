@@ -69,11 +69,17 @@ A production webhook test using `WP-GOLIVE-TEST6` returned HTTP 200 and:
 An empty payload was rejected before model execution. The Pages origin preflight
 returned HTTP 204 with the exact allowed origin.
 
-## Remaining production control
+## Webhook authentication
 
-The n8n webhook must receive Header Authentication before external go-live. CORS
-does not prevent non-browser calls. Create an n8n **Header Auth** credential using
-a separate random `N8N_WEBHOOK_SECRET`, attach it to `PMO-Intake`, and store the
-same value in Azure App Service. The application proxy should send that header on
-server-to-server calls. Do not reuse `APP_SHARED_SECRET`, the GitHub token, or the
-n8n management API key.
+Header Authentication was enabled after the functional redesign:
+
+- credential: `DEKRA PMO Webhook Auth` (`hqbZsOSnREOYj7M9`);
+- header: `x-n8n-webhook-secret`;
+- unauthenticated production request: HTTP 403;
+- authenticated production request: successful canonical response for
+  `WP-AUTH-FINAL`;
+- matching GitHub environment secret: `N8N_WEBHOOK_SECRET`.
+
+The same secret must be stored in Azure App Service as `N8N_WEBHOOK_SECRET`.
+The application proxy already sends the header on server-to-server calls. Do not
+reuse `APP_SHARED_SECRET`, the GitHub token, or the n8n management API key.
