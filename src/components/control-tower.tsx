@@ -79,7 +79,146 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
     try {
       const payload = await loadPmoDocument(secret);
       if (!payload.ok || !payload.document) throw new Error(payload.error || "Unable to load project data.");
-      set…7841 tokens truncated…e="architecture-nodes"><span>Responsive UI</span><Icons.arrow/><span>Validated API</span><Icons.arrow/><span>n8n workflows</span><Icons.arrow/><span>GitHub artifacts</span></div></section></div>;
+      setData(payload.document); setSource(payload.source || "bootstrap"); setStorageConfigured(Boolean(payload.storageConfigured)); setDirty(false);
+      setWorkspaceSecret(secret); setAccessOpen(false); setAccessError("");
+    } catch (reason: unknown) {
+      const message = reason instanceof Error ? reason.message : "Unable to load project data.";
+      if (accessOpen) setAccessError(message); else setError(message);
+    }
+    finally { setLoading(false); }
+  }
+
+  function mutate(update: (current: PmoDocument) => PmoDocument) {
+    setData((current) => current ? update(current) : current); setDirty(true);
+  }
+
+  async function publish() {
+    if (!data) return;
+    setSaving(true); setError("");
+    try {
+      const payload = await savePmoDocument(workspaceSecret, data);
+      if (!payload.ok || !payload.document) throw new Error(payload.error || "Publish failed.");
+      setData(payload.document); setSource("github"); setDirty(false); setPublishOpen(false);
+    } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : "Publish failed."); }
+    finally { setSaving(false); }
+  }
+
+  async function runWorkflowIntake(meta: Record<string, string>, files: File[]) {
+    setWorkflowSaving(true); setError(""); setWorkflowResult("");
+    try {
+      const payload = await ingestEvidence(workspaceSecret, meta, files);
+      if (!payload.ok) throw new Error(payload.error || "Workflow intake failed.");
+      const wpId = payload.wpId || "work package";
+      const reviewCount = payload.needs_review?.length ?? 0;
+      setWorkflowResult(`${wpId} committed through n8n${reviewCount ? ` with ${reviewCount} review item${reviewCount === 1 ? "" : "s"}` : ""}.`);
+      setWorkflowOpen(false);
+      mutate((current) => ({ ...current, activity: [{ id: `ACT-${Date.now()}`, timestamp: new Date().toISOString(), type: "automation", actor: "n8n PMO Assistant", message: `Normalized and committed evidence for ${wpId}.`, entityId: wpId }, ...current.activity] }));
+    } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : "Workflow intake failed."); }
+    finally { setWorkflowSaving(false); }
+  }
+
+  function addRecord(type: IntakeType, values: Record<string, string>) {
+    if (!data) return;
+    const stamp = new Date().toISOString();
+    const id = `${type.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+    mutate((current) => {
+      const activity = [{ id: `ACT-${Date.now()}`, timestamp: stamp, type, actor: "PMO user", message: `Added ${values.title}.`, entityId: id }, ...current.activity];
+      if (type === "risk") {
+        const record: Risk = { id, title: values.title, description: values.description, probability: Number(values.probability), impact: Number(values.impact), state: "open", owner: values.owner, mitigation: values.mitigation, updatedAt: today() };
+        return { ...current, risks: [record, ...current.risks], activity };
+      }
+      if (type === "deliverable") {
+        const record: Deliverable = { id, title: values.title, workstream: values.workstream, dueDate: values.date, status: "not_started", owner: values.owner, progress: 0, priority: "P2" };
+        return { ...current, deliverables: [record, ...current.deliverables], activity };
+      }
+      const record: Meeting = { id, title: values.title, date: values.date, type: "working_session", participants: values.participants.split(",").map((item) => item.trim()).filter(Boolean), summary: values.description, decisions: [], actions: [] };
+      return { ...current, meetings: [record, ...current.meetings], activity };
+    });
+    setIntakeOpen(false);
+  }
+
+  const exposure = useMemo(() => data?.risks.filter((risk) => risk.state !== "closed").reduce((sum, risk) => sum + riskScore(risk), 0) ?? 0, [data]);
+  const openActions = useMemo(() => data?.meetings.reduce((sum, meeting) => sum + meeting.actions.length, 0) ?? 0, [data]);
+  const completedDeliverables = data?.deliverables.filter((item) => item.status === "done").length ?? 0;
+  const query = search.trim().toLowerCase();
+
+  if (loading) return <div className="app-loading"><BrandMark/><div className="loading-line"/><p>Connecting to the project control tower…</p></div>;
+  if (!data) return <div className="app-loading"><BrandMark/><p>{error || "Project data is unavailable."}</p><button className="button primary" onClick={() => void loadData()}>Try again</button></div>;
+
+  const meta = viewMeta[view];
+  return (
+    <div className="app-shell">
+      <aside className={cx("sidebar", mobileNav && "sidebar-open")}>
+        <div className="sidebar-head"><BrandMark/><button className="icon-button mobile-only" onClick={() => setMobileNav(false)} aria-label="Close navigation"><Icons.close/></button></div>
+        <div className="project-switcher"><span className="project-monogram">SB</span><div><b>SBO Pilot</b><small>DEKRA · Global</small></div><Icons.chevron/></div>
+        <nav aria-label="Primary navigation">
+          <span className="nav-label">Project control</span>
+          {navigation.map((item) => { const NavIcon = Icons[item.icon]; return <button key={item.id} className={cx("nav-item", view === item.id && "active")} onClick={() => { setView(item.id); setMobileNav(false); }}><NavIcon/><span>{item.label}</span>{item.id === "risks" && <em>{data.risks.filter((risk) => risk.state !== "closed").length}</em>}</button>; })}
+        </nav>
+        <div className="sidebar-roadmap"><span>UP NEXT</span><b>Skill design workspace</b><p>Interview-led skill design, taxonomy and job mapping.</p><button onClick={() => setView("method")}>View architecture <Icons.arrow/></button></div>
+        <div className="sidebar-foot"><span className="user-avatar">FL</span><div><b>Florian Liepe</b><small>Programme workspace</small></div><span className="online-dot"/></div>
+      </aside>
+
+      <main className="main-area">
+        <header className="topbar"><button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icons.menu/></button><div className="search-box"><Icons.search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search risks, deliverables, meetings…" aria-label="Search project"/><kbd>⌘ K</kbd></div><div className="top-actions"><button className="sync-state" onClick={() => void loadData()}><span className={source === "github" ? "sync-live" : "sync-seed"}/>{source === "github" ? "GitHub live" : "Starter data"}<Icons.refresh/></button><button className="button secondary" onClick={() => setWorkflowOpen(true)}><span className="n8n-button-mark">n8n</span>Import evidence</button><button className="button secondary" onClick={() => setPublishOpen(true)} disabled={!dirty}><Icons.github/>{dirty ? "Publish changes" : "All changes saved"}</button><button className="button primary" onClick={() => setIntakeOpen(true)}><Icons.plus/>Add update</button></div></header>
+
+        <div className="content-wrap">
+          {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError("")}><Icons.close/></button></div>}
+          {workflowResult && <div className="success-banner"><span>{workflowResult}</span><button onClick={() => setWorkflowResult("")}><Icons.close/></button></div>}
+          <div className="page-heading"><div><span className="eyebrow">{meta.eyebrow}</span><h1>{meta.title}</h1><p>{meta.description}</p></div><div className="heading-meta"><span>Last synced</span><b>{new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(data.project.updatedAt))}</b></div></div>
+
+          {view === "overview" && <Overview data={data} exposure={exposure} openActions={openActions} completedDeliverables={completedDeliverables} setView={setView}/>} 
+          {view === "plan" && <PlanView data={data} query={query} mutate={mutate}/>} 
+          {view === "risks" && <RiskView data={data} query={query}/>} 
+          {view === "meetings" && <MeetingView data={data} query={query}/>} 
+          {view === "activity" && <ActivityView data={data} storageConfigured={storageConfigured}/>} 
+          {view === "method" && <MethodStudio/>}
+        </div>
+      </main>
+
+      {intakeOpen && <UpdateDialog onClose={() => setIntakeOpen(false)} onSubmit={addRecord} workstreams={data.workstreams.map((item) => ({ id: item.id, name: item.shortName }))}/>} 
+      {publishOpen && <PublishDialog saving={saving} revision={data.revision} onClose={() => setPublishOpen(false)} onPublish={publish}/>} 
+      {workflowOpen && (
+        <WorkflowIntakeDialog saving={workflowSaving} onClose={() => setWorkflowOpen(false)} onRun={runWorkflowIntake}/>
+      )}
+      {accessOpen && <AccessDialog loading={loading} error={accessError} onUnlock={(secret) => void loadData(secret)}/>}
+    </div>
+  );
+}
+
+function Overview({ data, exposure, openActions, completedDeliverables, setView }: { data: PmoDocument; exposure: number; openActions: number; completedDeliverables: number; setView: (view: View) => void }) {
+  const highRisks = [...data.risks].filter((risk) => risk.state !== "closed").sort((a, b) => riskScore(b) - riskScore(a)).slice(0, 3);
+  const upcoming = [...data.milestones].filter((item) => item.status !== "complete").sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+  return <>
+    <section className="project-hero"><div><div className="hero-top"><RagDot rag={data.project.overallRag}/><span>Revision {data.revision}</span></div><h2>{data.project.name}</h2><p>{data.project.subtitle} · {data.project.phase}</p></div><div className="hero-progress"><div><b>{data.project.progress}%</b><span>overall progress</span></div><ProgressBar value={data.project.progress} tone={data.project.overallRag}/><small>{formatDate(data.project.startDate)} — {formatDate(data.project.endDate)}</small></div></section>
+    <section className="metric-grid">
+      <article className="metric-card"><span>DELIVERY PROGRESS</span><div><strong>{data.project.progress}%</strong><em className="trend good">+7 pts</em></div><ProgressBar value={data.project.progress}/><small>{completedDeliverables} of {data.deliverables.length} deliverables completed</small></article>
+      <article className="metric-card"><span>ACTIVE EXPOSURE</span><div><strong>{exposure}</strong><em className="trend warn">{highRisks.length} high</em></div><div className="mini-bars">{data.risks.map((risk) => <i key={risk.id} style={{ height: `${Math.max(18, riskScore(risk) * 3.3)}%` }} className={riskScore(risk) >= 16 ? "bar-red" : riskScore(risk) >= 10 ? "bar-amber" : "bar-green"}/>)}</div><small>Weighted probability × impact</small></article>
+      <article className="metric-card"><span>NEXT GATE</span><div><strong>{formatDate(upcoming[0]?.date || today(), true)}</strong><em className="trend warn">{upcoming[0]?.status === "at_risk" ? "At risk" : "On track"}</em></div><b className="metric-title">{upcoming[0]?.title}</b><small>{upcoming[0]?.owner}</small></article>
+      <article className="metric-card"><span>OPEN ACTIONS</span><div><strong>{openActions}</strong><em className="trend neutral">Across {data.meetings.length} meetings</em></div><b className="metric-title">Decision velocity</b><small>{data.meetings.reduce((sum, item) => sum + item.decisions.length, 0)} decisions captured</small></article>
+    </section>
+    <section className="dashboard-grid">
+      <article className="panel workstream-panel"><div className="panel-head"><div><span className="section-kicker">DELIVERY HEALT…1887 tokens truncated…tion}`.toLowerCase().includes(query)).sort((a, b) => riskScore(b) - riskScore(a));
+  return <div className="risk-layout"><section className="panel matrix-panel"><div className="panel-head"><div><span className="section-kicker">PROBABILITY × IMPACT</span><h3>Exposure matrix</h3></div></div><div className="risk-matrix"><span className="axis-y">Probability</span>{[5,4,3,2,1].map((probability) => <div className="matrix-row" key={probability}><b>{probability}</b>{[1,2,3,4,5].map((impact) => { const cell = risks.filter((risk) => risk.probability === probability && risk.impact === impact); return <div className={cx("matrix-cell", impact * probability >= 16 ? "matrix-red" : impact * probability >= 10 ? "matrix-amber" : "matrix-green")} key={impact}>{cell.map((risk) => <span key={risk.id} title={risk.title}>{risk.id.replace("R-", "")}</span>)}</div>; })}</div>)}<div className="axis-x"><span/><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><em>Impact</em></div></div></section><section className="panel risk-register"><div className="panel-head"><div><span className="section-kicker">REGISTER</span><h3>Prioritised risks</h3></div><span className="count-badge">{risks.length} open</span></div>{risks.map((risk) => <article className="risk-card" key={risk.id}><div className={cx("risk-score", riskScore(risk) >= 16 && "critical")}>{riskScore(risk)}</div><div><div className="risk-card-head"><span>{risk.id}</span><StatusPill status={risk.state}/></div><h4>{risk.title}</h4><p>{risk.description}</p><div className="mitigation"><b>Mitigation</b><span>{risk.mitigation}</span></div><footer><span>{risk.owner}</span><small>Updated {formatDate(risk.updatedAt, true)}</small></footer></div></article>)}</section></div>;
+}
+
+function MeetingView({ data, query }: { data: PmoDocument; query: string }) {
+  const meetings = data.meetings.filter((item) => !query || `${item.title} ${item.summary} ${item.decisions.join(" ")}`.toLowerCase().includes(query));
+  return <div className="meeting-grid">{meetings.map((meeting) => <article className="panel meeting-card" key={meeting.id}><header><div className="meeting-date"><b>{new Date(`${meeting.date}T12:00:00`).getDate()}</b><span>{new Intl.DateTimeFormat("en", { month: "short" }).format(new Date(`${meeting.date}T12:00:00`))}</span></div><div><span>{titleCase(meeting.type)}</span><h3>{meeting.title}</h3><small>{meeting.participants.join(" · ")}</small></div></header><p>{meeting.summary}</p><div className="meeting-evidence"><div><span>DECISIONS</span>{meeting.decisions.map((decision) => <p key={decision}><Icons.check/>{decision}</p>)}{meeting.decisions.length === 0 && <small>No decisions captured.</small>}</div><div><span>ACTIONS</span>{meeting.actions.map((action) => <p key={action.text}><i/><span><b>{action.text}</b><small>{action.owner} · {formatDate(action.dueDate, true)}</small></span></p>)}{meeting.actions.length === 0 && <small>No actions captured.</small>}</div></div></article>)}</div>;
+}
+
+function ActivityView({ data, storageConfigured }: { data: PmoDocument; storageConfigured: boolean }) {
+  return <div className="activity-layout"><section className="panel"><div className="panel-head"><div><span className="section-kicker">AUDIT TRAIL</span><h3>Project activity</h3></div><span className="count-badge">Revision {data.revision}</span></div><div className="activity-list full">{data.activity.map((item) => <div className="activity-row" key={item.id}><span className={`activity-icon activity-${item.type}`}>{item.type === "automation" ? "AI" : item.actor.split(" ").map((word) => word[0]).slice(0,2).join("")}</span><div><b>{item.message}</b><span>{item.actor}{item.entityId ? ` · ${item.entityId}` : ""}</span></div><time>{new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(item.timestamp))}</time></div>)}</div></section><aside className="panel integration-panel"><div className="panel-head"><div><span className="section-kicker">PIPELINE</span><h3>Connected systems</h3></div></div><div className="integration"><Icons.github/><div><b>GitHub source of truth</b><span>{storageConfigured ? "Credentials configured" : "Awaiting runtime credentials"}</span></div><i className={storageConfigured ? "healthy" : "pending"}/></div><div className="integration"><span className="n8n-logo">n8n</span><div><b>PMO intake workflow</b><span>Webhook adapter ready</span></div><i className="healthy"/></div><div className="integration"><span className="ai-logo">AI</span><div><b>Canonical normalisation</b><span>n8n agent workflow</span></div><i className="healthy"/></div><p className="integration-note">Every published UI change creates a GitHub revision. Automated intake writes through the same canonical store.</p></aside></div>;
+}
+
+function MethodStudio() {
+  const modules = [
+    { step: "01", title: "Skill designer", status: "Next", copy: "Agent-led interviews across defined dimensions, with evidence and confidence capture.", tags: ["Interview", "Granularity", "Evidence"] },
+    { step: "02", title: "Taxonomy framework", status: "Planned", copy: "Governed clusters, relationships, naming rules and lifecycle management.", tags: ["Clusters", "Ontology", "Governance"] },
+    { step: "03", title: "Job-to-skill mapping", status: "Planned", copy: "Map validated skills to profiles, proficiency targets and coverage constraints.", tags: ["Profiles", "Proficiency", "Coverage"] },
+    { step: "04", title: "Data ingestion", status: "Foundation", copy: "Structured files and workflow inputs normalised into canonical GitHub artifacts.", tags: ["n8n", "Validation", "GitHub"] },
+  ];
+  return <div className="method-view"><section className="method-hero"><span>MODULAR BY DESIGN</span><h2>From project control to skill architecture.</h2><p>The control tower is the operational shell. Each method module plugs into the same navigation, canonical data layer and audit stream.</p><div className="method-flow"><span>INPUT</span><i/><span>DESIGN</span><i/><span>GOVERN</span><i/><span>APPLY</span></div></section><section className="module-grid">{modules.map((module) => <article className="module-card" key={module.step}><header><span>{module.step}</span><em>{module.status}</em></header><h3>{module.title}</h3><p>{module.copy}</p><footer>{module.tags.map((tag) => <span key={tag}>{tag}</span>)}</footer></article>)}</section><section className="panel architecture-band"><div><span className="section-kicker">SHARED FOUNDATION</span><h3>One framework, one source of truth</h3></div><div className="architecture-nodes"><span>Responsive UI</span><Icons.arrow/><span>Validated API</span><Icons.arrow/><span>n8n workflows</span><Icons.arrow/><span>GitHub artifacts</span></div></section></div>;
 }
 
 function UpdateDialog({ onClose, onSubmit, workstreams }: { onClose: () => void; onSubmit: (type: IntakeType, values: Record<string, string>) => void; workstreams: Array<{ id: string; name: string }> }) {
