@@ -1,6 +1,6 @@
 # DEKRA × Eraneos SBO Pilot Control Tower
 
-A responsive project-management workspace for the Skill-Based Organisation pilot. It combines delivery status, gates, deliverables, risks, meeting evidence and an audit log in one GitHub-backed application.
+A responsive project-management workspace for the Skill-Based Organisation pilot. The static frontend runs on GitHub Pages, protected workflows run in n8n, and PMO data is versioned in a private GitHub repository.
 
 ## Product surface
 
@@ -19,20 +19,15 @@ npm install
 npm run dev
 ```
 
-Create `.env.local` with:
+Optionally create `.env.local` to override the production webhook during local development:
 
 ```env
-N8N_WEBHOOK_URL=<production webhook URL>
-N8N_WEBHOOK_SECRET=<separate n8n Header Auth secret>
-APP_SHARED_SECRET=<workspace publishing secret>
-PMO_GITHUB_TOKEN=<fine-grained token with contents read/write>
-GITHUB_OWNER=florianliepe
-GITHUB_REPO=DEKRA-Pilot
-GITHUB_BRANCH=main
-PMO_DATA_PATH=knowledge/pmo/control-tower.json
+NEXT_PUBLIC_N8N_PMO_WEBHOOK_URL=<protected n8n webhook URL>
 ```
 
-Secrets are server-only. The workspace secret is supplied for an individual publish request and is not retained in browser storage. Authentication is intentionally deferred; the API boundary is ready to be placed behind a credential vault and session layer later.
+Never put a secret in a `NEXT_PUBLIC_*` variable. The user supplies the shared
+pilot password after opening the application. It is held in memory only and sent
+to n8n as the Header Auth value.
 
 ## Verification
 

@@ -24,7 +24,7 @@ The prior workflow was active but not production-ready:
    model request.
 7. Historical executions showed repeated `CommitToGithub` failures caused by
    invalid JSON bodies and an unreachable service, plus earlier memory-node
-   failures. The current architecture therefore keeps GitHub writes in the
+   failures. The original redesign therefore kept GitHub writes in the
    authenticated application API.
 
 ## Applied workflow
@@ -53,7 +53,7 @@ Changes applied on 2026-08-05:
 - hardened fenced/wrapped JSON parsing and enum/range normalization;
 - included evidence filenames in `source` references;
 - returned the last node's real JSON object instead of literal expressions;
-- left GitHub persistence in the application server, protected by
+- initially left GitHub persistence in the application server, protected by
   `APP_SHARED_SECRET`.
 
 ## Verification evidence
@@ -80,6 +80,14 @@ Header Authentication was enabled after the functional redesign:
   `WP-AUTH-GOLIVE`;
 - matching GitHub environment secret: `N8N_WEBHOOK_SECRET`.
 
-The same secret must be stored in Azure App Service as `N8N_WEBHOOK_SECRET`.
-The application proxy already sends the header on server-to-server calls. Do not
-reuse `APP_SHARED_SECRET`, the GitHub token, or the n8n management API key.
+## GitHub Pages migration
+
+The GitHub Pages architecture removes the application server. The workflow must
+therefore route `pmo.read`, `pmo.save`, and `pmo.ingest` operations and own the
+GitHub persistence step. The Pages client sends the user-entered shared pilot
+password directly as `x-n8n-webhook-secret`; it does not compile that value into
+the public bundle or retain it in browser storage.
+
+GitHub writes must target the private `florianliepe/DEKRA-Pilot-Data` repository
+through a least-privilege n8n credential. The n8n management API key remains a
+separate administrative credential and must never be used by the frontend.

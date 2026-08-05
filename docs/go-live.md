@@ -1,122 +1,87 @@
-# Production go-live guide
+# GitHub Pages MVP go-live guide
 
-The application deploys a Node.js 22 standalone Next.js build to an Azure Linux
-App Service. GitHub Actions builds and deploys the artifact; application secrets
-remain runtime settings in Azure and are never included in the browser bundle.
+The frontend is a static Next.js export hosted at
+`https://florianliepe.github.io/DEKRA-Pilot/`. The public bundle contains no
+credential or PMO data. A protected n8n webhook provides the runtime API and
+stores canonical artifacts in the private `florianliepe/DEKRA-Pilot-Data`
+repository.
 
-## 1. Create or select the Azure App Service
-
-In the Azure portal, create a **Web App** with:
-
-- Publish: **Code**
-- Runtime stack: **Node 22 LTS**
-- Operating system: **Linux**
-- Region and App Service plan: according to the DEKRA hosting decision
-- Always On: enabled when the selected plan supports it
-
-In **Configuration > General settings**, set the startup command to:
+## Architecture
 
 ```text
-node server.js
+GitHub Pages -> protected n8n webhook -> private GitHub data repository
+       |                 |
+  static UI        validation, AI and commits
 ```
 
-## 2. Configure production runtime settings in Azure
+The shared pilot password is entered after opening the site. It is retained only
+in React memory and cleared when the page is refreshed or closed.
 
-Open the Web App, then **Settings > Environment variables > App settings**.
-Add the following settings and save/restart the app:
+## 1. Configure the n8n workflow
 
-| Setting | Value | Sensitive |
+Use the active `PMO Assistant` workflow and keep its production webhook path.
+The webhook must accept the `x-n8n-webhook-secret` Header Auth credential and
+allow the origin `https://florianliepe.github.io`.
+
+Route requests using the JSON `mode` field:
+
+| Mode | Input | Output |
 | --- | --- | --- |
-| `APP_SHARED_SECRET` | A new random value of at least 32 bytes | Yes |
-| `PMO_GITHUB_TOKEN` | Fine-grained GitHub PAT for `DEKRA-Pilot` | Yes |
-| `N8N_WEBHOOK_URL` | Production webhook URL for the active n8n workflow | Yes |
-| `N8N_WEBHOOK_SECRET` | Separate Header Auth value for the n8n webhook | Yes |
-| `GITHUB_OWNER` | `florianliepe` | No |
-| `GITHUB_REPO` | `DEKRA-Pilot` | No |
-| `GITHUB_BRANCH` | `main` | No |
-| `PMO_DATA_PATH` | `knowledge/pmo/control-tower.json` | No |
-| `NODE_ENV` | `production` | No |
+| `pmo.read` | none | `{ ok, source, storageConfigured, document }` |
+| `pmo.save` | `document` | validated document with incremented revision and commit metadata |
+| `pmo.ingest` | `meta`, `extracted` | canonical work-package result and committed file paths |
 
-Generate `APP_SHARED_SECRET` locally with PowerShell and copy only its output:
+For `pmo.read`, read `knowledge/pmo/control-tower.json` from the private data
+repository. For `pmo.save`, validate the document, update `revision` and
+`project.updatedAt`, and commit the JSON. For `pmo.ingest`, retain the existing
+agent normalization and commit the generated Markdown and JSON below
+`knowledge/work-packages/`.
 
-```powershell
-$bytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-[Convert]::ToBase64String($bytes)
+Configure the n8n GitHub credential with access only to
+`florianliepe/DEKRA-Pilot-Data` and repository permission **Contents: Read and
+write**. Do not put this token or the pilot password in the Pages repository,
+Pages variables, or client code.
+
+## 2. Configure the Pages repository
+
+The deployment uses `.github/workflows/deploy-pages.yml`. In **Settings > Pages**,
+select **GitHub Actions** as the build and deployment source.
+
+The production webhook URL has a safe code fallback. To override it without a
+code change, add this non-sensitive repository variable under **Settings >
+Secrets and variables > Actions > Variables**:
+
+```text
+NEXT_PUBLIC_N8N_PMO_WEBHOOK_URL=https://eraneos-agentic-platform.azurewebsites.net/webhook/7666d3c6-b63f-4e79-b10a-82a002a9cf47
 ```
 
-The project owner enters this same value in the application's **Publish to
-GitHub** dialog. The browser sends it only for that request; it is not retained.
-Do not use a GitHub personal access token as the shared secret.
+Do not add `APP_SHARED_SECRET`, `N8N_WEBHOOK_SECRET`, or a GitHub token to the
+Pages build. Any `NEXT_PUBLIC_*` value is readable by site visitors.
 
-## 3. Create the least-privilege GitHub token
+## 3. Release
 
-In GitHub, open **Settings > Developer settings > Personal access tokens >
-Fine-grained tokens** and create a token with:
-
-- Resource owner: `florianliepe`
-- Repository access: **Only select repositories > DEKRA-Pilot**
-- Repository permission **Contents: Read and write**
-- Metadata: the automatically granted read permission
-- A short, managed expiration date
-
-Store the token value in Azure as `PMO_GITHUB_TOKEN`. GitHub shows the value only
-when it is created or regenerated. Never paste it into an issue, commit, chat, or
-frontend environment variable.
-
-## 4. Connect GitHub Actions to Azure
-
-In the Azure Web App **Overview**, download **Get publish profile**. Treat the
-downloaded XML as a secret.
-
-In GitHub, open **DEKRA-Pilot > Settings > Environments > DEKRA-Secrets** and add:
-
-- Environment secret `AZURE_WEBAPP_PUBLISH_PROFILE`: the complete publish-profile XML
-- Environment variable `AZURE_WEBAPP_NAME`: the exact Azure Web App resource name
-
-The deployment workflow references the `DEKRA-Secrets` environment explicitly.
-The existing GitHub environment secret `APP_SHARED_SECRET` is not required for
-deployment because GitHub Actions secrets do not become Azure runtime settings.
-It can be removed after the same value is stored in Azure and n8n.
-
-Secret expressions such as `${{ secrets.APP_SHARED_SECRET }}` belong in workflow
-YAML under a job or step `env:` block. They are not entered in the GitHub secret
-value field. This deployment deliberately does not expose the shared secret at
-build time.
-
-## 5. Configure and verify n8n
-
-In the production n8n workflow:
-
-1. Keep the existing production webhook URL and store it in Azure as
-   `N8N_WEBHOOK_URL`.
-2. The `DEKRA PMO Webhook Auth` credential is already attached to `PMO-Intake`.
-   Store its matching value in Azure as `N8N_WEBHOOK_SECRET`.
-3. Configure the Webhook node to return the final node's JSON, including `wpId`,
-   `markdown`, and `json`.
-4. Ensure one system owns each GitHub write. The frontend currently normalises
-   n8n output and commits the canonical PMO document; n8n should return extracted
-   data rather than create a second commit.
-5. Activate the workflow and run one non-production sample document through it.
-
-The n8n management API key previously shared outside the n8n credential store
-must be revoked and replaced before production. It is not an application runtime
-setting and is not required by the frontend.
-
-## 6. Release and smoke test
-
-After the environment secret and variable exist, merge the deployment pull
-request. The push to `main` runs lint, type-checking, the production build, and
-the Azure deployment.
+Merge the GitHub Pages pull request into `main`. The workflow runs lint,
+type-checking, the static build, artifact upload, and Pages deployment.
 
 Verify:
 
-1. GitHub Actions reports both `build` and `deploy` as successful.
-2. The Azure URL loads the control tower over HTTPS.
-3. `GET /api/pmo` reports `source: "github"`.
-4. A publish attempt without the shared secret returns HTTP 401.
-5. A controlled update with the shared secret creates exactly one GitHub commit.
-6. An n8n intake refreshes the UI and leaves an audit-log entry.
+1. The Pages Actions run completes successfully.
+2. The project URL displays the pilot-password prompt.
+3. An invalid password is rejected by n8n.
+4. A valid password loads the PMO document from the private repository.
+5. One controlled update creates exactly one private-repository commit.
+6. Evidence intake creates the expected Markdown and JSON artifacts.
+7. Refreshing the browser requires the password again.
 
-If deployment approvals are desired, add required reviewers to the
-`DEKRA-Secrets` GitHub environment before merging.
+## Security limitations accepted for the MVP
+
+- The application shell and source repository are public.
+- A shared password provides workspace access; it does not identify individual
+  users.
+- Authorized users can inspect their own request payloads in browser developer
+  tools.
+- Browser-side text, spreadsheet and OCR extraction means selected evidence is
+  sent to n8n as extracted text, not raw files.
+
+Replace the shared password with Microsoft Entra ID before broader rollout or
+when per-user access and audit attribution become mandatory.
