@@ -6,6 +6,7 @@ import type { Deliverable, Meeting, PmoDocument, Rag, Risk } from "@/lib/pmo-sch
 import { ingestEvidence, loadPmoDocument, savePmoDocument } from "@/lib/n8n-client";
 import { DeleteDialog, EntityEditor, type EditableEntity, type EditorTarget } from "./entity-editor";
 import { IntakeWorkbench, type IntakeSubmission } from "./intake-workbench";
+import { SkillDesigner } from "./skill-designer";
 
 type View = "intake" | "overview" | "plan" | "risks" | "meetings" | "activity" | "method";
 type IntakeType = "risk" | "deliverable" | "meeting";
@@ -18,7 +19,7 @@ const navigation: Array<{ id: View; label: string; icon: keyof typeof Icons }> =
   { id: "risks", label: "Risks & issues", icon: "risk" },
   { id: "meetings", label: "Meeting hub", icon: "meeting" },
   { id: "activity", label: "Activity log", icon: "activity" },
-  { id: "method", label: "Method studio", icon: "layers" },
+  { id: "method", label: "Skill designer", icon: "layers" },
 ];
 
 const viewMeta: Record<View, { eyebrow: string; title: string; description: string }> = {
@@ -28,7 +29,7 @@ const viewMeta: Record<View, { eyebrow: string; title: string; description: stri
   risks: { eyebrow: "RAID", title: "Risks & issues", description: "Prioritise exposure and keep mitigation ownership visible." },
   meetings: { eyebrow: "Collaboration", title: "Meeting hub", description: "Turn discussions into decisions, actions and evidence." },
   activity: { eyebrow: "Traceability", title: "Activity log", description: "A chronological audit trail across people and automations." },
-  method: { eyebrow: "Next capability", title: "Method studio", description: "The extension point for skill design, taxonomy and mapping." },
+  method: { eyebrow: "Skill architecture", title: "Skill designer", description: "Turn role evidence into governed skills, profiles and taxonomy decisions." },
 };
 
 function cx(...classes: Array<string | false | undefined>) { return classes.filter(Boolean).join(" "); }
@@ -244,7 +245,7 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
           <span className="nav-label">Project control</span>
           {navigation.map((item) => { const NavIcon = Icons[item.icon]; return <button key={item.id} className={cx("nav-item", view === item.id && "active")} onClick={() => { setView(item.id); setMobileNav(false); }}><NavIcon/><span>{item.label}</span>{item.id === "risks" && <em>{data.risks.filter((risk) => risk.state !== "closed").length}</em>}</button>; })}
         </nav>
-        <div className="sidebar-roadmap"><span>UP NEXT</span><b>Skill design workspace</b><p>Interview-led skill design, taxonomy and job mapping.</p><button onClick={() => setView("method")}>View architecture <Icons.arrow/></button></div>
+        <div className="sidebar-roadmap"><span>LIVE CAPABILITY</span><b>Skill design workspace</b><p>Interview-led skill design, taxonomy and job mapping.</p><button onClick={() => setView("method")}>Launch Skill Designer <Icons.arrow/></button></div>
         <div className="sidebar-foot"><span className="user-avatar">FL</span><div><b>Florian Liepe</b><small>Programme workspace</small></div><span className="online-dot"/></div>
       </aside>
 
@@ -262,7 +263,7 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
           {view === "risks" && <RiskView data={data} query={query} onEdit={setEditor} onDelete={requestDelete}/>}
           {view === "meetings" && <MeetingView data={data} query={query} onEdit={setEditor} onDelete={requestDelete}/>}
           {view === "activity" && <ActivityView data={data} storageConfigured={storageConfigured}/>} 
-          {view === "method" && <MethodStudio/>}
+          {view === "method" && <SkillDesigner workspaceSecret={workspaceSecret}/>}
         </div>
       </main>
 
@@ -321,16 +322,6 @@ function MeetingView({ data, query, onEdit, onDelete }: { data: PmoDocument; que
 
 function ActivityView({ data, storageConfigured }: { data: PmoDocument; storageConfigured: boolean }) {
   return <div className="activity-layout"><section className="panel"><div className="panel-head"><div><span className="section-kicker">AUDIT TRAIL</span><h3>Project activity</h3></div><span className="count-badge">Revision {data.revision}</span></div><div className="activity-list full">{data.activity.map((item) => <div className="activity-row" key={item.id}><span className={`activity-icon activity-${item.type}`}>{item.type === "automation" ? "AI" : item.actor.split(" ").map((word) => word[0]).slice(0,2).join("")}</span><div><b>{item.message}</b><span>{item.actor}{item.entityId ? ` · ${item.entityId}` : ""}</span></div><time>{formatDateTime(item.timestamp)}</time></div>)}</div></section><aside className="panel integration-panel"><div className="panel-head"><div><span className="section-kicker">PIPELINE</span><h3>Connected systems</h3></div></div><div className="integration"><Icons.github/><div><b>GitHub source of truth</b><span>{storageConfigured ? "Credentials configured" : "Awaiting runtime credentials"}</span></div><i className={storageConfigured ? "healthy" : "pending"}/></div><div className="integration"><span className="n8n-logo">n8n</span><div><b>PMO intake workflow</b><span>Webhook adapter ready</span></div><i className="healthy"/></div><div className="integration"><span className="ai-logo">AI</span><div><b>Canonical normalisation</b><span>n8n agent workflow</span></div><i className="healthy"/></div><p className="integration-note">Every published UI change creates a GitHub revision. Automated intake writes through the same canonical store.</p></aside></div>;
-}
-
-function MethodStudio() {
-  const modules = [
-    { step: "01", title: "Skill designer", status: "Next", copy: "Agent-led interviews across defined dimensions, with evidence and confidence capture.", tags: ["Interview", "Granularity", "Evidence"] },
-    { step: "02", title: "Taxonomy framework", status: "Planned", copy: "Governed clusters, relationships, naming rules and lifecycle management.", tags: ["Clusters", "Ontology", "Governance"] },
-    { step: "03", title: "Job-to-skill mapping", status: "Planned", copy: "Map validated skills to profiles, proficiency targets and coverage constraints.", tags: ["Profiles", "Proficiency", "Coverage"] },
-    { step: "04", title: "Data ingestion", status: "Foundation", copy: "Structured files and workflow inputs normalised into canonical GitHub artifacts.", tags: ["n8n", "Validation", "GitHub"] },
-  ];
-  return <div className="method-view"><section className="method-hero"><span>MODULAR BY DESIGN</span><h2>From project control to skill architecture.</h2><p>The control tower is the operational shell. Each method module plugs into the same navigation, canonical data layer and audit stream.</p><div className="method-flow"><span>INPUT</span><i/><span>DESIGN</span><i/><span>GOVERN</span><i/><span>APPLY</span></div></section><section className="module-grid">{modules.map((module) => <article className="module-card" key={module.step}><header><span>{module.step}</span><em>{module.status}</em></header><h3>{module.title}</h3><p>{module.copy}</p><footer>{module.tags.map((tag) => <span key={tag}>{tag}</span>)}</footer></article>)}</section><section className="panel architecture-band"><div><span className="section-kicker">SHARED FOUNDATION</span><h3>One framework, one source of truth</h3></div><div className="architecture-nodes"><span>Responsive UI</span><Icons.arrow/><span>Validated API</span><Icons.arrow/><span>n8n workflows</span><Icons.arrow/><span>GitHub artifacts</span></div></section></div>;
 }
 
 function UpdateDialog({ onClose, onSubmit, workstreams }: { onClose: () => void; onSubmit: (type: IntakeType, values: Record<string, string>) => void; workstreams: Array<{ id: string; name: string }> }) {

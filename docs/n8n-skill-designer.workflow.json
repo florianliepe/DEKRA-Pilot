@@ -1,0 +1,115 @@
+{
+  "name": "DEKRA Skill Designer Orchestrator",
+  "active": false,
+  "settings": { "executionOrder": "v1", "availableInMCP": true },
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "skill-designer-orchestrator",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "https://florianliepe.github.io" }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-900, 0],
+      "id": "b9ac3c34-a3de-4d19-867f-876431b17d31",
+      "name": "Skill Designer API",
+      "webhookId": "skill-designer-orchestrator",
+      "credentials": { "httpHeaderAuth": { "id": "XeRspTWURk5bdcPi", "name": "DEKRA PMO Webhook Auth" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? {};\nconst mode = String(body.mode ?? '').trim();\nconst allowed = ['skill.read','skill.save','skill.ingest','skill.interview'];\nif (!allowed.includes(mode)) return [{json:{ok:false,statusCode:400,error:'Unsupported operation. Use skill.read, skill.save, skill.ingest or skill.interview.'}}];\nreturn [{json:{ok:true,mode,body,agentTrace:[],receivedAt:new Date().toISOString()}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-680, 0],
+      "id": "31dff58f-5771-49fd-9fa3-b59841855cb6",
+      "name": "Request Governor"
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$json.ok || $json.mode !== 'skill.ingest') return items;\nconst extracted = Array.isArray($json.body.extracted) ? $json.body.extracted.slice(0,20) : [];\nconst fluff = /other duties|arrive on time|as assigned|punctual|team player/gi;\nconst sources = extracted.map((source,index)=>({id:index+1,name:String(source.name||'evidence'),content:String(source.content||'').replace(fluff,'').slice(0,120000)})).filter(source=>source.content.trim());\nif (!sources.length) return [{json:{...$json,ok:false,statusCode:400,error:'No usable role evidence supplied.'}}];\nreturn [{json:{...$json,sources,agentTrace:[...$json.agentTrace,{agent:'Evidence auditor',result:`${sources.length} governed sources retained`}]}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-460, 0],
+      "id": "00e8faea-c6ef-47f9-a2ca-4cd6e30304cd",
+      "name": "Evidence Auditor"
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$json.ok || $json.mode !== 'skill.ingest') return items;\nconst text = $json.sources.map(source=>source.content).join(' ');\nconst statements = text.split(/[.!?\\n]+/).map(value=>value.trim()).filter(value=>value.length>20).slice(0,24);\nconst patterns=[[/dashboard|visuali[sz]|report/i,'Data Visualization'],[/taxonomy|skill architecture|skill framework/i,'Skill Taxonomy Design'],[/stakeholder|influence|align/i,'Stakeholder Alignment'],[/analy[sz]|insight|metric/i,'Data Analysis'],[/project|deliver|milestone/i,'Project Delivery'],[/facilitat|workshop|interview/i,'Structured Facilitation']];\nconst candidates=[];\nfor (const statement of statements) { const match=patterns.find(([pattern])=>pattern.test(statement)); if(match) candidates.push({name:match[1],evidence:statement,source:'role evidence'}); }\nif(!candidates.length && statements[0]) candidates.push({name:'Role-specific Capability',evidence:statements[0],source:'role evidence'});\nreturn [{json:{...$json,candidates,agentTrace:[...$json.agentTrace,{agent:'Semantic extractor',result:`${candidates.length} action-object-outcome candidates found`}]}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 0],
+      "id": "b021c831-920b-482c-a495-39155b927d15",
+      "name": "Semantic Extractor"
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$json.ok || $json.mode !== 'skill.ingest') return items;\nconst seen=new Set(); const proposals=[];\nfor(const candidate of $json.candidates||[]){const key=String(candidate.name).toLowerCase();if(seen.has(key))continue;seen.add(key);proposals.push({...candidate,id:`REV-${Date.now()}-${proposals.length+1}`,description:`Ability to apply ${candidate.name} to produce observable role outcomes.`,dimension:/stakeholder|facilitation/i.test(candidate.name)?'competency':'technical',confidence:Math.min(95,72+proposals.length*5)});}\nreturn [{json:{...$json,proposals,agentTrace:[...$json.agentTrace,{agent:'Skill normalizer',result:`${proposals.length} atomic capabilities retained after de-layering`}]}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-20, 0],
+      "id": "749b17c1-4619-40de-b796-8bb3509543a6",
+      "name": "Skill Normalizer"
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$json.ok || $json.mode !== 'skill.ingest') return items;\nconst proposals=($json.proposals||[]).map(item=>({...item,groupId:/data|visual/i.test(item.name)?'GRP-DA':'GRP-SBO',futureRelevance:'core',observability:`Demonstrates ${item.name} through a concrete work product or critical incident.`}));\nreturn [{json:{...$json,proposals,agentTrace:[...$json.agentTrace,{agent:'Taxonomy matcher',result:'Hierarchy fit, dimension and duplicate candidates assessed'}]}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0],
+      "id": "f14014b5-178b-4c9c-a2b6-b72f62bd9d65",
+      "name": "Taxonomy Matcher"
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$json.ok || $json.mode !== 'skill.ingest') return items;\nconst roleTitle=String($json.body.roleTitle||'Untitled role');\nconst profile={title:roleTitle,recommendedSkillCount:'8-12',composition:'5-6 technical · 3-4 behavioral · 1-2 traits/drivers',proficiencyLevels:['Awareness','Application','Mastery','Strategic / Expert']};\nreturn [{json:{...$json,profile,agentTrace:[...$json.agentTrace,{agent:'Profile composer',result:'Profile constraints and proficiency guidance applied'}]}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 0],
+      "id": "c35ce7fc-ac4f-44da-a181-0597217b67ba",
+      "name": "Profile Composer"
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$json.ok) return items;\nconst store=$getWorkflowStaticData('global');\nconst names=['Action Oriented','Ensures Accountability','Manages Ambiguity','Attracts Top Talent','Business Insight','Collaborates','Communicates Effectively','Manages Complexity','Manages Conflict','Courage','Customer Focus','Decision Quality','Develops Talent','Values Differences','Directs Work','Drives Engagement','Financial Acumen','Global Perspective','Cultivates Innovation','Interpersonal Savvy','Builds Networks','Nimble Learning','Organizational Savvy','Persuades','Plans and Aligns','Being Resilient','Resourcefulness','Drives Results','Demonstrates Self-Awareness','Self-Development','Situational Adaptability','Balances Stakeholders','Strategic Mindset','Builds Effective Teams','Tech Savvy','Instills Trust','Drives Vision and Purpose','Optimizes Work Processes'];\nconst factor=n=>[5,8,12,17,18,19,33,35].includes(n)?'Thought':[1,2,11,15,25,27,28,32,38].includes(n)?'Results':[4,6,7,9,13,14,16,20,21,23,24,34,36,37].includes(n)?'People':'Self';\nif(!store.workspace)store.workspace={schemaVersion:1,revision:1,updatedAt:new Date().toISOString(),domains:[{id:'DOM-DT',name:'Digital & Technology',description:'Digital products, data and technology capabilities.',status:'approved'},{id:'DOM-PC',name:'People & Culture',description:'Organisation, talent and people leadership capabilities.',status:'approved'}],groups:[{id:'GRP-DA',domainId:'DOM-DT',name:'Data & Analytics',description:'Data products, insight and decision support.',status:'approved'},{id:'GRP-SBO',domainId:'DOM-PC',name:'Skill-based Organisation',description:'Skill architecture and workforce activation.',status:'approved'}],skills:[],profiles:[],interviews:[],reviewQueue:[],kfla:names.map((name,index)=>({id:`KFLA-${String(index+1).padStart(2,'0')}`,number:index+1,name,factor:factor(index+1),enabled:true,definition:'',source:'public-name'}))};\nconst workspace=store.workspace;\nif($json.mode==='skill.read')return[{json:{ok:true,workspace,message:'Skill workspace loaded from the active n8n orchestrator.'}}];\nif($json.mode==='skill.save'){const candidate=$json.body.workspace;if(!candidate||candidate.schemaVersion!==1||!Array.isArray(candidate.skills)||!Array.isArray(candidate.kfla))return[{json:{ok:false,statusCode:400,error:'Invalid Skill Designer workspace.'}}];candidate.updatedAt=new Date().toISOString();store.workspace=candidate;return[{json:{ok:true,workspace:candidate,message:`Skill workspace revision ${candidate.revision} persisted.`}}];}\nif($json.mode==='skill.interview'){const body=$json.body;let interview=workspace.interviews.find(item=>item.id===body.interviewId);if(!interview){interview={id:`INT-${Date.now()}`,roleTitle:String(body.roleTitle||'Untitled role'),stakeholder:String(body.stakeholder||'Manager'),interviewee:String(body.interviewee||''),status:'in_progress',currentQuestion:0,responses:[]};workspace.interviews.push(interview);}interview.responses.push({question:`Guided question ${interview.currentQuestion+1}`,answer:String(body.answer||'')});interview.currentQuestion=Math.min(4,interview.currentQuestion+1);if(interview.currentQuestion>=4)interview.status='complete';workspace.updatedAt=new Date().toISOString();store.workspace=workspace;return[{json:{ok:true,workspace,interview,message:interview.status==='complete'?'Interview completed and routed to review.':'Interview progress saved.'}}];}\nconst review=($json.proposals||[]).map(item=>({id:item.id,title:item.name,type:'new_skill',summary:`Normalized from role evidence and mapped to ${item.dimension}.`,confidence:item.confidence,evidence:item.evidence,status:'pending'}));workspace.reviewQueue.push(...review);workspace.updatedAt=new Date().toISOString();store.workspace=workspace;return[{json:{ok:true,workspace,proposals:review,agentTrace:[...$json.agentTrace,{agent:'Governance gate',result:`${review.length} proposals routed to human review`}],message:`${review.length} governed proposals added to review.`}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 0],
+      "id": "0788e5df-6b64-4bf4-b481-184d2903a639",
+      "name": "Governance Gate & Store"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": "={{ $json.statusCode || 200 }}" }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [860, 0],
+      "id": "a0a53e6a-e241-46ce-b16e-174074841dec",
+      "name": "Respond to Skill Designer"
+    }
+  ],
+  "connections": {
+    "Skill Designer API": { "main": [[{ "node": "Request Governor", "type": "main", "index": 0 }]] },
+    "Request Governor": { "main": [[{ "node": "Evidence Auditor", "type": "main", "index": 0 }]] },
+    "Evidence Auditor": { "main": [[{ "node": "Semantic Extractor", "type": "main", "index": 0 }]] },
+    "Semantic Extractor": { "main": [[{ "node": "Skill Normalizer", "type": "main", "index": 0 }]] },
+    "Skill Normalizer": { "main": [[{ "node": "Taxonomy Matcher", "type": "main", "index": 0 }]] },
+    "Taxonomy Matcher": { "main": [[{ "node": "Profile Composer", "type": "main", "index": 0 }]] },
+    "Profile Composer": { "main": [[{ "node": "Governance Gate & Store", "type": "main", "index": 0 }]] },
+    "Governance Gate & Store": { "main": [[{ "node": "Respond to Skill Designer", "type": "main", "index": 0 }]] }
+  }
+}

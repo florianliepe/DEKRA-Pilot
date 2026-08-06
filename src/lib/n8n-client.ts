@@ -79,7 +79,7 @@ export function savePmoDocument(secret: string, document: PmoDocument) {
   return callWorkflow<PmoApiResponse>(secret, { mode: "pmo.save", document });
 }
 
-async function extractEvidence(files: File[]): Promise<ExtractedEvidence[]> {
+export async function extractEvidence(files: File[]): Promise<ExtractedEvidence[]> {
   if (files.length > 20) throw new Error("A maximum of 20 evidence files is allowed.");
   if (files.reduce((total, file) => total + file.size, 0) > MAX_BATCH_BYTES) {
     throw new Error("The evidence batch exceeds 29 MB.");
