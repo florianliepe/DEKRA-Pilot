@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Icons } from "./icons";
 import { runJobMapping } from "@/lib/skill-client";
 import { proficiencyLevels, type JobDescription, type JobSkillMapping, type SkillWorkspace } from "@/lib/skill-schema";
@@ -22,7 +22,9 @@ export function JobMappingWorkbench({ workspace, secret, mutate, onWorkspace, on
   const [editingMapping, setEditingMapping] = useState<JobSkillMapping | "new" | null>(null);
   const [busy, setBusy] = useState(false);
   const job = workspace.jobDescriptions.find((item) => item.id === selected) || workspace.jobDescriptions[0];
-  const mappings = useMemo(() => workspace.mappings.filter((item) => item.jobDescriptionId === job?.id).sort((a, b) => b.relevance - a.relevance), [workspace.mappings, job?.id]);
+  const mappings = workspace.mappings
+    .filter((item) => item.jobDescriptionId === job?.id)
+    .sort((a, b) => b.relevance - a.relevance);
 
   function saveJob(record: JobDescription) {
     const value = { ...record, id: record.id || `JD-${Date.now()}`, responsibilities: record.sourceText.split(/[.\n]+/).map((item) => item.trim()).filter((item) => item.length > 20), updatedAt: new Date().toISOString() };
