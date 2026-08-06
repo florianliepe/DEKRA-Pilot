@@ -5,6 +5,7 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     headless: true,
+    timezoneId: "Pacific/Auckland",
   },
   webServer: {
     command: "node node_modules/next/dist/bin/next dev",
