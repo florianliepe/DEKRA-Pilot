@@ -56,7 +56,7 @@ test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
-    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }> };
+    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }> };
     if (body.mode === "skill.read") {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace }) });
       return;
@@ -67,6 +67,12 @@ test.beforeEach(async ({ page }) => {
     }
     if (body.mode === "skill.ingest") {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace, proposals: bootstrapSkillWorkspace.reviewQueue, message: "2 governed proposals added to review." }) });
+      return;
+    }
+    if (body.mode === "skill.map_job" && body.workspace && body.jobDescriptionId) {
+      const mapped = structuredClone(body.workspace);
+      mapped.agentRuns = [{ id: "RUN-TEST", mode: "job_mapping", status: "needs_review", model: "claude-sonnet-5", startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), tools: ["read_catalog", "map_job_skills", "create_review_draft"], trace: [{ step: "Catalog grounding", result: "Approved catalog loaded." }] }, ...mapped.agentRuns];
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: mapped, agentRun: mapped.agentRuns[0], message: "AI mapping draft added to human review." }) });
       return;
     }
     if (body.mode === "pmo.save" && body.document) {
@@ -246,10 +252,10 @@ test("supports mobile navigation", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Meeting hub" })).toBeVisible();
 });
 
-test("opens the governed Skill Designer with all six workspaces", async ({ page }) => {
+test("opens the governed Skill Designer with all nine workspaces", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await expect(page.getByRole("heading", { name: "From role evidence to governed capability." })).toBeVisible();
-  for (const name of ["Overview", "Intake & interview", "Skill library", "Taxonomy", "Role profiles", "Review queue"]) {
+  for (const name of ["Overview", "Intake & interview", "Skill library", "Taxonomy", "Jobs & mapping", "Role profiles", "Strategic vectors", "Review queue", "Agent runs"]) {
     await expect(page.getByRole("tab", { name: new RegExp(name) })).toBeVisible();
   }
   await page.getByRole("tab", { name: "Taxonomy" }).click();
@@ -262,6 +268,8 @@ test("creates and edits a governed core skill", async ({ page }) => {
   await page.getByRole("tab", { name: "Skill library" }).click();
   await page.getByRole("button", { name: "Create skill", exact: true }).first().click();
   await page.getByLabel("Canonical name").fill("Semantic Skill Extraction");
+  await page.getByLabel("Action").fill("Extract");
+  await page.getByLabel("Object").fill("role capabilities");
   await page.getByLabel("Definition").fill("Derives durable capabilities from role evidence.");
   await page.getByLabel("Observable evidence").fill("Separates tasks from reusable capabilities and retains evidence.");
   await page.getByRole("button", { name: "Create skill", exact: true }).last().click();
@@ -280,4 +288,29 @@ test("runs document intake through the separate Skill Designer workflow", async 
   await page.getByRole("button", { name: "Extract skill proposals" }).click();
   await requestPromise;
   await expect(page.getByText("2 governed proposals added to review.")).toBeVisible();
+});
+
+test("runs a governed AI mapping and records the agent trace", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  const requestPromise = page.waitForRequest((request) => request.url().includes("skill-designer-orchestrator") && request.postDataJSON()?.mode === "skill.map_job");
+  await page.getByRole("button", { name: "Run governed mapping" }).click();
+  const body = (await requestPromise).postDataJSON() as { jobDescriptionId: string; workspace: SkillWorkspace };
+  expect(body.jobDescriptionId).toBe("JD-DATA");
+  expect(body.workspace.schemaVersion).toBe(2);
+  await expect(page.getByText("AI mapping draft added to human review.")).toBeVisible();
+  await page.getByRole("tab", { name: "Agent runs" }).click();
+  await expect(page.getByText("Catalog grounding")).toBeVisible();
+  await expect(page.getByText("Cannot approve")).toBeVisible();
+});
+
+test("creates a strategic vector linked to an approved skill", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Strategic vectors" }).click();
+  await page.getByRole("button", { name: "Create vector" }).click();
+  await page.getByLabel("Name").fill("Safety Innovation");
+  await page.getByLabel("Strategic intent").fill("Advance safety outcomes through governed digital capabilities.");
+  await page.getByLabel("Data Visualization").check();
+  await page.getByRole("button", { name: "Save vector" }).click();
+  await expect(page.getByRole("heading", { name: "Safety Innovation" })).toBeVisible();
 });
