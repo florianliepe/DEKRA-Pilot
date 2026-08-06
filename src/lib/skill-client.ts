@@ -11,6 +11,7 @@ export type SkillWorkflowResponse = {
   proposals?: SkillWorkspace["reviewQueue"];
   interview?: SkillWorkspace["interviews"][number];
   message?: string;
+  agentRun?: SkillWorkspace["agentRuns"][number];
 };
 
 function url() {
@@ -50,3 +51,7 @@ export async function ingestSkillEvidence(secret: string, files: File[], brief: 
 }
 
 export const runSkillInterview = (secret: string, payload: Record<string, unknown>) => call(secret, { mode: "skill.interview", ...payload });
+export const runJobMapping = (secret: string, jobDescriptionId: string, workspace: SkillWorkspace) =>
+  call(secret, { mode: "skill.map_job", jobDescriptionId, workspace });
+export const runTaxonomyRegression = (secret: string, workspace: SkillWorkspace) =>
+  call(secret, { mode: "skill.regression", workspace });
