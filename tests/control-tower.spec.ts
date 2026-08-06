@@ -1,7 +1,13 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { bootstrapPmoData as pmoDocument } from "../src/lib/pmo-fixtures";
 
+const pageErrors = new WeakMap<Page, string[]>();
+
 test.beforeEach(async ({ page }) => {
+  const errors: string[] = [];
+  pageErrors.set(page, errors);
+  page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
     const body = request.postDataJSON() as { mode?: string; document?: typeof pmoDocument; meta?: { wpId?: string } };
@@ -22,6 +28,10 @@ test.beforeEach(async ({ page }) => {
   await page.getByLabel("Shared pilot password").fill("pilot-test-password");
   await page.getByRole("button", { name: "Open workspace" }).click();
   await expect(page.getByRole("heading", { name: "Executive overview" })).toBeVisible();
+});
+
+test("hydrates without client-side exceptions", async ({ page }) => {
+  expect(pageErrors.get(page)).toEqual([]);
 });
 
 test("navigates through every core PMO view", async ({ page }) => {
