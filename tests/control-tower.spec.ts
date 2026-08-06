@@ -3,6 +3,8 @@ import type { Page } from "@playwright/test";
 import JSZip from "jszip";
 import { bootstrapPmoData as pmoDocument } from "../src/lib/pmo-fixtures";
 import type { PmoDocument } from "../src/lib/pmo-schema";
+import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
+import type { SkillWorkspace } from "../src/lib/skill-schema";
 
 const testDocument: PmoDocument = {
   ...pmoDocument,
@@ -54,7 +56,19 @@ test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
-    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }> };
+    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }> };
+    if (body.mode === "skill.read") {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace }) });
+      return;
+    }
+    if (body.mode === "skill.save" && body.workspace) {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: body.workspace }) });
+      return;
+    }
+    if (body.mode === "skill.ingest") {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace, proposals: bootstrapSkillWorkspace.reviewQueue, message: "2 governed proposals added to review." }) });
+      return;
+    }
     if (body.mode === "pmo.save" && body.document) {
       await route.fulfill({
         contentType: "application/json",
@@ -86,7 +100,7 @@ test("navigates through every core PMO view", async ({ page }) => {
     ["Risks & issues", "Exposure matrix"],
     ["Meeting hub", "Turn discussions into decisions, actions and evidence."],
     ["Activity log", "Connected systems"],
-    ["Method studio", "From project control to skill architecture."],
+    ["Skill designer", "From role evidence to governed capability."],
   ];
   const navigationRegion = page.getByRole("navigation", { name: "Primary navigation" });
 
@@ -230,4 +244,40 @@ test("supports mobile navigation", async ({ page }) => {
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("button", { name: "Meeting hub" }).click();
   await expect(page.getByRole("heading", { name: "Meeting hub" })).toBeVisible();
+});
+
+test("opens the governed Skill Designer with all six workspaces", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "From role evidence to governed capability." })).toBeVisible();
+  for (const name of ["Overview", "Intake & interview", "Skill library", "Taxonomy", "Role profiles", "Review queue"]) {
+    await expect(page.getByRole("tab", { name: new RegExp(name) })).toBeVisible();
+  }
+  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await expect(page.getByRole("heading", { name: "38 KFLA competency names" })).toBeVisible();
+  await expect(page.locator(".kfla-grid label")).toHaveCount(38);
+});
+
+test("creates and edits a governed core skill", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Skill library" }).click();
+  await page.getByRole("button", { name: "Create skill", exact: true }).first().click();
+  await page.getByLabel("Canonical name").fill("Semantic Skill Extraction");
+  await page.getByLabel("Definition").fill("Derives durable capabilities from role evidence.");
+  await page.getByLabel("Observable evidence").fill("Separates tasks from reusable capabilities and retains evidence.");
+  await page.getByRole("button", { name: "Create skill", exact: true }).last().click();
+  await expect(page.getByText("Semantic Skill Extraction", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Edit Semantic Skill Extraction" }).click();
+  await page.getByLabel("Lifecycle").selectOption("approved");
+  await page.getByRole("button", { name: "Apply changes" }).click();
+  await expect(page.locator(".skill-table > div").filter({ hasText: "Semantic Skill Extraction" }).getByText("Approved", { exact: true })).toBeVisible();
+});
+
+test("runs document intake through the separate Skill Designer workflow", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Intake & interview" }).click();
+  await page.getByText("Role brief or responsibility statements").locator("..").getByRole("textbox").fill("Builds dashboards to explain weekly revenue movement to executive stakeholders.");
+  const requestPromise = page.waitForRequest((request) => request.url().includes("skill-designer-orchestrator") && request.postDataJSON()?.mode === "skill.ingest");
+  await page.getByRole("button", { name: "Extract skill proposals" }).click();
+  await requestPromise;
+  await expect(page.getByText("2 governed proposals added to review.")).toBeVisible();
 });
