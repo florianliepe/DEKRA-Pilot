@@ -9,6 +9,7 @@ import { IntakeWorkbench, type IntakeSubmission } from "./intake-workbench";
 
 type View = "intake" | "overview" | "plan" | "risks" | "meetings" | "activity" | "method";
 type IntakeType = "risk" | "deliverable" | "meeting";
+type DeleteTarget = { entity: Exclude<EditableEntity, "project">; id: string; label: string; blockedReason?: string };
 
 const navigation: Array<{ id: View; label: string; icon: keyof typeof Icons }> = [
   { id: "intake", label: "Workbench intake", icon: "upload" },
@@ -92,7 +93,7 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [editor, setEditor] = useState<EditorTarget | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ entity: Exclude<EditableEntity, "project">; id: string; label: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [workflowSaving, setWorkflowSaving] = useState(false);
   const [workflowResult, setWorkflowResult] = useState("");
@@ -114,6 +115,20 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
 
   function mutate(update: (current: PmoDocument) => PmoDocument) {
     setData((current) => current ? update(current) : current); setDirty(true);
+  }
+
+  function requestDelete(entity: DeleteTarget["entity"], id: string, label: string) {
+    const linkedDeliverables = entity === "workstream"
+      ? data?.deliverables.filter((item) => item.workstream === id).length ?? 0
+      : 0;
+    setDeleteTarget({
+      entity,
+      id,
+      label,
+      blockedReason: linkedDeliverables
+        ? `Move or delete ${linkedDeliverables} linked deliverable${linkedDeliverables === 1 ? "" : "s"} before removing this workstream.`
+        : undefined,
+    });
   }
 
   async function publish() {
@@ -201,7 +216,8 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
     setEditor(null);
   }
 
-  function deleteEntity(target: NonNullable<typeof deleteTarget>) {
+  function deleteEntity(target: DeleteTarget) {
+    if (target.blockedReason) return;
     mutate((current) => {
       const key = target.entity === "workstream" ? "workstreams" : target.entity === "milestone" ? "milestones" : target.entity === "deliverable" ? "deliverables" : target.entity === "risk" ? "risks" : "meetings";
       const activity = [{ id: `ACT-${Date.now()}`, timestamp: new Date().toISOString(), type: "update" as const, actor: "PMO user", message: `Deleted ${target.label}.`, entityId: target.id }, ...current.activity];
@@ -241,10 +257,10 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
           <div className="page-heading"><div><span className="eyebrow">{meta.eyebrow}</span><h1>{meta.title}</h1><p>{meta.description}</p></div><div className="heading-meta"><span>Last synced</span><b>{formatDateTime(data.project.updatedAt)}</b></div></div>
 
           {view === "intake" && <IntakeWorkbench saving={workflowSaving} result={workflowResult} onRun={(submission) => void runWorkflowIntake(submission)}/>}
-          {view === "overview" && <Overview data={data} exposure={exposure} openActions={openActions} completedDeliverables={completedDeliverables} setView={setView} onEdit={setEditor} onDelete={(entity, id, label) => setDeleteTarget({ entity, id, label })}/>}
-          {view === "plan" && <PlanView data={data} query={query} mutate={mutate} onEdit={setEditor} onDelete={(entity, id, label) => setDeleteTarget({ entity, id, label })}/>}
-          {view === "risks" && <RiskView data={data} query={query} onEdit={setEditor} onDelete={(entity, id, label) => setDeleteTarget({ entity, id, label })}/>}
-          {view === "meetings" && <MeetingView data={data} query={query} onEdit={setEditor} onDelete={(entity, id, label) => setDeleteTarget({ entity, id, label })}/>}
+          {view === "overview" && <Overview data={data} exposure={exposure} openActions={openActions} completedDeliverables={completedDeliverables} setView={setView} onEdit={setEditor} onDelete={requestDelete}/>}
+          {view === "plan" && <PlanView data={data} query={query} mutate={mutate} onEdit={setEditor} onDelete={requestDelete}/>}
+          {view === "risks" && <RiskView data={data} query={query} onEdit={setEditor} onDelete={requestDelete}/>}
+          {view === "meetings" && <MeetingView data={data} query={query} onEdit={setEditor} onDelete={requestDelete}/>}
           {view === "activity" && <ActivityView data={data} storageConfigured={storageConfigured}/>} 
           {view === "method" && <MethodStudio/>}
         </div>
@@ -253,7 +269,7 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
       {intakeOpen && <UpdateDialog onClose={() => setIntakeOpen(false)} onSubmit={addRecord} workstreams={data.workstreams.map((item) => ({ id: item.id, name: item.shortName }))}/>} 
       {publishOpen && <PublishDialog saving={saving} revision={data.revision} onClose={() => setPublishOpen(false)} onPublish={publish}/>} 
       {editor && <EntityEditor target={editor} data={data} onClose={() => setEditor(null)} onSave={saveEntity}/>}
-      {deleteTarget && <DeleteDialog label={deleteTarget.label} onClose={() => setDeleteTarget(null)} onDelete={() => deleteEntity(deleteTarget)}/>}
+      {deleteTarget && <DeleteDialog label={deleteTarget.label} blockedReason={deleteTarget.blockedReason} onClose={() => setDeleteTarget(null)} onDelete={() => deleteEntity(deleteTarget)}/>}
       {accessOpen && <AccessDialog loading={loading} error={accessError} onUnlock={(secret) => void loadData(secret)}/>}
     </div>
   );

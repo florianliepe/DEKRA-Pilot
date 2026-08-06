@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import JSZip from "jszip";
 import { bootstrapPmoData as pmoDocument } from "../src/lib/pmo-fixtures";
 import type { PmoDocument } from "../src/lib/pmo-schema";
 
@@ -16,6 +17,36 @@ const testDocument: PmoDocument = {
 };
 
 const pageErrors = new WeakMap<Page, string[]>();
+
+async function workbookFixture() {
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`);
+  zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`);
+  zip.file("xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Risks" sheetId="1" r:id="rId1"/><sheet name="Milestones" sheetId="2" r:id="rId2"/></sheets>
+</workbook>`);
+  zip.file("xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
+</Relationships>`);
+  const sheet = (value: string) => `<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>${value}</t></is></c></row></sheetData></worksheet>`;
+  zip.file("xl/worksheets/sheet1.xml", sheet("Supplier dependency"));
+  zip.file("xl/worksheets/sheet2.xml", sheet("Mobilisation gate"));
+  return zip.generateAsync({ type: "nodebuffer" });
+}
 
 test.beforeEach(async ({ page }) => {
   const errors: string[] = [];
@@ -92,6 +123,34 @@ test("offers lean multimodal intake and applies orchestrated changes", async ({ 
   await expect(page.getByText("Automated supplier dependency")).toBeVisible();
 });
 
+test("extracts every Excel worksheet before orchestration", async ({ page }) => {
+  await page.getByRole("button", { name: "Workbench intake", exact: true }).click();
+  await page.getByLabel("Evidence files").setInputFiles({
+    name: "programme-evidence.xlsx",
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer: await workbookFixture(),
+  });
+  const requestPromise = page.waitForRequest((request) => request.url().includes("/webhook/") && request.postDataJSON()?.mode === "pmo.ingest");
+  await page.getByRole("button", { name: "Analyse and update workbench" }).click();
+  const body = (await requestPromise).postDataJSON() as { extracted: Array<{ name: string; type: string; content: string }> };
+  const workbook = body.extracted.find((item) => item.name === "programme-evidence.xlsx");
+  expect(workbook?.type).toBe("xlsx");
+  expect(workbook?.content).toContain("## Sheet: Risks");
+  expect(workbook?.content).toContain("Supplier dependency");
+  expect(workbook?.content).toContain("## Sheet: Milestones");
+  expect(workbook?.content).toContain("Mobilisation gate");
+});
+
+test("submits a written update with the documented keyboard shortcut", async ({ page }) => {
+  await page.getByRole("button", { name: "Workbench intake", exact: true }).click();
+  const composer = page.getByLabel("Write a project update");
+  await composer.fill("The mobilisation gate needs a dependency review.");
+  const requestPromise = page.waitForRequest((request) => request.url().includes("/webhook/") && request.postDataJSON()?.mode === "pmo.ingest");
+  await composer.press("Control+Enter");
+  await requestPromise;
+  await expect(page.getByText(/analysed by n8n/)).toBeVisible();
+});
+
 test("edits the project profile and workstream fields", async ({ page }) => {
   await page.getByRole("button", { name: "Edit project profile" }).click();
   await page.getByLabel("Project name").fill("SBO Pilot Workbench");
@@ -102,6 +161,40 @@ test("edits the project profile and workstream fields", async ({ page }) => {
   await page.getByLabel("Short name").fill("Pilot mobilisation");
   await page.getByRole("button", { name: "Apply changes" }).click();
   await expect(page.getByText("Pilot mobilisation", { exact: true })).toBeVisible();
+});
+
+test("protects linked workstreams and deletes unlinked workstreams", async ({ page }) => {
+  await page.getByRole("button", { name: "Delete Mobilisation" }).click();
+  await expect(page.getByRole("heading", { name: "Resolve linked records first" })).toBeVisible();
+  await expect(page.getByText(/Move or delete 1 linked deliverable/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Dependencies remain" })).toBeDisabled();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Change enablement");
+  await page.getByLabel("Short name").fill("Enablement");
+  await page.getByLabel("Owner").fill("Change Lead");
+  await page.getByRole("button", { name: "Add to workbench" }).click();
+  await expect(page.getByText("Enablement", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Delete Enablement" }).click();
+  await page.getByRole("button", { name: "Delete record" }).click();
+  await expect(page.getByText("Enablement", { exact: true })).toHaveCount(0);
+});
+
+test("publishes local CRUD changes through the protected workflow", async ({ page }) => {
+  await page.getByRole("button", { name: "Quick add" }).click();
+  await page.getByLabel("Title").fill("Publish-path verification");
+  await page.getByLabel("Owner").fill("PMO Lead");
+  await page.getByLabel("Mitigation").fill("Verify the protected save operation.");
+  await page.getByLabel("Description").fill("Confirms that local changes reach the canonical repository.");
+  await page.getByRole("button", { name: "Add to workspace" }).click();
+  await page.getByRole("button", { name: "Publish changes" }).click();
+  const saveRequest = page.waitForRequest((request) => request.url().includes("/webhook/") && request.postDataJSON()?.mode === "pmo.save");
+  await page.getByRole("button", { name: "Publish to GitHub" }).click();
+  const body = (await saveRequest).postDataJSON() as { mode: string; document: PmoDocument };
+  expect(body.mode).toBe("pmo.save");
+  expect(body.document.risks.some((risk) => risk.title === "Publish-path verification")).toBe(true);
+  await expect(page.getByRole("button", { name: "All changes saved" })).toBeDisabled();
 });
 
 test("updates and deletes delivery records", async ({ page }) => {
