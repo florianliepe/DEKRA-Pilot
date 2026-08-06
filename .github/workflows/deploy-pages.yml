@@ -13,12 +13,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
+  # Keep only the newest Pages build. A merge otherwise leaves the PR and
+  # main builds competing for hosted-runner capacity.
+  group: pages-deploy
   cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # GitHub's Ubuntu pool repeatedly failed before checkout. The application
+    # is already verified on Windows/Node 22, so use the separate runner pool.
+    runs-on: windows-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -54,7 +58,7 @@ jobs:
   deploy:
     if: github.event_name != 'pull_request'
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: read
       pages: write
