@@ -4,7 +4,7 @@ const DEFAULT_WEBHOOK_URL =
   "https://eraneos-agentic-platform.azurewebsites.net/webhook/7666d3c6-b63f-4e79-b10a-82a002a9cf47";
 
 const MAX_BATCH_BYTES = 29 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set([".md", ".txt", ".csv", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"]);
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".md", ".txt", ".csv", ".xlsx", ".png", ".jpg", ".jpeg"]);
 
 export type PmoApiResponse = {
   ok?: boolean;
@@ -21,9 +21,11 @@ export type WorkflowIntakeResponse = {
   wpId?: string;
   committedFiles?: string[];
   needs_review?: string[];
+  document?: PmoDocument;
+  appliedChanges?: Array<{ entity: string; action: string; id?: string; summary?: string }>;
 };
 
-type ExtractedEvidence = { name: string; type: "text" | "xlsx" | "image_ocr"; content: string };
+type ExtractedEvidence = { name: string; type: "text" | "xlsx" | "pdf_text" | "image_ocr" | "text_update"; content: string };
 
 function webhookUrl() {
   return process.env.NEXT_PUBLIC_N8N_PMO_WEBHOOK_URL?.trim() || DEFAULT_WEBHOOK_URL;
@@ -78,7 +80,6 @@ export function savePmoDocument(secret: string, document: PmoDocument) {
 }
 
 async function extractEvidence(files: File[]): Promise<ExtractedEvidence[]> {
-  if (files.length === 0) throw new Error("Select at least one evidence file.");
   if (files.length > 20) throw new Error("A maximum of 20 evidence files is allowed.");
   if (files.reduce((total, file) => total + file.size, 0) > MAX_BATCH_BYTES) {
     throw new Error("The evidence batch exceeds 29 MB.");
@@ -94,14 +95,35 @@ async function extractEvidence(files: File[]): Promise<ExtractedEvidence[]> {
       continue;
     }
 
-    if (ext === ".xls" || ext === ".xlsx") {
-      const XLSX = await import("xlsx");
-      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
-      const content = workbook.SheetNames.map((sheet) => {
-        const worksheet = workbook.Sheets[sheet];
-        return `## Sheet: ${sheet}\n${XLSX.utils.sheet_to_csv(worksheet)}`;
+    if (ext === ".xlsx") {
+      const { default: readExcelFile } = await import("read-excel-file/browser");
+      const sheets = await readExcelFile(file);
+      const content = sheets.map(({ sheet, data }) => {
+        const csv = data.map((row) => row.map((cell) => {
+          const value = cell instanceof Date ? cell.toISOString() : String(cell ?? "");
+          return /[",\n]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+        }).join(",")).join("\n");
+        return `## Sheet: ${sheet}\n${csv}`;
       }).join("\n\n");
       extracted.push({ name: file.name, type: "xlsx", content });
+      continue;
+    }
+
+    if (ext === ".pdf") {
+      const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+        import.meta.url,
+      ).toString();
+      const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+      const pages: string[] = [];
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const content = await page.getTextContent();
+        const text = content.items.map((item) => "str" in item ? item.str : "").join(" ");
+        pages.push(`## Page ${pageNumber}\n${text}`);
+      }
+      extracted.push({ name: file.name, type: "pdf_text", content: pages.join("\n\n") });
       continue;
     }
 
@@ -116,7 +138,12 @@ export async function ingestEvidence(
   secret: string,
   meta: Record<string, string>,
   files: File[],
+  textUpdate = "",
 ) {
   const extracted = await extractEvidence(files);
+  if (textUpdate.trim()) {
+    extracted.unshift({ name: "workbench-update.md", type: "text_update", content: textUpdate.trim() });
+  }
+  if (extracted.length === 0) throw new Error("Add at least one document or written update.");
   return callWorkflow<WorkflowIntakeResponse>(secret, { mode: "pmo.ingest", meta, extracted });
 }

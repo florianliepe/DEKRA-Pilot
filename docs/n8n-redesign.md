@@ -3,9 +3,10 @@
 ## Production workflow
 
 - Name: `PMO Assistant`
-- Workflow ID: `CErz8oiufq2FQiNF`
+- Workflow ID: `aA9gavf37yDFW6fl`
 - Production webhook path: `7666d3c6-b63f-4e79-b10a-82a002a9cf47`
 - Pre-change backup: `O2rEV9jcqOsulCN7` (inactive)
+- Pre-workbench backup: `VQUf6J32Lc3vxmXE` (inactive)
 
 ## Findings from the production audit
 
@@ -91,3 +92,20 @@ the public bundle or retain it in browser storage.
 GitHub writes must target the private `florianliepe/DEKRA-Pilot-Data` repository
 through a least-privilege n8n credential. The n8n management API key remains a
 separate administrative credential and must never be used by the frontend.
+
+## PMO workbench orchestration
+
+Applied on 2026-08-06 to the active production workflow:
+
+- expanded the PMO Assistant into an orchestrator contract covering project
+  updates, milestones, deliverables, risks and meeting records;
+- added frontend-selectable analysis roles for evidence, delivery, risk and
+  meeting synthesis;
+- preserved immutable work-package JSON and Markdown evidence commits;
+- added a canonical merge stage that reads the current control tower, performs
+  ID/title-based upserts, validates required dates and clamps numeric ranges;
+- added a second GitHub write for the incremented control-tower revision;
+- returns `document` and `appliedChanges` so the frontend updates immediately.
+
+See `docs/pmo-workbench-improvement-plan.md` for the implementation roadmap and
+the next multi-agent iteration.
