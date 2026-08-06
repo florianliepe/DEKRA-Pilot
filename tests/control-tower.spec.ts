@@ -314,3 +314,36 @@ test("creates a strategic vector linked to an approved skill", async ({ page }) 
   await page.getByRole("button", { name: "Save vector" }).click();
   await expect(page.getByRole("heading", { name: "Safety Innovation" })).toBeVisible();
 });
+
+test("creates, edits and removes a job-description record", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await page.getByRole("button", { name: "Create job description" }).click();
+  await page.getByLabel("Job title").fill("Safety Data Product Owner");
+  await page.getByLabel("Job family").fill("Digital Safety");
+  await page.getByLabel("Role purpose").fill("Own safety data products that improve operational decisions.");
+  await page.getByLabel("Full job description").fill("Translates safety priorities into governed data products and measurable operational outcomes. Aligns stakeholders around product decisions and validates adoption evidence.");
+  await page.getByRole("button", { name: "Save job description" }).click();
+  await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Edit Safety Data Product Owner" }).click();
+  await page.getByLabel("Role purpose").fill("Own governed safety data products and measurable adoption outcomes.");
+  await page.getByRole("button", { name: "Save job description" }).click();
+  await expect(page.getByText("Own governed safety data products and measurable adoption outcomes.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Delete Safety Data Product Owner" }).click();
+  await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toHaveCount(0);
+});
+
+test("aligns mapping evidence and strategic vectors with the enriched job draft", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await page.getByRole("button", { name: "Edit Data Visualization mapping" }).click();
+  await page.getByLabel("Mapping rationale").fill("The role must translate performance evidence into operational decisions.");
+  await page.getByLabel("Job-description evidence").fill("Builds governed dashboards for executive and operational decision-making.");
+  await page.getByLabel("AI & Data").check();
+  await page.getByLabel("Critical skill for this role").check();
+  await page.getByRole("button", { name: "Save mapping" }).click();
+  const mappingRow = page.locator(".mapping-row").filter({ hasText: "Data Visualization" });
+  await expect(mappingRow.getByText("AI & Data", { exact: true })).toBeVisible();
+  await expect(mappingRow).toContainText("critical");
+  await expect(page.locator(".enriched-preview pre")).toContainText("AI & Data:");
+});
