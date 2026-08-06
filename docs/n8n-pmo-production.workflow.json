@@ -1,0 +1,276 @@
+{
+  "name": "PMO Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "7666d3c6-b63f-4e79-b10a-82a002a9cf47",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://florianliepe.github.io"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-960, 0],
+      "id": "0b243a33-e0f6-4c2d-a468-514d03b4efc1",
+      "name": "PMO-API",
+      "webhookId": "7666d3c6-b63f-4e79-b10a-82a002a9cf47",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XeRspTWURk5bdcPi",
+          "name": "DEKRA PMO Webhook Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? {};\nconst mode = String(body.mode ?? '').trim();\nconst allowed = ['pmo.read', 'pmo.save', 'pmo.ingest'];\nreturn [{ json: { mode, validMode: allowed.includes(mode), body, receivedAt: new Date().toISOString() } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-736, 0],
+      "id": "aa8e0c9c-306e-4127-aac0-f35bbfa43bb3",
+      "name": "PrepareRequest"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
+          "conditions": [{"id": "f58e9ba8-8735-44a9-b234-c896593f9461", "leftValue": "={{ $json.mode }}", "rightValue": "pmo.read", "operator": {"type": "string", "operation": "equals"}}],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-512, 0],
+      "id": "e77e00f7-b51a-4aac-be28-b62b11d14380",
+      "name": "IfRead"
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "resource": "file",
+        "operation": "get",
+        "owner": {"__rl": true, "value": "florianliepe", "mode": "name"},
+        "repository": {"__rl": true, "value": "DEKRA-Pilot-Data", "mode": "name"},
+        "filePath": "knowledge/pmo/control-tower.json",
+        "asBinaryProperty": false,
+        "additionalParameters": {"reference": "main"}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [-256, -304],
+      "id": "064d4885-7aa1-4fef-89de-7a4f35e56abb",
+      "name": "GitHubReadControlTower",
+      "credentials": {"githubApi": {"id": "3V46mglu7fpoPISX", "name": "GitHub account"}}
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$json.content) throw new Error('The canonical PMO document is missing from GitHub.');\nconst text = Buffer.from($json.content, 'base64').toString('utf8');\nconst document = JSON.parse(text);\nreturn [{ json: { ok: true, source: 'github', storageConfigured: true, document } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, -304],
+      "id": "fd551847-ac00-449d-b53d-1b52c13bbf7d",
+      "name": "FormatRead"
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ $json }}", "options": {"responseCode": 200}},
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [256, -304],
+      "id": "d5c9df70-16b1-4294-aa99-0b3e78f28bc2",
+      "name": "RespondRead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
+          "conditions": [{"id": "985794ee-3e7a-43a7-92dd-51d6c270ad3a", "leftValue": "={{ $json.mode }}", "rightValue": "pmo.save", "operator": {"type": "string", "operation": "equals"}}],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-256, 64],
+      "id": "acaa5570-ef38-46bb-9889-9ae42a8c9fee",
+      "name": "IfSave"
+    },
+    {
+      "parameters": {
+        "jsCode": "const document = structuredClone($json.body?.document ?? null);\nif (!document || document.schemaVersion !== '1.0' || !document.project || !Array.isArray(document.workstreams) || !Array.isArray(document.milestones) || !Array.isArray(document.deliverables) || !Array.isArray(document.risks) || !Array.isArray(document.meetings) || !Array.isArray(document.activity)) {\n  throw new Error('Invalid PMO document. Expected schemaVersion 1.0 and all canonical collections.');\n}\nconst now = new Date().toISOString();\ndocument.revision = Math.max(1, Number(document.revision || 1)) + 1;\ndocument.project.updatedAt = now;\nconst commitMessage = `pmo: publish control tower revision ${document.revision}`;\nreturn [{ json: { document, fileContent: JSON.stringify(document, null, 2) + '\\n', commitMessage } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, -16],
+      "id": "c0cc2bd1-9d34-4db3-a886-1703166420c2",
+      "name": "PrepareSave"
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "resource": "file",
+        "operation": "edit",
+        "owner": {"__rl": true, "value": "florianliepe", "mode": "name"},
+        "repository": {"__rl": true, "value": "DEKRA-Pilot-Data", "mode": "name"},
+        "filePath": "knowledge/pmo/control-tower.json",
+        "binaryData": false,
+        "fileContent": "={{ $json.fileContent }}",
+        "commitMessage": "={{ $json.commitMessage }}",
+        "additionalParameters": {"branch": {"branch": "main"}}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [256, -16],
+      "id": "72b09bdf-e134-48fa-80a3-bfd8f1642283",
+      "name": "GitHubSaveControlTower",
+      "credentials": {"githubApi": {"id": "3V46mglu7fpoPISX", "name": "GitHub account"}}
+    },
+    {
+      "parameters": {
+        "jsCode": "const saved = $node['PrepareSave'].json.document;\nreturn [{ json: { ok: true, source: 'github', storageConfigured: true, document: saved, commit: { sha: $json.commit?.sha ?? $json.content?.sha, url: $json.commit?.html_url ?? $json.content?.html_url } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [512, -16],
+      "id": "bff933cb-72f2-44bb-9bd4-e11a2960186c",
+      "name": "FormatSave"
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ $json }}", "options": {"responseCode": 200}},
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [768, -16],
+      "id": "6731f951-73ff-4710-b5ab-4998cc541f75",
+      "name": "RespondSave"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
+          "conditions": [{"id": "86a52e7a-c5bb-43dc-a2e7-797dfdb48741", "leftValue": "={{ $json.mode }}", "rightValue": "pmo.ingest", "operator": {"type": "string", "operation": "equals"}}],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [0, 240],
+      "id": "d4e68b5b-9623-47c4-874a-8d369686cf0c",
+      "name": "IfIngest"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? {};\nconst meta = body.meta ?? {};\nconst extracted = Array.isArray(body.extracted) ? body.extracted : [];\nif (!meta.wpId || !meta.title || extracted.length === 0) throw new Error('Evidence intake requires meta.wpId, meta.title and at least one extracted file.');\nconst evidence = extracted.map((f, i) => `SOURCE ${i + 1}: ${f.name || f.type || 'evidence'}\\n${String(f.content || '').slice(0, 120000)}`).join('\\n\\n---\\n\\n');\nconst assistant_input = `Metadata:\\n${JSON.stringify(meta, null, 2)}\\n\\nExtracted evidence:\\n${evidence}`;\nreturn [{ json: { meta, extracted, assistant_input } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [256, 176],
+      "id": "6a903bae-ab97-4a1b-b7a2-c0f274c0bf37",
+      "name": "BuildAssistantInput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.assistant_input }}",
+        "options": {
+          "systemMessage": "You are the DEKRA SBO PMO Assistant. Convert the supplied metadata and extracted evidence into strict JSON only. Never invent facts, dates, owners or percentages. Exclude personal employee data and use role titles only. Return: {\"objective\":string,\"summary\":string,\"dod\":string[],\"deliverables\":[{\"id\"?:string,\"name\":string,\"description\"?:string,\"dueDate\"?:\"YYYY-MM-DD\",\"done\":boolean,\"owner\"?:string,\"status\"?:\"not_started\"|\"in_progress\"|\"done\"|\"delayed\"}],\"dependencies\":[{\"id\"?:string,\"description\":string,\"type\":\"internal\"|\"external\",\"owner\"?:string,\"dueDate\"?:\"YYYY-MM-DD\",\"state\":\"open\"|\"resolved\"}],\"risks\":[{\"id\"?:string,\"title\":string,\"description\"?:string,\"impact\":1,\"probability\":1,\"mitigation\"?:string,\"owner\"?:string,\"state\":\"open\"|\"monitoring\"|\"mitigated\"|\"closed\"}],\"okr\":[],\"assumptions\":string[],\"needs_review\":string[]}. Impact and probability must be integers 1-5. Keep summary below 120 words."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [512, 176],
+      "id": "dd976952-2036-4471-bf14-4c5b9244e263",
+      "name": "PMO Assistant"
+    },
+    {
+      "parameters": {"model": {"__rl": true, "value": "claude-sonnet-5", "mode": "list", "cachedResultName": "claude-sonnet-5"}, "builtInTools": {}, "options": {}},
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [512, 416],
+      "id": "bc060f4b-ce29-488e-9c82-5a4d41b0bc53",
+      "name": "OpenAI Chat Model",
+      "credentials": {"openAiApi": {"id": "jGlNDqeYEbc5DwVT", "name": "Eraneos LLM Gateway"}}
+    },
+    {
+      "parameters": {
+        "jsCode": "const meta = $node['BuildAssistantInput'].json.meta ?? {};\nconst extracted = $node['BuildAssistantInput'].json.extracted ?? [];\nlet ai = $json.output ?? $json.text ?? $json;\nif (typeof ai === 'string') { const cleaned = ai.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim(); ai = JSON.parse(cleaned); }\nconst arr = (v) => Array.isArray(v) ? v : [];\nconst str = (v, d = '') => typeof v === 'string' && v.trim() ? v.trim() : d;\nconst clamp = (v) => Math.max(1, Math.min(5, Number.isFinite(Number(v)) ? Math.round(Number(v)) : 3));\nconst now = new Date();\nconst date = now.toISOString().slice(0, 10);\nconst stamp = now.toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);\nconst wpId = str(meta.wpId, 'WP-UNKNOWN').replace(/[^A-Za-z0-9._-]/g, '-');\nconst canonical = {\n  id: wpId, type: 'work_package', project: str(meta.project, 'DEKRA SBO Pilot'), title: str(meta.title, 'Untitled work package'),\n  status: str(meta.status, 'active'), rag: str(meta.rag, 'amber'), owner_role: str(meta.owner_role, 'PMO Lead'), last_updated: date, revision: Number(meta.revision || 1),\n  source: extracted.map(f => `upload:${f.name || f.type || 'evidence'}`), confidence: arr(ai.needs_review).length ? 'medium' : 'high', tags: ['dekra', 'pmo'],\n  objective: str(ai.objective, str(meta.title, 'Untitled work package')), summary: str(ai.summary, 'No summary available.'), dod: arr(ai.dod).map(String),\n  deliverables: arr(ai.deliverables), dependencies: arr(ai.dependencies),\n  risks: arr(ai.risks).map(r => ({...r, impact: clamp(r?.impact), probability: clamp(r?.probability), score: clamp(r?.impact) * clamp(r?.probability)})),\n  okr: arr(ai.okr), assumptions: arr(ai.assumptions).map(String), needs_review: arr(ai.needs_review).map(String),\n  changelog: [{date, entry: 'Evidence normalized by PMO Assistant', source: 'frontend+n8n'}]\n};\nconst markdown = `---\\nid: \"${canonical.id}\"\\ntype: \"work_package\"\\ntitle: \"${canonical.title.replace(/\"/g, '\\\"')}\"\\nlast_updated: \"${date}\"\\nrevision: ${canonical.revision}\\n---\\n\\n## Objective\\n${canonical.objective}\\n\\n## Status Summary\\n${canonical.summary}\\n\\n## Definition of Done\\n${canonical.dod.length ? canonical.dod.map(x => `- [ ] ${x}`).join('\\n') : '- [ ] TBC'}\\n\\n## Deliverables\\n${canonical.deliverables.length ? canonical.deliverables.map(d => `- ${d.name || 'Unnamed deliverable'}`).join('\\n') : '- TBC'}\\n\\n## Dependencies\\n${canonical.dependencies.length ? canonical.dependencies.map(d => `- ${d.description || 'Unspecified dependency'}`).join('\\n') : '- None specified'}\\n\\n## Risks & Issues\\n${canonical.risks.length ? canonical.risks.map(r => `- ${r.title || 'Unspecified risk'} (score ${r.score})`).join('\\n') : '- None identified'}\\n\\n## Needs Review\\n${canonical.needs_review.length ? canonical.needs_review.map(x => `- ${x}`).join('\\n') : '- None'}\\n`;\nconst base = `knowledge/work-packages/${wpId}/${date}-${stamp}`;\nreturn [{ json: { wpId, canonical, jsonContent: JSON.stringify(canonical, null, 2) + '\\n', markdown, jsonPath: `${base}.json`, markdownPath: `${base}.md`, needs_review: canonical.needs_review } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [768, 176],
+      "id": "c1d68c27-dbc1-43de-97f2-a280e5d33713",
+      "name": "NormalizeCanonical"
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken", "resource": "file", "operation": "create",
+        "owner": {"__rl": true, "value": "florianliepe", "mode": "name"},
+        "repository": {"__rl": true, "value": "DEKRA-Pilot-Data", "mode": "name"},
+        "filePath": "={{ $json.jsonPath }}", "binaryData": false, "fileContent": "={{ $json.jsonContent }}",
+        "commitMessage": "={{ `pmo: ingest ${$json.wpId} canonical JSON` }}", "additionalParameters": {"branch": {"branch": "main"}}
+      },
+      "type": "n8n-nodes-base.github", "typeVersion": 1.1, "position": [1024, 176],
+      "id": "39b708f9-6a1e-4257-a028-d6019b21c0aa", "name": "GitHubCreateWorkPackageJson",
+      "credentials": {"githubApi": {"id": "3V46mglu7fpoPISX", "name": "GitHub account"}}
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken", "resource": "file", "operation": "create",
+        "owner": {"__rl": true, "value": "florianliepe", "mode": "name"},
+        "repository": {"__rl": true, "value": "DEKRA-Pilot-Data", "mode": "name"},
+        "filePath": "={{ $node['NormalizeCanonical'].json.markdownPath }}", "binaryData": false, "fileContent": "={{ $node['NormalizeCanonical'].json.markdown }}",
+        "commitMessage": "={{ `pmo: ingest ${$node['NormalizeCanonical'].json.wpId} Markdown` }}", "additionalParameters": {"branch": {"branch": "main"}}
+      },
+      "type": "n8n-nodes-base.github", "typeVersion": 1.1, "position": [1280, 176],
+      "id": "7674bcae-b7f8-463e-adc1-608d4913230a", "name": "GitHubCreateWorkPackageMarkdown",
+      "credentials": {"githubApi": {"id": "3V46mglu7fpoPISX", "name": "GitHub account"}}
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalized = $node['NormalizeCanonical'].json;\nreturn [{ json: { ok: true, wpId: normalized.wpId, committedFiles: [normalized.jsonPath, normalized.markdownPath], needs_review: normalized.needs_review, commit: { sha: $json.commit?.sha, url: $json.commit?.html_url } } }];"
+      },
+      "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1536, 176],
+      "id": "194a862b-6308-4110-a8c3-7289aab2e851", "name": "FormatIngest"
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ $json }}", "options": {"responseCode": 200}},
+      "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.5, "position": [1792, 176],
+      "id": "21e2d77e-1e1a-4149-af4b-282b9678cb76", "name": "RespondIngest"
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={\"ok\":false,\"error\":\"Unsupported operation. Use pmo.read, pmo.save or pmo.ingest.\"}", "options": {"responseCode": 400}},
+      "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.5, "position": [256, 384],
+      "id": "814a30f8-5a38-4e89-849a-279bc4c9b7b0", "name": "RespondInvalidMode"
+    }
+  ],
+  "connections": {
+    "PMO-API": {"main": [[{"node": "PrepareRequest", "type": "main", "index": 0}]]},
+    "PrepareRequest": {"main": [[{"node": "IfRead", "type": "main", "index": 0}]]},
+    "IfRead": {"main": [[{"node": "GitHubReadControlTower", "type": "main", "index": 0}], [{"node": "IfSave", "type": "main", "index": 0}]]},
+    "GitHubReadControlTower": {"main": [[{"node": "FormatRead", "type": "main", "index": 0}]]},
+    "FormatRead": {"main": [[{"node": "RespondRead", "type": "main", "index": 0}]]},
+    "IfSave": {"main": [[{"node": "PrepareSave", "type": "main", "index": 0}], [{"node": "IfIngest", "type": "main", "index": 0}]]},
+    "PrepareSave": {"main": [[{"node": "GitHubSaveControlTower", "type": "main", "index": 0}]]},
+    "GitHubSaveControlTower": {"main": [[{"node": "FormatSave", "type": "main", "index": 0}]]},
+    "FormatSave": {"main": [[{"node": "RespondSave", "type": "main", "index": 0}]]},
+    "IfIngest": {"main": [[{"node": "BuildAssistantInput", "type": "main", "index": 0}], [{"node": "RespondInvalidMode", "type": "main", "index": 0}]]},
+    "BuildAssistantInput": {"main": [[{"node": "PMO Assistant", "type": "main", "index": 0}]]},
+    "OpenAI Chat Model": {"ai_languageModel": [[{"node": "PMO Assistant", "type": "ai_languageModel", "index": 0}]]},
+    "PMO Assistant": {"main": [[{"node": "NormalizeCanonical", "type": "main", "index": 0}]]},
+    "NormalizeCanonical": {"main": [[{"node": "GitHubCreateWorkPackageJson", "type": "main", "index": 0}]]},
+    "GitHubCreateWorkPackageJson": {"main": [[{"node": "GitHubCreateWorkPackageMarkdown", "type": "main", "index": 0}]]},
+    "GitHubCreateWorkPackageMarkdown": {"main": [[{"node": "FormatIngest", "type": "main", "index": 0}]]},
+    "FormatIngest": {"main": [[{"node": "RespondIngest", "type": "main", "index": 0}]]}
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {"executionOrder": "v1", "binaryMode": "separate", "availableInMCP": true},
+  "versionId": "19c3eb04-d643-4239-997a-4ae7141c2eac",
+  "meta": {"templateCredsSetupCompleted": true},
+  "tags": []
+}

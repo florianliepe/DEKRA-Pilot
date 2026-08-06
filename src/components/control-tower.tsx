@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import { Icons } from "./icons";
 import type { Deliverable, Meeting, PmoDocument, Rag, Risk } from "@/lib/pmo-schema";
+import { ingestEvidence, loadPmoDocument, savePmoDocument } from "@/lib/n8n-client";
 
 type View = "overview" | "plan" | "risks" | "meetings" | "activity" | "method";
 type IntakeType = "risk" | "deliverable" | "meeting";
-type ApiResponse = { ok: boolean; source?: "github" | "bootstrap"; storageConfigured?: boolean; document?: PmoDocument; error?: string; commit?: { sha?: string; url?: string } };
 
 const navigation: Array<{ id: View; label: string; icon: keyof typeof Icons }> = [
   { id: "overview", label: "Executive overview", icon: "dashboard" },
@@ -54,28 +54,37 @@ function StatusPill({ status }: { status: string }) {
   return <span className={`status-pill status-${tone}`}>{titleCase(status)}</span>;
 }
 
-export default function ControlTower({ initialData, initialSource, initialStorageConfigured }: { initialData: PmoDocument; initialSource: "github" | "bootstrap"; initialStorageConfigured: boolean }) {
+export default function ControlTower({ initialData }: { initialData: PmoDocument }) {
   const [view, setView] = useState<View>("overview");
   const [data, setData] = useState<PmoDocument | null>(initialData);
-  const [source, setSource] = useState<"github" | "bootstrap">(initialSource);
-  const [storageConfigured, setStorageConfigured] = useState(initialStorageConfigured);
+  const [source, setSource] = useState<"github" | "bootstrap">("bootstrap");
+  const [storageConfigured, setStorageConfigured] = useState(false);
+  const [workspaceSecret, setWorkspaceSecret] = useState("");
+  const [accessOpen, setAccessOpen] = useState(true);
+  const [accessError, setAccessError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [workflowSaving, setWorkflowSaving] = useState(false);
+  const [workflowResult, setWorkflowResult] = useState("");
   const [dirty, setDirty] = useState(false);
 
-  async function loadData() {
+  async function loadData(secret = workspaceSecret) {
     setLoading(true); setError("");
     try {
-      const response = await fetch("/api/pmo", { cache: "no-store" });
-      const payload = await response.json() as ApiResponse;
-      if (!response.ok || !payload.document) throw new Error(payload.error || "Unable to load project data.");
+      const payload = await loadPmoDocument(secret);
+      if (!payload.ok || !payload.document) throw new Error(payload.error || "Unable to load project data.");
       setData(payload.document); setSource(payload.source || "bootstrap"); setStorageConfigured(Boolean(payload.storageConfigured)); setDirty(false);
-    } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : "Unable to load project data."); }
+      setWorkspaceSecret(secret); setAccessOpen(false); setAccessError("");
+    } catch (reason: unknown) {
+      const message = reason instanceof Error ? reason.message : "Unable to load project data.";
+      if (accessOpen) setAccessError(message); else setError(message);
+    }
     finally { setLoading(false); }
   }
 
@@ -83,16 +92,29 @@ export default function ControlTower({ initialData, initialSource, initialStorag
     setData((current) => current ? update(current) : current); setDirty(true);
   }
 
-  async function publish(secret: string) {
+  async function publish() {
     if (!data) return;
     setSaving(true); setError("");
     try {
-      const response = await fetch("/api/pmo", { method: "PUT", headers: { "Content-Type": "application/json", "x-app-secret": secret }, body: JSON.stringify(data) });
-      const payload = await response.json() as ApiResponse;
-      if (!response.ok || !payload.document) throw new Error(payload.error || "Publish failed.");
+      const payload = await savePmoDocument(workspaceSecret, data);
+      if (!payload.ok || !payload.document) throw new Error(payload.error || "Publish failed.");
       setData(payload.document); setSource("github"); setDirty(false); setPublishOpen(false);
     } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : "Publish failed."); }
     finally { setSaving(false); }
+  }
+
+  async function runWorkflowIntake(meta: Record<string, string>, files: File[]) {
+    setWorkflowSaving(true); setError(""); setWorkflowResult("");
+    try {
+      const payload = await ingestEvidence(workspaceSecret, meta, files);
+      if (!payload.ok) throw new Error(payload.error || "Workflow intake failed.");
+      const wpId = payload.wpId || "work package";
+      const reviewCount = payload.needs_review?.length ?? 0;
+      setWorkflowResult(`${wpId} committed through n8n${reviewCount ? ` with ${reviewCount} review item${reviewCount === 1 ? "" : "s"}` : ""}.`);
+      setWorkflowOpen(false);
+      mutate((current) => ({ ...current, activity: [{ id: `ACT-${Date.now()}`, timestamp: new Date().toISOString(), type: "automation", actor: "n8n PMO Assistant", message: `Normalized and committed evidence for ${wpId}.`, entityId: wpId }, ...current.activity] }));
+    } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : "Workflow intake failed."); }
+    finally { setWorkflowSaving(false); }
   }
 
   function addRecord(type: IntakeType, values: Record<string, string>) {
@@ -121,7 +143,7 @@ export default function ControlTower({ initialData, initialSource, initialStorag
   const query = search.trim().toLowerCase();
 
   if (loading) return <div className="app-loading"><BrandMark/><div className="loading-line"/><p>Connecting to the project control tower…</p></div>;
-  if (!data) return <div className="app-loading"><BrandMark/><p>{error || "Project data is unavailable."}</p><button className="button primary" onClick={loadData}>Try again</button></div>;
+  if (!data) return <div className="app-loading"><BrandMark/><p>{error || "Project data is unavailable."}</p><button className="button primary" onClick={() => void loadData()}>Try again</button></div>;
 
   const meta = viewMeta[view];
   return (
@@ -138,10 +160,11 @@ export default function ControlTower({ initialData, initialSource, initialStorag
       </aside>
 
       <main className="main-area">
-        <header className="topbar"><button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icons.menu/></button><div className="search-box"><Icons.search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search risks, deliverables, meetings…" aria-label="Search project"/><kbd>⌘ K</kbd></div><div className="top-actions"><button className="sync-state" onClick={loadData}><span className={source === "github" ? "sync-live" : "sync-seed"}/>{source === "github" ? "GitHub live" : "Starter data"}<Icons.refresh/></button><button className="button secondary" onClick={() => setPublishOpen(true)} disabled={!dirty}><Icons.github/>{dirty ? "Publish changes" : "All changes saved"}</button><button className="button primary" onClick={() => setIntakeOpen(true)}><Icons.plus/>Add update</button></div></header>
+        <header className="topbar"><button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Icons.menu/></button><div className="search-box"><Icons.search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search risks, deliverables, meetings…" aria-label="Search project"/><kbd>⌘ K</kbd></div><div className="top-actions"><button className="sync-state" onClick={() => void loadData()}><span className={source === "github" ? "sync-live" : "sync-seed"}/>{source === "github" ? "GitHub live" : "Starter data"}<Icons.refresh/></button><button className="button secondary" onClick={() => setWorkflowOpen(true)}><span className="n8n-button-mark">n8n</span>Import evidence</button><button className="button secondary" onClick={() => setPublishOpen(true)} disabled={!dirty}><Icons.github/>{dirty ? "Publish changes" : "All changes saved"}</button><button className="button primary" onClick={() => setIntakeOpen(true)}><Icons.plus/>Add update</button></div></header>
 
         <div className="content-wrap">
           {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError("")}><Icons.close/></button></div>}
+          {workflowResult && <div className="success-banner"><span>{workflowResult}</span><button onClick={() => setWorkflowResult("")}><Icons.close/></button></div>}
           <div className="page-heading"><div><span className="eyebrow">{meta.eyebrow}</span><h1>{meta.title}</h1><p>{meta.description}</p></div><div className="heading-meta"><span>Last synced</span><b>{new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(data.project.updatedAt))}</b></div></div>
 
           {view === "overview" && <Overview data={data} exposure={exposure} openActions={openActions} completedDeliverables={completedDeliverables} setView={setView}/>} 
@@ -155,6 +178,10 @@ export default function ControlTower({ initialData, initialSource, initialStorag
 
       {intakeOpen && <UpdateDialog onClose={() => setIntakeOpen(false)} onSubmit={addRecord} workstreams={data.workstreams.map((item) => ({ id: item.id, name: item.shortName }))}/>} 
       {publishOpen && <PublishDialog saving={saving} revision={data.revision} onClose={() => setPublishOpen(false)} onPublish={publish}/>} 
+      {workflowOpen && (
+        <WorkflowIntakeDialog saving={workflowSaving} onClose={() => setWorkflowOpen(false)} onRun={runWorkflowIntake}/>
+      )}
+      {accessOpen && <AccessDialog loading={loading} error={accessError} onUnlock={(secret) => void loadData(secret)}/>}
     </div>
   );
 }
@@ -220,7 +247,18 @@ function UpdateDialog({ onClose, onSubmit, workstreams }: { onClose: () => void;
   return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); onSubmit(type, values); }}><header><div><span className="section-kicker">QUICK CAPTURE</span><h2>Add project update</h2></div><button type="button" className="icon-button" onClick={onClose}><Icons.close/></button></header><div className="type-switch">{(["risk", "deliverable", "meeting"] as IntakeType[]).map((item) => <button type="button" className={type === item ? "active" : ""} onClick={() => setType(item)} key={item}>{titleCase(item)}</button>)}</div><label><span>Title</span><input required value={values.title} onChange={(event) => set("title", event.target.value)} placeholder={`New ${type} title`}/></label><div className="form-row"><label><span>Owner</span><input required value={values.owner} onChange={(event) => set("owner", event.target.value)} placeholder="Role or name"/></label>{type !== "risk" && <label><span>{type === "meeting" ? "Meeting date" : "Due date"}</span><input type="date" required value={values.date} onChange={(event) => set("date", event.target.value)}/></label>}</div>{type === "risk" && <><div className="form-row"><label><span>Probability</span><select value={values.probability} onChange={(event) => set("probability", event.target.value)}>{[1,2,3,4,5].map((n) => <option key={n}>{n}</option>)}</select></label><label><span>Impact</span><select value={values.impact} onChange={(event) => set("impact", event.target.value)}>{[1,2,3,4,5].map((n) => <option key={n}>{n}</option>)}</select></label></div><label><span>Mitigation</span><textarea required value={values.mitigation} onChange={(event) => set("mitigation", event.target.value)} placeholder="How will this exposure be reduced?"/></label></>}{type === "deliverable" && <label><span>Workstream</span><select value={values.workstream} onChange={(event) => set("workstream", event.target.value)}>{workstreams.map((item) => <option value={item.id} key={item.id}>{item.id} · {item.name}</option>)}</select></label>}{type === "meeting" && <label><span>Participants</span><input value={values.participants} onChange={(event) => set("participants", event.target.value)} placeholder="Comma-separated roles or names"/></label>}<label><span>{type === "meeting" ? "Summary" : "Description"}</span><textarea required value={values.description} onChange={(event) => set("description", event.target.value)} placeholder="Add concise, decision-useful context"/></label><footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary"><Icons.plus/>Add to workspace</button></footer></form></div>;
 }
 
-function PublishDialog({ saving, revision, onClose, onPublish }: { saving: boolean; revision: number; onClose: () => void; onPublish: (secret: string) => void }) {
+function PublishDialog({ saving, revision, onClose, onPublish }: { saving: boolean; revision: number; onClose: () => void; onPublish: () => void }) {
+  return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal publish-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void onPublish(); }}><header><div><span className="section-kicker">GITHUB PUBLISH</span><h2>Create revision {revision + 1}</h2></div><button type="button" className="icon-button" onClick={onClose}><Icons.close/></button></header><div className="publish-summary"><Icons.github/><div><b>knowledge/pmo/control-tower.json</b><span>Validated by n8n and committed to the private data repository.</span></div></div><p>Your pilot password remains in memory for this browser session and is sent only to the protected n8n workflow.</p><footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary" disabled={saving}>{saving ? "Publishing…" : "Publish to GitHub"}</button></footer></form></div>;
+}
+
+function WorkflowIntakeDialog({ saving, onClose, onRun }: { saving: boolean; onClose: () => void; onRun: (meta: Record<string, string>, files: File[]) => void }) {
+  const [values, setValues] = useState({ wpId: "", title: "", owner_role: "PMO Lead" });
+  const [files, setFiles] = useState<File[]>([]);
+  const set = (key: keyof typeof values, value: string) => setValues((current) => ({ ...current, [key]: value }));
+  return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void onRun({ wpId: values.wpId, title: values.title, owner_role: values.owner_role, project: "DEKRA SBO Pilot", status: "active", rag: "amber" }, files); }}><header><div><span className="section-kicker">N8N EVIDENCE INTAKE</span><h2>Normalize work-package evidence</h2></div><button type="button" className="icon-button" onClick={onClose}><Icons.close/></button></header><div className="workflow-intro"><span className="n8n-logo">n8n</span><p>Files are extracted in this browser, normalized by the PMO Assistant, and committed as canonical GitHub artifacts.</p></div><div className="form-row"><label><span>Work-package ID</span><input required value={values.wpId} onChange={(event) => set("wpId", event.target.value)} placeholder="WP-4.3" pattern="[A-Za-z0-9][A-Za-z0-9._-]{1,49}"/></label><label><span>Owner role</span><input required value={values.owner_role} onChange={(event) => set("owner_role", event.target.value)} placeholder="PMO Lead"/></label></div><label><span>Title</span><input required value={values.title} onChange={(event) => set("title", event.target.value)} placeholder="Work package title"/></label><label><span>Evidence files</span><input type="file" required multiple accept=".md,.txt,.csv,.xls,.xlsx,.png,.jpg,.jpeg" onChange={(event) => setFiles(Array.from(event.target.files || []))}/><small>Up to 20 files and 29 MB total. Supported: Markdown, text, CSV, Excel and images.</small></label><footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary" disabled={saving || files.length === 0}>{saving ? "Processing…" : "Run PMO workflow"}</button></footer></form></div>;
+}
+
+function AccessDialog({ loading, error, onUnlock }: { loading: boolean; error: string; onUnlock: (secret: string) => void }) {
   const [secret, setSecret] = useState("");
-  return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal publish-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); void onPublish(secret); }}><header><div><span className="section-kicker">GITHUB PUBLISH</span><h2>Create revision {revision + 1}</h2></div><button type="button" className="icon-button" onClick={onClose}><Icons.close/></button></header><div className="publish-summary"><Icons.github/><div><b>knowledge/pmo/control-tower.json</b><span>Validated and committed directly to the configured branch.</span></div></div><label><span>Workspace secret</span><input type="password" autoFocus required value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="APP_SHARED_SECRET"/><small>Used for this request only. It is never stored in the browser.</small></label><footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary" disabled={saving}>{saving ? "Publishing…" : "Publish to GitHub"}</button></footer></form></div>;
+  return <div className="modal-backdrop"><form className="modal publish-modal" onSubmit={(event) => { event.preventDefault(); onUnlock(secret); }}><header><div><span className="section-kicker">PILOT ACCESS</span><h2>Open the DEKRA control tower</h2></div></header><p>The interface is hosted on GitHub Pages. Project data remains behind the protected n8n workflow and a private GitHub repository.</p>{error && <div className="error-banner"><span>{error}</span></div>}<label><span>Shared pilot password</span><input type="password" autoFocus required value={secret} onChange={(event) => setSecret(event.target.value)} autoComplete="current-password"/><small>Kept in memory only. Refreshing or closing the page clears it.</small></label><footer><button className="button primary" disabled={loading}>{loading ? "Connecting…" : "Open workspace"}</button></footer></form></div>;
 }

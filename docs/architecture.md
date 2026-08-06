@@ -1,36 +1,46 @@
 # Control Tower architecture
 
-## Design decision
+## GitHub Pages decision
 
-GitHub is the source of truth. The frontend and automation workflows do not maintain independent databases. They read and write the same versioned project document at `knowledge/pmo/control-tower.json`.
+GitHub Pages hosts only the static product shell. n8n is the protected API and
+automation boundary, while a separate private GitHub repository is the source
+of truth for PMO data.
 
 ```text
-People ──────────────> Responsive Control Tower ──> /api/pmo ──> GitHub
-Documents / files ──> /api/intake ──> n8n agent ──> canonical artifacts
-                                            └─────> activity evidence
+People -> GitHub Pages -> n8n PMO API -> DEKRA-Pilot-Data (private)
+               |              |
+        in-memory password     +-> AI normalization
+        browser extraction     +-> validated GitHub commits
 ```
 
 ## Boundaries
 
-- `src/components/control-tower.tsx`: interactive product shell and all PMO views.
-- `src/lib/pmo-schema.ts`: canonical runtime contract shared by UI and API.
-- `src/lib/github-store.ts`: server-only GitHub storage adapter.
-- `src/app/api/pmo/route.ts`: validated read/publish API for the canonical project document.
-- `src/app/api/intake/route.ts`: multi-format extraction adapter for n8n normalisation.
-- `src/app/api/n8n/route.ts`: tolerant workflow proxy.
-- `src/app/api/github/commit/route.ts`: restricted compatibility route for canonical knowledge artifacts.
+- `src/components/control-tower.tsx`: interactive product shell and PMO views.
+- `src/lib/pmo-schema.ts`: canonical runtime contract.
+- `src/lib/n8n-client.ts`: browser-safe workflow client and evidence extraction.
+- `.github/workflows/deploy-pages.yml`: Node.js 22 validation and Pages release.
+- n8n: authentication, schema enforcement, revision control and GitHub writes.
+- `florianliepe/DEKRA-Pilot-Data`: private canonical PMO and work-package data.
+
+No Next.js route handler runs in production. Secrets, GitHub credentials and PMO
+documents must not be embedded in the static export.
 
 ## Extension model
 
-The Method Studio previews four modules that share the shell, GitHub storage and audit stream:
+The Method Studio previews four modules that share the shell, workflow API and
+audit stream:
 
-1. Skill Designer — agent-led interviews, design dimensions, evidence and granularity.
-2. Taxonomy Framework — clusters, relationships, naming and lifecycle governance.
+1. Skill Designer — agent-led interviews, design dimensions and evidence.
+2. Taxonomy Framework — clusters, relationships, naming and governance.
 3. Job-to-Skill Mapping — profiles, target proficiency and coverage constraints.
-4. Data Ingestion — validated structured sources normalised through n8n.
+4. Data Ingestion — validated sources normalized through n8n.
 
-Each module should add a separate schema under `src/lib`, a dedicated route group, and a versioned directory below `knowledge/`. Project-control records remain independent from method artifacts while their status and activity can be surfaced in the same shell.
+Each module should add a schema under `src/lib`, explicit n8n operation modes,
+and a versioned directory in the private data repository.
 
 ## Authentication seam
 
-Authentication is postponed by product decision. Publishing currently requires `APP_SHARED_SECRET`; secrets and GitHub credentials remain server-side. A later credential vault can replace this request secret with email/password sessions without changing the data adapter or canonical schema.
+The MVP uses one shared password enforced by n8n Header Auth. The frontend keeps
+it only in component memory. The next authentication iteration should replace
+the header with Microsoft Entra ID access tokens without changing the static
+hosting or canonical data model.
