@@ -4,10 +4,13 @@ A responsive project-management workspace for the Skill-Based Organisation pilot
 
 ## Product surface
 
+- Lean PMO workbench intake for PDF, Excel, Markdown, text, CSV and image evidence
+- Written-update composer routed through the n8n PMO Orchestrator
+- Selectable evidence, delivery, risk and meeting specialist analyses
 - Executive overview with project health and workstream pulse
-- Gate roadmap and interactive deliverable register
-- Prioritised risk register with probability-impact matrix
-- Meeting summaries, decisions and action capture
+- Editable gate roadmap and full deliverable CRUD
+- Editable risk register with probability-impact matrix and guarded deletion
+- Editable meeting summaries, participants, decisions and actions
 - Human and automation activity trail
 - Method Studio extension architecture for Skill Designer, Taxonomy and Job-to-Skill Mapping
 - n8n intake adapter for document extraction and canonical normalisation

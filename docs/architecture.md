@@ -7,15 +7,18 @@ automation boundary, while a separate private GitHub repository is the source
 of truth for PMO data.
 
 ```text
-People -> GitHub Pages -> n8n PMO API -> DEKRA-Pilot-Data (private)
-               |              |
-        in-memory password     +-> AI normalization
-        browser extraction     +-> validated GitHub commits
+People -> GitHub Pages workbench -> n8n PMO API -> DEKRA-Pilot-Data (private)
+                    |                  |
+             in-memory password        +-> PMO orchestration
+             browser extraction        +-> specialist analysis options
+             CRUD review/edit          +-> validated GitHub revisions
 ```
 
 ## Boundaries
 
 - `src/components/control-tower.tsx`: interactive product shell and PMO views.
+- `src/components/intake-workbench.tsx`: multimodal evidence and text landing view.
+- `src/components/entity-editor.tsx`: canonical create/update/delete controls.
 - `src/lib/pmo-schema.ts`: canonical runtime contract.
 - `src/lib/n8n-client.ts`: browser-safe workflow client and evidence extraction.
 - `.github/workflows/deploy-pages.yml`: Node.js 22 validation and Pages release.
@@ -34,6 +37,11 @@ audit stream:
 2. Taxonomy Framework — clusters, relationships, naming and governance.
 3. Job-to-Skill Mapping — profiles, target proficiency and coverage constraints.
 4. Data Ingestion — validated sources normalized through n8n.
+
+The current orchestrator accepts a routing preference and enabled specialist
+roles (`evidence`, `delivery`, `risk`, `meeting`). These are prompt-routed in the
+MVP and can become parallel n8n Agent nodes while preserving the same intake
+request and canonical response contract.
 
 Each module should add a schema under `src/lib`, explicit n8n operation modes,
 and a versioned directory in the private data repository.
