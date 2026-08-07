@@ -55,7 +55,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     try {
       const candidate = { ...workspace, updatedAt: new Date().toISOString(), publication: { ...workspace.publication, state: "working" as const } };
       const payload = await saveSkillWorkspace(workspaceSecret, candidate);
-      setWorkspace(payload.workspace || candidate); setSync("live"); setMessage("Working state saved to n8n.");
+      setWorkspace(payload.workspace ? migrateSkillWorkspace(payload.workspace, candidate) : candidate); setSync("live"); setMessage("Working state saved to n8n.");
     } catch (reason) { setSync("blueprint"); setError(reason instanceof Error ? reason.message : "Unable to save the n8n working state."); }
   }
 
