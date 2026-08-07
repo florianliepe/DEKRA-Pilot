@@ -46,7 +46,7 @@ jobs:
         run: npm run build
 
       - name: Package GitHub Pages artifact
-        shell: pwsh
+        shell: powershell
         run: tar -cvf "$env:RUNNER_TEMP\artifact.tar" -C out .
 
       - name: Upload GitHub Pages artifact
