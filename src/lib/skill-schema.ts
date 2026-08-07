@@ -592,6 +592,13 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
   for (const group of workspace.groups.filter((item) => !["retired", "archived"].includes(item.status))) {
     if (!workspace.domains.some((domain) => domain.id === group.domainId && !["retired", "archived"].includes(domain.status))) add("TAXONOMY-PARENT-001", "group", group.id, "Parent domain is unavailable.", "domainId", "Move the group to an active domain.");
   }
+  const relationshipKeys = new Set<string>();
+  for (const relationship of workspace.relationships.filter((item) => !["retired", "archived"].includes(item.status))) {
+    const key = `${relationship.sourceId}:${relationship.type}:${relationship.targetId}`;
+    const endpointsValid = relationship.sourceId !== relationship.targetId && [relationship.sourceId, relationship.targetId].every((id) => workspace.skills.some((skill) => skill.id === id && !["retired", "archived"].includes(skill.status)));
+    if (!endpointsValid || !relationship.rationale.trim() || relationshipKeys.has(key)) add("RELATIONSHIP-INTEGRITY-001", "relationship", relationship.id, "Active relationships require two distinct active skills, a rationale and a unique source/type/target tuple.", "sourceId", "Select distinct active concepts, add rationale and remove duplicate graph edges.");
+    relationshipKeys.add(key);
+  }
   for (const mapping of workspace.mappings.filter((item) => item.status !== "rejected" && item.status !== "deferred")) {
     if (!mapping.evidence.length || !mapping.rationale.trim()) add("MAPPING-EVIDENCE-001", "mapping", mapping.id, "Mapping evidence or rationale is missing.", "evidence", "Add a source excerpt and explain the relationship.");
     if (!workspace.skills.some((skill) => skill.id === mapping.skillId && skill.status === "approved")) add("MAPPING-CATALOG-001", "mapping", mapping.id, "Mapping is not grounded in an approved skill.", "skillId", "Select an approved catalog skill or route the skill proposal for approval.");

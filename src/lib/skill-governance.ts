@@ -1,4 +1,4 @@
-import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace } from "./skill-schema";
+import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type TaxonomyRelationship } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
 
@@ -395,6 +395,36 @@ export function recordGovernedVersion(workspace: SkillWorkspace, entityType: str
     auditLog: [{ id: `AUD-${entityType}-${entityId}-${version}`, at, actor: "human" as const, actorId: actor, action, entityType, entityId, summary: `${action} recorded as version ${version}.`, beforeVersion: Math.max(0, version - 1), afterVersion: version, frameworkVersion: workspace.framework.version }, ...workspace.auditLog],
     updatedAt: at,
   };
+}
+
+function assertRelationshipInput(workspace: SkillWorkspace, relationship: TaxonomyRelationship, actor: string, reason: string) {
+  if (!actor.trim() || !reason.trim()) throw new Error("An accountable actor and reason are required.");
+  if (relationship.sourceId === relationship.targetId) throw new Error("A taxonomy relationship cannot point to the same concept.");
+  const activeSkill = (id: string) => workspace.skills.some((skill) => skill.id === id && !["archived", "retired"].includes(skill.status));
+  if (!activeSkill(relationship.sourceId) || !activeSkill(relationship.targetId)) throw new Error("Relationship endpoints must resolve to active governed skills.");
+  const duplicate = workspace.relationships.some((candidate) => candidate.id !== relationship.id && !["archived", "retired"].includes(candidate.status) && candidate.sourceId === relationship.sourceId && candidate.targetId === relationship.targetId && candidate.type === relationship.type);
+  if (duplicate) throw new Error("An active relationship with the same source, target and type already exists.");
+  if (!relationship.rationale.trim()) throw new Error("A relationship rationale is required.");
+}
+
+export function saveTaxonomyRelationship(workspace: SkillWorkspace, relationship: TaxonomyRelationship, actor: string, reason: string) {
+  assertRelationshipInput(workspace, relationship, actor, reason);
+  const exists = workspace.relationships.some((candidate) => candidate.id === relationship.id);
+  const value = { ...relationship, status: exists && relationship.status === "approved" ? "in_review" as const : relationship.status };
+  return recordGovernedVersion({ ...workspace, relationships: exists ? workspace.relationships.map((candidate) => candidate.id === value.id ? value : candidate) : [value, ...workspace.relationships] }, "relationship", value.id, exists ? "relationship.updated" : "relationship.created", actor.trim(), { ...value, changeReason: reason.trim() } as unknown as Record<string, unknown>);
+}
+
+export function applyRelationshipLifecycle(workspace: SkillWorkspace, relationshipId: string, action: "duplicate" | "archive" | "restore" | "deprecate", actor: string, reason: string) {
+  if (!actor.trim() || !reason.trim()) throw new Error("An accountable actor and reason are required.");
+  const source = workspace.relationships.find((candidate) => candidate.id === relationshipId);
+  if (!source) throw new Error("The governed relationship does not exist.");
+  if (action === "duplicate") {
+    const duplicate = { ...source, id: `REL-${Date.now()}`, rationale: `${source.rationale} (working copy)`, status: "draft" as const };
+    return recordGovernedVersion({ ...workspace, relationships: [duplicate, ...workspace.relationships] }, "relationship", duplicate.id, "relationship.duplicated", actor.trim(), { ...duplicate, changeReason: reason.trim() } as unknown as Record<string, unknown>);
+  }
+  const status = action === "restore" ? "draft" as const : action === "archive" ? "archived" as const : "deprecated" as const;
+  const updated = { ...source, status };
+  return recordGovernedVersion({ ...workspace, relationships: workspace.relationships.map((candidate) => candidate.id === relationshipId ? updated : candidate) }, "relationship", relationshipId, `relationship.${action}`, actor.trim(), { ...updated, changeReason: reason.trim() } as unknown as Record<string, unknown>);
 }
 
 export function calculateEvidenceCompleteness(mapping: JobSkillMapping, workspace: SkillWorkspace) {

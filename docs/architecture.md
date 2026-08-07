@@ -26,6 +26,7 @@ People -> GitHub Pages workbench -> n8n PMO API -> DEKRA-Pilot-Data (private)
 - `src/components/skill-designer.tsx`: role-profile CRUD and lifecycle control, including dependency previews and immutable version recording.
 - `src/components/controlled-tool-workbench.tsx`: governed business-tool catalogue lifecycle, dependency analysis and mapping-reference migration.
 - `src/components/job-mapping-workbench.tsx`: thirteen-part scoring, source-grounded evidence completeness, accountable mapping feedback and confidence calibration.
+- `src/components/taxonomy-standard-workbench.tsx`: governed hierarchy and relationship CRUD, including duplicate, archive, restore and deprecate actions with accountable reasons.
 - n8n: authentication, schema enforcement, revision control and GitHub writes.
 - `florianliepe/DEKRA-Pilot-Data`: private canonical PMO and work-package data.
 

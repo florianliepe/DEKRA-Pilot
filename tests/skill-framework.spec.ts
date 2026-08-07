@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyControlledToolLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyControlledToolLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -166,6 +166,7 @@ test("blocks publication until reviews resolve and protects optimistic concurren
   expect(() => prepareRelease(workspace, "Framework Owner", 0)).toThrow(/review/i);
   workspace.reviewQueue = workspace.reviewQueue.map((item) => ({ ...item, status: "deferred" as const, decisionBy: "Framework Owner", decisionReason: "Deferred outside release scope." }));
   workspace.skills = workspace.skills.map((skill) => skill.id === "SK-ST" ? { ...skill, status: "archived" as const } : skill);
+  workspace.relationships = workspace.relationships.map((relationship) => relationship.sourceId === "SK-ST" || relationship.targetId === "SK-ST" ? { ...relationship, status: "archived" as const } : relationship);
   workspace.mappings = workspace.mappings.map((mapping) => mapping.id === "MAP-MC" ? { ...mapping, status: "deferred" as const } : mapping);
   workspace.profiles = workspace.profiles.map((profile) => ({ ...profile, skills: profile.skills.filter((link) => link.skillId !== "SK-ST") }));
   expect(() => prepareRelease(workspace, "Framework Owner", 1)).toThrow(/conflict/i);
@@ -240,6 +241,20 @@ test("governs skill lifecycle changes and rewires merge dependencies", () => {
   expect(merged.relationships.some((relationship) => relationship.sourceId === "SK-DV" && relationship.targetId === "SK-MC" && relationship.type === "synonym")).toBe(true);
   expect(merged.objectVersions.filter((version) => ["SK-DV", "SK-MC"].includes(version.entityId))).toHaveLength(2);
   expect(merged.auditLog.filter((event) => event.action.startsWith("skill.merge"))).toHaveLength(2);
+});
+
+test("governs relationship CRUD, lifecycle and graph integrity", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  expect(() => saveTaxonomyRelationship(workspace, { id: "REL-SELF", sourceId: "SK-DV", targetId: "SK-DV", type: "related", rationale: "Invalid self edge.", status: "draft" }, "Taxonomy Steward", "Integrity test.")).toThrow(/same concept/i);
+  const created = saveTaxonomyRelationship(workspace, { id: "REL-DV-MC", sourceId: "SK-DV", targetId: "SK-MC", type: "prerequisite", rationale: "Complexity framing supports interpretation of non-routine visual signals.", status: "draft" }, "Taxonomy Steward", "Add an evidence-grounded prerequisite edge.");
+  expect(created.relationships[0]).toMatchObject({ id: "REL-DV-MC", status: "draft" });
+  expect(created.objectVersions[0]).toMatchObject({ entityType: "relationship", action: "relationship.created" });
+  const archived = applyRelationshipLifecycle(created, "REL-DV-MC", "archive", "Taxonomy Steward", "The relationship needs replacement evidence.");
+  expect(archived.relationships.find((item) => item.id === "REL-DV-MC")?.status).toBe("archived");
+  const restored = applyRelationshipLifecycle(archived, "REL-DV-MC", "restore", "Taxonomy Steward", "New evidence permits re-evaluation.");
+  expect(restored.relationships.find((item) => item.id === "REL-DV-MC")?.status).toBe("draft");
+  const invalid = { ...workspace, relationships: [...workspace.relationships, { ...workspace.relationships[0], id: "REL-DUPLICATE" }] };
+  expect(validateWorkspace(invalid).some((finding) => finding.ruleId === "RELATIONSHIP-INTEGRITY-001")).toBe(true);
 });
 
 test("governs role-profile lifecycle with dependency evidence and immutable history", () => {

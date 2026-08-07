@@ -140,6 +140,7 @@ export const validationRules: ValidationRule[] = [
   ["SKILL-EVIDENCE-001", "Observable application", "A governed skill must describe observable application evidence.", "error", "observability", "Add a context, action and outcome signal.", true],
   ["SKILL-EVIDENCE-002", "Source evidence", "Every governed skill must retain source evidence.", "error", "evidence", "Attach an evidence excerpt and location.", true],
   ["TAXONOMY-PARENT-001", "Valid taxonomy parent", "Every active group must resolve to an active parent.", "error", "domainId", "Move the group to an active domain.", true],
+  ["RELATIONSHIP-INTEGRITY-001", "Relationship graph integrity", "Active relationships require distinct active endpoints, rationale and a unique graph edge.", "error", "sourceId", "Select distinct active concepts, add rationale and remove duplicates.", true],
   ["MAPPING-EVIDENCE-001", "Mapping evidence", "Every mapping must contain evidence and rationale.", "error", "evidence", "Add direct role evidence and rationale.", true],
   ["MAPPING-CATALOG-001", "Approved catalog grounding", "Mappings may only publish against approved skills.", "error", "skillId", "Select an approved skill.", true],
   ["MAPPING-OVERRIDE-001", "Override accountability", "A manual score override must retain a reason.", "error", "overrideReason", "Record an evidence-based reason.", true],
