@@ -359,6 +359,29 @@ test("creates, edits and removes a job-description record", async ({ page }) => 
   await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toHaveCount(0);
 });
 
+test("governs role-profile editing, duplication and archival with accountable impact", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Role profiles" }).click();
+  await page.getByRole("button", { name: "Edit Global Reporting Analyst profile" }).click();
+  await page.getByLabel("Profile purpose").fill("Turn governed operational data into trusted management insight.");
+  await page.getByRole("button", { name: "Save governed profile" }).click();
+  await expect(page.getByText("Turn governed operational data into trusted management insight.", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Duplicate Global Reporting Analyst profile" }).click();
+  await expect(page.getByRole("heading", { name: "Duplicate Global Reporting Analyst" })).toBeVisible();
+  await expect(page.getByText(/dependencies are in scope/)).toBeVisible();
+  await page.getByLabel("Accountable actor").fill("Profile Owner");
+  await page.getByLabel("Governance reason").fill("Create a calibrated successor profile for comparison.");
+  await page.getByRole("button", { name: "Apply governed action" }).click();
+  await expect(page.getByRole("heading", { name: "Global Reporting Analyst copy" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Archive Global Reporting Analyst copy profile" }).click();
+  await page.getByLabel("Accountable actor").fill("Profile Owner");
+  await page.getByLabel("Governance reason").fill("Archive the comparison draft after governance review.");
+  await page.getByRole("button", { name: "Apply governed action" }).click();
+  await expect(page.getByRole("button", { name: "Restore Global Reporting Analyst copy profile" })).toBeVisible();
+});
+
 test("creates and archives a governed validation rule", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Governance" }).click();

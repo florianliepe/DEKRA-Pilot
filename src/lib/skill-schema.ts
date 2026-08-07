@@ -579,6 +579,11 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     if (!workspace.skills.some((skill) => skill.id === mapping.skillId && skill.status === "approved")) add("MAPPING-CATALOG-001", "mapping", mapping.id, "Mapping is not grounded in an approved skill.", "skillId", "Select an approved catalog skill or route the skill proposal for approval.");
     if (mapping.overrideReason === "") add("MAPPING-OVERRIDE-001", "mapping", mapping.id, "A reviewer override requires a reason.", "overrideReason", "Record the evidence-based override rationale.");
   }
+  for (const profile of workspace.profiles.filter((item) => !["archived", "retired"].includes(item.status))) {
+    const skillIds = profile.skills.map((link) => link.skillId);
+    if (new Set(skillIds).size !== skillIds.length || profile.skills.some((link) => !workspace.skills.some((skill) => skill.id === link.skillId && !["archived", "retired"].includes(skill.status)))) add("PROFILE-INTEGRITY-001", "role_profile", profile.id, "Role profile contains a duplicate or unavailable skill link.", "skills", "Remove duplicate links and select active governed skills only.");
+    if (profile.status === "approved" && (!profile.jobDescriptionId || !workspace.jobDescriptions.some((job) => job.id === profile.jobDescriptionId && job.status !== "archived"))) add("PROFILE-SOURCE-001", "role_profile", profile.id, "Approved role profile is not grounded in an active job description.", "jobDescriptionId", "Link the profile to its governed source job description before release.");
+  }
   if (workspace.kflaFactors.length !== 4) add("KFLA-HIERARCHY-001", "workspace", "KFLA", "KFLA must contain exactly four factors.", "kflaFactors", "Restore the canonical four-factor public metadata layer.");
   if (workspace.kflaClusters.length !== 12) add("KFLA-HIERARCHY-002", "workspace", "KFLA", "KFLA must contain exactly twelve clusters.", "kflaClusters", "Provide twelve governed navigation clusters.");
   if (workspace.kfla.length !== 38 || workspace.kfla.some((item) => !workspace.kflaClusters.some((cluster) => cluster.id === item.clusterId))) add("KFLA-HIERARCHY-003", "workspace", "KFLA", "All 38 competencies must resolve to a governed cluster.", "kfla", "Restore missing competencies or cluster relationships.");

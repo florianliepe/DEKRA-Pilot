@@ -23,6 +23,7 @@ People -> GitHub Pages workbench -> n8n PMO API -> DEKRA-Pilot-Data (private)
 - `src/lib/n8n-client.ts`: browser-safe workflow client and evidence extraction.
 - `.github/workflows/deploy-pages.yml`: Node.js 22 validation and Pages release.
 - `src/components/multilingual-label-workbench.tsx`: governed localized-label CRUD linked to canonical concept IDs.
+- `src/components/skill-designer.tsx`: role-profile CRUD and lifecycle control, including dependency previews and immutable version recording.
 - n8n: authentication, schema enforcement, revision control and GitHub writes.
 - `florianliepe/DEKRA-Pilot-Data`: private canonical PMO and work-package data.
 
@@ -46,6 +47,13 @@ request and canonical response contract.
 
 Each module should add a schema under `src/lib`, explicit n8n operation modes,
 and a versioned directory in the private data repository.
+
+Role profiles are working-state governed objects. Create, edit, duplicate,
+archive, restore, deprecate, replace and merge operations remain in n8n until
+release. Structural actions require an accountable actor and reason, show the
+affected source job and mappings, preserve skill-link migration, and record
+immutable source and target versions. Editing an approved profile moves it back
+to `in_review`; approval itself remains available only through the review gate.
 
 ## Authentication seam
 

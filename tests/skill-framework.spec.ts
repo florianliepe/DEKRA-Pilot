@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applySkillLifecycle, authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -155,6 +155,7 @@ test("blocks publication until reviews resolve and protects optimistic concurren
   workspace.reviewQueue = workspace.reviewQueue.map((item) => ({ ...item, status: "deferred" as const, decisionBy: "Framework Owner", decisionReason: "Deferred outside release scope." }));
   workspace.skills = workspace.skills.map((skill) => skill.id === "SK-ST" ? { ...skill, status: "archived" as const } : skill);
   workspace.mappings = workspace.mappings.map((mapping) => mapping.id === "MAP-MC" ? { ...mapping, status: "deferred" as const } : mapping);
+  workspace.profiles = workspace.profiles.map((profile) => ({ ...profile, skills: profile.skills.filter((link) => link.skillId !== "SK-ST") }));
   expect(() => prepareRelease(workspace, "Framework Owner", 1)).toThrow(/conflict/i);
   const prepared = prepareRelease(workspace, "Framework Owner", 0);
   expect(prepared.manifest.revision).toBe(1);
@@ -227,4 +228,25 @@ test("governs skill lifecycle changes and rewires merge dependencies", () => {
   expect(merged.relationships.some((relationship) => relationship.sourceId === "SK-DV" && relationship.targetId === "SK-MC" && relationship.type === "synonym")).toBe(true);
   expect(merged.objectVersions.filter((version) => ["SK-DV", "SK-MC"].includes(version.entityId))).toHaveLength(2);
   expect(merged.auditLog.filter((event) => event.action.startsWith("skill.merge"))).toHaveLength(2);
+});
+
+test("governs role-profile lifecycle with dependency evidence and immutable history", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const impact = impactAnalysis(workspace, "ROLE-DATA");
+  expect(impact.profileJobs.map((job) => job.id)).toContain("JD-DATA");
+  expect(impact.profileMappings.length).toBeGreaterThan(0);
+  expect(() => applyRoleProfileLifecycle(workspace, { action: "archive", profileId: "ROLE-DATA", actor: "", reason: "Superseded" })).toThrow(/actor/i);
+  expect(() => applyRoleProfileLifecycle(workspace, { action: "archive", profileId: "ROLE-DATA", actor: "Profile Owner", reason: "" })).toThrow(/reason/i);
+
+  const duplicated = applyRoleProfileLifecycle(workspace, { action: "duplicate", profileId: "ROLE-DATA", newProfileId: "ROLE-DATA-NEXT", actor: "Profile Owner", reason: "Create the governed successor draft." });
+  expect(duplicated.profiles.find((profile) => profile.id === "ROLE-DATA-NEXT")).toMatchObject({ title: "Global Reporting Analyst copy", status: "draft" });
+  expect(duplicated.objectVersions[0]).toMatchObject({ entityType: "role_profile", entityId: "ROLE-DATA-NEXT", action: "profile.duplicated" });
+
+  const merged = applyRoleProfileLifecycle(duplicated, { action: "merge", profileId: "ROLE-DATA", targetProfileId: "ROLE-DATA-NEXT", actor: "Profile Owner", reason: "Consolidate the calibrated profile into its successor." });
+  expect(merged.profiles.find((profile) => profile.id === "ROLE-DATA")?.status).toBe("archived");
+  expect(merged.profiles.find((profile) => profile.id === "ROLE-DATA")?.governance?.replacedById).toBe("ROLE-DATA-NEXT");
+  expect(merged.profiles.find((profile) => profile.id === "ROLE-DATA-NEXT")?.status).toBe("in_review");
+  expect(merged.profiles.find((profile) => profile.id === "ROLE-DATA-NEXT")?.skills).toHaveLength(workspace.profiles[0].skills.length);
+  expect(merged.objectVersions.filter((version) => ["ROLE-DATA", "ROLE-DATA-NEXT"].includes(version.entityId)).length).toBeGreaterThanOrEqual(3);
+  expect(merged.auditLog.filter((event) => event.action.startsWith("profile.merge"))).toHaveLength(2);
 });

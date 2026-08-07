@@ -1,4 +1,4 @@
-import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type SkillWorkspace } from "./skill-schema";
+import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
 
@@ -69,6 +69,14 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
   const evidenceRecords = workspace.evidenceRecords.filter((evidence) => evidence.id === entityId || evidence.sourceId === entityId || evidence.supportedEntityIds.includes(entityId) || evidence.supportedEntityIds.some((id) => skillIds.has(id)));
   const sourceIds = new Set(evidenceRecords.map((evidence) => evidence.sourceId));
   const sources = workspace.sources.filter((source) => source.id === entityId || sourceIds.has(source.id));
+  const selectedProfile = workspace.profiles.find((profile) => profile.id === entityId);
+  const profileSkillIds = new Set(selectedProfile?.skills.map((link) => link.skillId) || []);
+  const profileJobs = selectedProfile
+    ? workspace.jobDescriptions.filter((job) => job.id === selectedProfile.jobDescriptionId)
+    : [];
+  const profileMappings = selectedProfile
+    ? workspace.mappings.filter((mapping) => mapping.jobDescriptionId === selectedProfile.jobDescriptionId || profileSkillIds.has(mapping.skillId))
+    : [];
   return {
     skills,
     mappings,
@@ -78,8 +86,68 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
     jobs,
     evidenceRecords,
     sources,
-    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length,
+    selectedProfile,
+    profileJobs,
+    profileMappings,
+    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length,
   };
+}
+
+export type RoleProfileLifecycleAction = "duplicate" | "archive" | "restore" | "deprecate" | "replace" | "merge";
+export type RoleProfileLifecycleRequest = {
+  action: RoleProfileLifecycleAction;
+  profileId: string;
+  actor: string;
+  reason: string;
+  targetProfileId?: string;
+  newProfileId?: string;
+};
+
+export function applyRoleProfileLifecycle(workspace: SkillWorkspace, request: RoleProfileLifecycleRequest): SkillWorkspace {
+  const actor = request.actor.trim();
+  const reason = request.reason.trim();
+  if (!actor) throw new Error("An accountable actor is required.");
+  if (!reason) throw new Error("A governance reason is required.");
+  const source = workspace.profiles.find((profile) => profile.id === request.profileId);
+  if (!source) throw new Error("Role profile not found.");
+  const impact = impactAnalysis(workspace, source.id);
+
+  if (request.action === "duplicate") {
+    const id = request.newProfileId || `PROF-${Date.now().toString().slice(-8)}`;
+    if (workspace.profiles.some((profile) => profile.id === id)) throw new Error(`Role profile ${id} already exists.`);
+    const duplicate: RoleProfile = { ...source, id, title: `${source.title} copy`, status: "draft", skills: source.skills.map((link) => ({ ...link })), governance: undefined };
+    return recordGovernedVersion({ ...workspace, profiles: [duplicate, ...workspace.profiles] }, "role_profile", id, "profile.duplicated", actor, { ...duplicate, sourceProfileId: source.id, reason } as unknown as Record<string, unknown>);
+  }
+
+  if (["archive", "restore", "deprecate"].includes(request.action)) {
+    const status = request.action === "archive" ? "archived" as const : request.action === "restore" ? "draft" as const : "deprecated" as const;
+    const next = { ...source, status };
+    return recordGovernedVersion({ ...workspace, profiles: workspace.profiles.map((profile) => profile.id === source.id ? next : profile) }, "role_profile", source.id, `profile.${request.action}d`, actor, { ...next, reason, affectedMappings: impact.profileMappings.length } as unknown as Record<string, unknown>);
+  }
+
+  const target = workspace.profiles.find((profile) => profile.id === request.targetProfileId && profile.id !== source.id && !["archived", "retired"].includes(profile.status));
+  if (!target) throw new Error("An active target role profile is required.");
+  const mergedSkills = [...target.skills];
+  for (const link of source.skills) {
+    const existing = mergedSkills.find((candidate) => candidate.skillId === link.skillId);
+    if (!existing) mergedSkills.push({ ...link });
+    else Object.assign(existing, {
+      targetLevel: Math.max(existing.targetLevel, link.targetLevel) as typeof existing.targetLevel,
+      weight: Math.max(existing.weight, link.weight),
+      critical: existing.critical || link.critical,
+    });
+  }
+  const at = new Date().toISOString();
+  const migrated = {
+    ...workspace,
+    profiles: workspace.profiles.map((profile) => profile.id === source.id
+      ? { ...profile, status: request.action === "merge" ? "archived" as const : "retired" as const, governance: { version: (profile.governance?.version || 0) + 1, createdAt: profile.governance?.createdAt || workspace.updatedAt, updatedAt: at, createdBy: profile.governance?.createdBy || actor, updatedBy: actor, replacedById: target.id } }
+      : profile.id === target.id
+        ? { ...profile, skills: mergedSkills, status: "in_review" as const }
+        : profile),
+  };
+  const sourceVersion = recordGovernedVersion(migrated, "role_profile", source.id, `profile.${request.action}d`, actor, { targetProfileId: target.id, reason, affectedMappings: impact.profileMappings.length });
+  return recordGovernedVersion(sourceVersion, "role_profile", target.id, `profile.${request.action}_target_updated`, actor, { sourceProfileId: source.id, reason, migratedSkillLinks: source.skills.length });
 }
 
 export function canonicalConceptOptions(workspace: SkillWorkspace, entityType?: LocalizedConceptLabel["entityType"]) {

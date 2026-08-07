@@ -116,11 +116,12 @@ Both workflows were imported from commit `4de21ab`, retained the existing header
 5. Open **Taxonomy standards** and verify 4 factors, 12 clusters and 38 deep dives.
 6. Exercise hierarchy, relationship and controlled-tool CRUD; review impact before structural changes.
 7. Open **Jobs & mapping**, inspect all thirteen score dimensions and confirm an override requires a reason.
-8. Open **Governance** to inspect data quality, tool contracts, versions, audit, configuration, graph and coverage insights.
-9. Record decisions for every pending review item with reviewer and reason.
-10. Use **Release approved JSON** and confirm revision, commit receipt and manifest.
-11. Retry the same release to verify idempotency; simulate a stale revision to verify conflict handling.
-12. Request rollback from a published release and confirm it creates a new review item instead of rewriting history.
+8. Open **Role profiles**; create or edit a profile, then duplicate and archive it with an accountable actor and reason. Confirm impact counts and immutable history.
+9. Open **Governance** to inspect data quality, tool contracts, versions, audit, configuration, graph and coverage insights.
+10. Record decisions for every pending review item with reviewer and reason.
+11. Use **Release approved JSON** and confirm revision, commit receipt and manifest.
+12. Retry the same release to verify idempotency; simulate a stale revision to verify conflict handling.
+13. Request rollback from a published release and confirm it creates a new review item instead of rewriting history.
 
 ## Verification evidence and remaining risks
 

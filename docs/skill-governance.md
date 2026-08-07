@@ -43,3 +43,17 @@ The application uses the 38 public competency names as research/navigation metad
 Create, edit, archive and restore operations require an accountable actor and governance reason and produce an immutable object version plus audit event. Validation rejects orphaned references, unsupported languages, blank labels and duplicate active concept/language pairs. The public release contains approved public or organisation-authored translations only. Licensed wording is not accepted by this public collection and must remain in the protected licensed-content backend.
 
 See [skill-framework-v3.md](skill-framework-v3.md) for contracts, operational recovery, test evidence and user validation.
+
+## Role-profile lifecycle
+
+Role profiles support create, view, edit, duplicate, archive, restore,
+deprecate, replace and merge. A profile may link to one governed source job and
+contains unique links to active skills with target proficiency, weight and
+criticality. The release validator blocks duplicate or unavailable skill links
+and blocks an approved profile without an active source job.
+
+Every skill-link edit and structural lifecycle action creates an immutable
+object version and audit event. Replace and merge show related mappings and the
+source job before execution, require an accountable actor and reason, mark the
+source with `replacedById`, migrate unique skill links to the target, and route
+the target back to `in_review`.

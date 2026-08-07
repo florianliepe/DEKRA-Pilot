@@ -12,7 +12,7 @@
     "groups": { "type": "array", "items": { "allOf": [{ "$ref": "#/$defs/taxonomyNode" }, { "type": "object", "required": ["domainId"], "properties": { "domainId": { "type": "string" } } }] } },
     "relationships": { "type": "array" },
     "skills": { "type": "array", "items": { "$ref": "#/$defs/governedObject" } },
-    "profiles": { "type": "array" },
+    "profiles": { "type": "array", "items": { "$ref": "#/$defs/roleProfile" } },
     "interviews": { "type": "array" },
     "elicitationSessions": { "type": "array" },
     "reviewQueue": { "type": "array" },
@@ -49,6 +49,8 @@
   "$defs": {
     "governedObject": { "type": "object", "required": ["id", "status"], "properties": { "id": { "type": "string", "minLength": 1 }, "status": { "enum": ["draft", "in_review", "approved", "archived", "deprecated", "retired"] } } },
     "taxonomyNode": { "allOf": [{ "$ref": "#/$defs/governedObject" }, { "type": "object", "required": ["name", "description"], "properties": { "name": { "type": "string", "minLength": 1 }, "description": { "type": "string" } } }] },
+    "profileSkill": { "type": "object", "additionalProperties": false, "required": ["skillId", "targetLevel", "weight", "critical"], "properties": { "skillId": { "type": "string", "minLength": 1 }, "targetLevel": { "type": "integer", "minimum": 1, "maximum": 4 }, "weight": { "type": "number", "minimum": 0, "maximum": 100 }, "critical": { "type": "boolean" } } },
+    "roleProfile": { "allOf": [{ "$ref": "#/$defs/governedObject" }, { "type": "object", "required": ["title", "jobFamily", "purpose", "skills"], "properties": { "title": { "type": "string", "minLength": 1 }, "jobFamily": { "type": "string", "minLength": 1 }, "purpose": { "type": "string", "minLength": 1 }, "jobDescriptionId": { "type": "string", "minLength": 1 }, "strategicVectorIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }, "skills": { "type": "array", "items": { "$ref": "#/$defs/profileSkill" } } } }] },
     "localizedLabel": { "allOf": [{ "$ref": "#/$defs/governedObject" }, { "type": "object", "required": ["entityType", "entityId", "language", "label", "sourceClassification", "licenceStatus"], "properties": { "entityType": { "enum": ["domain", "group", "skill", "kfla_factor", "kfla_cluster", "kfla_competency", "controlled_tool"] }, "entityId": { "type": "string", "minLength": 1 }, "language": { "type": "string", "minLength": 2 }, "label": { "type": "string", "minLength": 1 }, "description": { "type": "string" }, "sourceClassification": { "enum": ["public", "organization_authored"] }, "licenceStatus": { "enum": ["public_metadata", "internal_explanation"] } } }] }
   },
   "additionalProperties": true

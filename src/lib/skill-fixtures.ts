@@ -143,6 +143,8 @@ export const validationRules: ValidationRule[] = [
   ["MAPPING-EVIDENCE-001", "Mapping evidence", "Every mapping must contain evidence and rationale.", "error", "evidence", "Add direct role evidence and rationale.", true],
   ["MAPPING-CATALOG-001", "Approved catalog grounding", "Mappings may only publish against approved skills.", "error", "skillId", "Select an approved skill.", true],
   ["MAPPING-OVERRIDE-001", "Override accountability", "A manual score override must retain a reason.", "error", "overrideReason", "Record an evidence-based reason.", true],
+  ["PROFILE-INTEGRITY-001", "Role-profile skill integrity", "Active role profiles may only contain unique links to active governed skills.", "error", "skills", "Remove duplicate links and select active governed skills only.", true],
+  ["PROFILE-SOURCE-001", "Role-profile source grounding", "Every approved role profile must resolve to an active governed job description.", "error", "jobDescriptionId", "Link the profile to its governed source job description.", true],
   ["KFLA-HIERARCHY-001", "Four-factor integrity", "The public metadata layer must contain four factors.", "error", "kflaFactors", "Restore four factors.", true],
   ["KFLA-HIERARCHY-002", "Twelve-cluster integrity", "The navigation layer must contain twelve clusters.", "error", "kflaClusters", "Restore twelve clusters.", true],
   ["KFLA-HIERARCHY-003", "Competency assignment integrity", "All 38 competencies must resolve to a cluster.", "error", "kfla", "Assign every competency to a governed cluster.", true],
@@ -210,7 +212,7 @@ export const bootstrapSkillWorkspace: SkillWorkspace = {
     { id: "SK-CU", name: "Curiosity", description: "Inclination to explore unfamiliar perspectives and test assumptions.", groupId: "GRP-SBO", dimension: "trait", aliases: [], evidence: ["SME calibration"], confidence: 71, observability: "Asks targeted questions and seeks disconfirming evidence.", futureRelevance: "emerging", status: "draft", syntax: { action: "Explore", object: "unfamiliar perspectives", outcome: "to test assumptions" } },
   ],
   profiles: [{
-    id: "ROLE-DATA", title: "Global Reporting Analyst", jobFamily: "Data & Analytics", purpose: "Turn operational data into trusted management insight.", status: "in_review",
+    id: "ROLE-DATA", title: "Global Reporting Analyst", jobFamily: "Data & Analytics", purpose: "Turn operational data into trusted management insight.", status: "in_review", jobDescriptionId: "JD-DATA",
     skills: [
       { skillId: "SK-DV", targetLevel: 3, weight: 30, critical: true },
       { skillId: "SK-MC", targetLevel: 2, weight: 20, critical: true },

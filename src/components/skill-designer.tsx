@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Icons } from "./icons";
 import { bootstrapSkillWorkspace } from "@/lib/skill-fixtures";
 import { ingestSkillEvidence, loadSkillWorkspace, publishSkillWorkspace, runSkillInterview, saveSkillWorkspace } from "@/lib/skill-client";
-import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, workspaceFindings, type Lifecycle, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
+import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, workspaceFindings, type Lifecycle, type RoleProfile, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
 import { JobMappingWorkbench } from "./job-mapping-workbench";
 import { StrategicVectors } from "./strategic-vectors";
 import { AgentRunLog } from "./agent-run-log";
@@ -12,7 +12,7 @@ import { TaxonomyStandardWorkbench } from "./taxonomy-standard-workbench";
 import { ElicitationWorkbench } from "./elicitation-workbench";
 import { GovernanceWorkbench } from "./governance-workbench";
 import { GovernedSkillLibrary } from "./governed-skill-library";
-import { decideReview, prepareRelease, recordGovernedVersion } from "@/lib/skill-governance";
+import { applyRoleProfileLifecycle, decideReview, impactAnalysis, prepareRelease, recordGovernedVersion, type RoleProfileLifecycleAction } from "@/lib/skill-governance";
 
 type Tab = "overview" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs" | "governance";
 type SkillDraft = Pick<Skill, "name" | "description" | "groupId" | "dimension" | "kflaCompetencyId" | "observability" | "futureRelevance" | "status"> & { aliases: string; action: string; object: string; outcome: string };
@@ -152,14 +152,59 @@ function Library({ workspace, query, onQuery, onEdit, mutate, onMessage, onError
   return <GovernedSkillLibrary workspace={workspace} query={query} onQuery={onQuery} onEdit={onEdit} mutate={mutate} onMessage={onMessage} onError={onError}/>;
 }
 
+type ProfileActionDraft = { action: RoleProfileLifecycleAction; actor: string; reason: string; targetProfileId: string };
+
 function Profiles({ workspace, mutate }: { workspace: SkillWorkspace; mutate: (update: (current: SkillWorkspace) => SkillWorkspace) => void }) {
-  const [selected, setSelected] = useState(workspace.profiles[0]?.id || ""); const profile = workspace.profiles.find((item) => item.id === selected);
-  if (!profile) return <div className="empty-state">No role profiles yet.</div>;
-  const guidance = profileGuidance(profile, workspace.skills);
-  const profileId = profile.id;
-  const profileSkills = profile.skills;
-  function addSkill() { const available = workspace.skills.find((skill) => !profileSkills.some((item) => item.skillId === skill.id)); if (!available) return; mutate((current) => ({ ...current, profiles: current.profiles.map((item) => item.id === profileId ? { ...item, skills: [...item.skills, { skillId: available.id, targetLevel: 2, weight: 10, critical: false }] } : item) })); }
-  return <div className="profile-layout"><aside className="panel profile-list"><span className="section-kicker">ROLE PROFILES</span>{workspace.profiles.map((item) => <button key={item.id} className={selected === item.id ? "active" : ""} onClick={() => setSelected(item.id)}><b>{item.title}</b><small>{item.jobFamily} · {item.skills.length} skills</small></button>)}</aside><section className="panel profile-detail"><header><div><span className="section-kicker">SUCCESS PROFILE</span><h3>{profile.title}</h3><p>{profile.purpose}</p></div><em className={`lifecycle ${profile.status}`}>{title(profile.status)}</em></header><div className={`profile-guidance ${guidance.validCount ? "valid" : "warning"}`}><Icons.risk/><span><b>{guidance.count} of 8–12 core skills</b><small>{guidance.composition} · Suggested: 5–6 technical, 3–4 behavioral, 1–2 traits/drivers.</small></span></div><div className="profile-skill-head"><span>Core skill</span><span>Target proficiency</span><span>Weight</span><span/></div>{profile.skills.map((mapping) => { const skill = workspace.skills.find((item) => item.id === mapping.skillId); if (!skill) return null; return <div className="profile-skill" key={mapping.skillId}><span><i className={`dimension-dot ${skill.dimension}`}/><b>{skill.name}</b><small>{title(skill.dimension)}{mapping.critical ? " · Critical" : ""}</small></span><select aria-label={`${skill.name} target proficiency`} value={mapping.targetLevel} onChange={(event) => mutate((current) => ({ ...current, profiles: current.profiles.map((item) => item.id === profile.id ? { ...item, skills: item.skills.map((value) => value.skillId === mapping.skillId ? { ...value, targetLevel: Number(event.target.value) as 1 | 2 | 3 | 4 } : value) } : item) }))}>{proficiencyLevels.map((level) => <option key={level.id} value={level.id}>{level.id} · {level.name}</option>)}</select><span>{mapping.weight}%</span><button aria-label={`Remove ${skill.name} from profile`} onClick={() => mutate((current) => ({ ...current, profiles: current.profiles.map((item) => item.id === profile.id ? { ...item, skills: item.skills.filter((value) => value.skillId !== mapping.skillId) } : item) }))}><Icons.trash/></button></div>; })}<button className="button secondary" onClick={addSkill}><Icons.plus/>Add core skill</button><div className="proficiency-rubric">{proficiencyLevels.map((level) => <div key={level.id}><b>{level.id}</b><span><strong>{level.name}</strong><small>{level.description}</small></span></div>)}</div></section></div>;
+  const [selected, setSelected] = useState(workspace.profiles[0]?.id || "");
+  const [editing, setEditing] = useState<RoleProfile | "new" | null>(null);
+  const [action, setAction] = useState<ProfileActionDraft | null>(null);
+  const profile = workspace.profiles.find((item) => item.id === selected) || workspace.profiles[0];
+  const guidance = profile ? profileGuidance(profile, workspace.skills) : null;
+  const impact = profile ? impactAnalysis(workspace, profile.id) : null;
+
+  function saveProfile(value: RoleProfile) {
+    const exists = workspace.profiles.some((item) => item.id === value.id);
+    const id = value.id || `PROF-${Date.now().toString().slice(-8)}`;
+    const saved: RoleProfile = { ...value, id, status: exists && value.status === "approved" ? "in_review" : value.status || "draft" };
+    mutate((current) => recordGovernedVersion({ ...current, profiles: exists ? current.profiles.map((item) => item.id === id ? saved : item) : [saved, ...current.profiles] }, "role_profile", id, exists ? "profile.updated" : "profile.created", "current-user", saved as unknown as Record<string, unknown>));
+    setSelected(id); setEditing(null);
+  }
+
+  function updateSkillLink(skillId: string, update: "add" | "remove" | { targetLevel: 1 | 2 | 3 | 4 }) {
+    if (!profile) return;
+    mutate((current) => {
+      const currentProfile = current.profiles.find((item) => item.id === profile.id);
+      if (!currentProfile) return current;
+      const skills = update === "add"
+        ? [...currentProfile.skills, { skillId, targetLevel: 2 as const, weight: 10, critical: false }]
+        : update === "remove"
+          ? currentProfile.skills.filter((item) => item.skillId !== skillId)
+          : currentProfile.skills.map((item) => item.skillId === skillId ? { ...item, targetLevel: update.targetLevel } : item);
+      const next = { ...currentProfile, skills, status: currentProfile.status === "approved" ? "in_review" as const : currentProfile.status };
+      return recordGovernedVersion({ ...current, profiles: current.profiles.map((item) => item.id === profile.id ? next : item) }, "role_profile", profile.id, `profile.skill_${typeof update === "string" ? update : "level_changed"}`, "current-user", { skillId, profile: next } as unknown as Record<string, unknown>);
+    });
+  }
+
+  function beginAction(next: RoleProfileLifecycleAction) { setAction({ action: next, actor: "", reason: "", targetProfileId: "" }); }
+  function applyAction() {
+    if (!profile || !action) return;
+    const duplicateId = action.action === "duplicate" ? `PROF-${Date.now().toString().slice(-8)}` : undefined;
+    try {
+      mutate((current) => applyRoleProfileLifecycle(current, { action: action.action, profileId: profile.id, actor: action.actor, reason: action.reason, targetProfileId: action.targetProfileId || undefined, newProfileId: duplicateId }));
+      if (duplicateId) setSelected(duplicateId);
+      else if (["replace", "merge"].includes(action.action)) setSelected(action.targetProfileId);
+      setAction(null);
+    } catch (error) { window.alert(error instanceof Error ? error.message : "Profile lifecycle action failed."); }
+  }
+
+  const available = profile ? workspace.skills.find((skill) => skill.status === "approved" && !profile.skills.some((item) => item.skillId === skill.id)) : undefined;
+  return <div className="profile-layout"><aside className="panel profile-list"><header><div><span className="section-kicker">ROLE PROFILES</span><small>{workspace.profiles.length} governed profiles</small></div><button aria-label="Create role profile" onClick={() => setEditing("new")}><Icons.plus/></button></header>{workspace.profiles.map((item) => <button key={item.id} className={selected === item.id ? "active" : ""} onClick={() => setSelected(item.id)}><b>{item.title}</b><small>{item.jobFamily} · {item.skills.length} skills · {title(item.status)}</small></button>)}</aside>{!profile || !guidance ? <section className="panel empty-state"><Icons.document/><b>No role profiles yet</b><span>Create a governed profile and connect it to approved job evidence.</span><button className="button primary" onClick={() => setEditing("new")}><Icons.plus/>Create role profile</button></section> : <section className="panel profile-detail"><header><div><span className="section-kicker">SUCCESS PROFILE</span><h3>{profile.title}</h3><p>{profile.purpose}</p></div><div className="profile-governance-actions"><em className={`lifecycle ${profile.status}`}>{title(profile.status)}</em><span className="record-actions"><button aria-label={`Edit ${profile.title} profile`} onClick={() => setEditing(profile)}><Icons.edit/></button><button aria-label={`Duplicate ${profile.title} profile`} onClick={() => beginAction("duplicate")}><Icons.copy/></button><button aria-label={`${profile.status === "archived" ? "Restore" : "Archive"} ${profile.title} profile`} onClick={() => beginAction(profile.status === "archived" ? "restore" : "archive")}>{profile.status === "archived" ? <Icons.refresh/> : <Icons.trash/>}</button></span></div></header><div className={`profile-guidance ${guidance.validCount ? "valid" : "warning"}`}><Icons.risk/><span><b>{guidance.count} of 8–12 core skills</b><small>{guidance.composition} · Suggested: 5–6 technical, 3–4 behavioral, 1–2 traits/drivers.</small></span></div><div className="profile-impact-strip"><span><b>{impact?.profileMappings.length || 0}</b> related mappings</span><span><b>{impact?.profileJobs.length || 0}</b> source jobs</span><button className="button ghost" onClick={() => beginAction("deprecate")}>Deprecate</button><button className="button ghost" onClick={() => beginAction("replace")}>Replace</button><button className="button ghost" onClick={() => beginAction("merge")}>Merge</button></div><div className="profile-skill-head"><span>Core skill</span><span>Target proficiency</span><span>Weight</span><span/></div>{profile.skills.map((mapping) => { const skill = workspace.skills.find((item) => item.id === mapping.skillId); if (!skill) return null; return <div className="profile-skill" key={mapping.skillId}><span><i className={`dimension-dot ${skill.dimension}`}/><b>{skill.name}</b><small>{title(skill.dimension)}{mapping.critical ? " · Critical" : ""}</small></span><select aria-label={`${skill.name} target proficiency`} value={mapping.targetLevel} onChange={(event) => updateSkillLink(mapping.skillId, { targetLevel: Number(event.target.value) as 1 | 2 | 3 | 4 })}>{proficiencyLevels.map((level) => <option key={level.id} value={level.id}>{level.id} · {level.name}</option>)}</select><span>{mapping.weight}%</span><button aria-label={`Remove ${skill.name} from profile`} onClick={() => updateSkillLink(mapping.skillId, "remove")}><Icons.trash/></button></div>; })}<button className="button secondary" disabled={!available} onClick={() => available && updateSkillLink(available.id, "add")}><Icons.plus/>Add core skill</button><div className="proficiency-rubric">{proficiencyLevels.map((level) => <div key={level.id}><b>{level.id}</b><span><strong>{level.name}</strong><small>{level.description}</small></span></div>)}</div></section>}{editing && <ProfileEditor profile={editing === "new" ? { id: "", title: "", jobFamily: "", purpose: "", status: "draft", skills: [], jobDescriptionId: workspace.jobDescriptions[0]?.id } : editing} workspace={workspace} onClose={() => setEditing(null)} onSave={saveProfile}/>} {action && profile && <div className="modal-backdrop"><form className="modal-card" onSubmit={(event) => { event.preventDefault(); applyAction(); }}><header><div><span className="section-kicker">PROFILE IMPACT & APPROVAL</span><h3>{title(action.action)} {profile.title}</h3></div><button type="button" aria-label="Close profile lifecycle action" onClick={() => setAction(null)}><Icons.close/></button></header><p>{impact?.dependencyCount || 0} dependencies are in scope, including {impact?.profileMappings.length || 0} mappings and {impact?.profileJobs.length || 0} source job descriptions. The operation remains working state until accountable release approval.</p>{["replace", "merge"].includes(action.action) && <label><span>Target profile</span><select required value={action.targetProfileId} onChange={(event) => setAction({ ...action, targetProfileId: event.target.value })}><option value="">Select governed target</option>{workspace.profiles.filter((item) => item.id !== profile.id && !["archived", "retired"].includes(item.status)).map((item) => <option value={item.id} key={item.id}>{item.title}</option>)}</select></label>}<label><span>Accountable actor</span><input required value={action.actor} onChange={(event) => setAction({ ...action, actor: event.target.value })}/></label><label><span>Governance reason</span><textarea required value={action.reason} onChange={(event) => setAction({ ...action, reason: event.target.value })}/></label><footer><button type="button" className="button secondary" onClick={() => setAction(null)}>Cancel</button><button className="button primary">Apply governed action</button></footer></form></div>}</div>;
+}
+
+function ProfileEditor({ profile, workspace, onClose, onSave }: { profile: RoleProfile; workspace: SkillWorkspace; onClose: () => void; onSave: (profile: RoleProfile) => void }) {
+  const [value, setValue] = useState(profile);
+  const set = <K extends keyof RoleProfile>(key: K, next: RoleProfile[K]) => setValue((current) => ({ ...current, [key]: next }));
+  return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); onSave(value); }}><header><div><span className="section-kicker">GOVERNED ROLE PROFILE</span><h2>{profile.id ? `Edit ${profile.title}` : "Create role profile"}</h2></div><button type="button" aria-label="Close role profile editor" onClick={onClose}><Icons.close/></button></header><div className="form-row"><label><span>Profile title</span><input required value={value.title} onChange={(event) => set("title", event.target.value)}/></label><label><span>Job family</span><input required value={value.jobFamily} onChange={(event) => set("jobFamily", event.target.value)}/></label></div><label><span>Profile purpose</span><textarea required value={value.purpose} onChange={(event) => set("purpose", event.target.value)}/></label><div className="form-row"><label><span>Source job description</span><select value={value.jobDescriptionId || ""} onChange={(event) => set("jobDescriptionId", event.target.value || undefined)}><option value="">No source selected</option>{workspace.jobDescriptions.filter((item) => item.status !== "archived").map((item) => <option value={item.id} key={item.id}>{item.title}</option>)}</select></label><label><span>Working lifecycle</span><select value={value.status} onChange={(event) => set("status", event.target.value as RoleProfile["status"])}>{["draft", "in_review", "archived", "deprecated"].map((item) => <option key={item}>{item}</option>)}</select><small>Approval is recorded only through the review gate.</small></label></div><footer><button type="button" className="button secondary" onClick={onClose}>Cancel</button><button className="button primary">Save governed profile</button></footer></form></div>;
 }
 
 function Review({ workspace, mutate }: { workspace: SkillWorkspace; mutate: (update: (current: SkillWorkspace) => SkillWorkspace) => void }) {
