@@ -18,7 +18,7 @@ Blocked actions: approve, publish, hard-delete, retire an in-use record, change 
 
 ## Mapping score
 
-The displayed relevance score must be accompanied by four reviewable dimensions: evidence strength, taxonomy identity, target-proficiency fit and strategic alignment. Strategy and tool references may enrich a mapping but cannot replace direct role evidence.
+The displayed relevance score is a versioned weighted calculation over thirteen reviewable dimensions: semantic relevance, direct evidence strength, responsibility coverage, outcome relevance, taxonomy compatibility, granularity compatibility, KFLA compatibility, controlled-tool relevance, proficiency compatibility, similarity to approved mappings, duplicate penalty, contradiction penalty and missing-evidence penalty. Weights live in `data/framework-config.json`. A reviewer can override the result only with an accountable reason; the original composition remains in history.
 
 ## Release transaction
 
@@ -30,8 +30,10 @@ The displayed relevance score must be accompanied by four reviewable dimensions:
 6. Commit the complete JSON snapshot to `data/skill-workspace.approved.json` on `main` through the n8n GitHub credential.
 7. Persist the released revision back to n8n and return the commit reference.
 
-The workflow must use optimistic concurrency with the current GitHub blob SHA and reject conflicting publication attempts.
+The workflow uses both the approved revision and current GitHub blob SHA for optimistic concurrency. An idempotency key makes retries safe. The version 3 publisher creates the approved snapshot, release manifest and release index in one Git tree and fast-forwards `main` without force. A failed run remains recoverable by retrying the same prepared release; a rollback is a new reviewed release and never rewrites history.
 
 ## KFLA content policy
 
-The application uses the 38 public competency names and four public factors as navigation metadata. Every `publicSummary` is original internal wording and is visibly labelled as such. Korn Ferry definitions, clusters, rating anchors, skilled/less-skilled indicators and development guidance remain empty until an authorised licensed source and access policy are supplied.
+The application uses the 38 public competency names as research/navigation metadata. The four-factor and twelve-cluster navigation layer, summaries and examples in the public app are explicitly classified as organisation-authored pending licensed verification. Korn Ferry definitions, rating anchors, skilled/less-skilled indicators and development guidance remain outside the repository and public bundle. When licensed material is supplied, only a protected backend reference is stored in working state; the release sanitizer removes both the reference and the content.
+
+See [skill-framework-v3.md](skill-framework-v3.md) for contracts, operational recovery, test evidence and user validation.

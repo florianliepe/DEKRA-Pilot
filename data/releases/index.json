@@ -1,0 +1,8 @@
+{
+  "latestRevision": 0,
+  "latestManifest": "revision-0.bootstrap.manifest.json",
+  "releases": [
+    { "revision": 0, "state": "bootstrap", "manifest": "revision-0.bootstrap.manifest.json", "approvedSnapshot": "../skill-workspace.approved.json" }
+  ],
+  "note": "Revision 1 may only be created by the authenticated n8n publisher after all human review decisions and blocking validation findings are resolved."
+}

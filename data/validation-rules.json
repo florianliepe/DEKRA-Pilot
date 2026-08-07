@@ -1,0 +1,17 @@
+{
+  "version": "rules-3.1.0",
+  "frameworkVersion": "3.1.0",
+  "rules": [
+    { "id": "SKILL-SYNTAX-001", "severity": "error", "affectedField": "syntax", "blocking": true, "explanation": "Skill names require one observable action and one enduring object.", "suggestedCorrection": "Use a single action + object construction." },
+    { "id": "SKILL-UNIQUE-001", "severity": "error", "affectedField": "name", "blocking": true, "explanation": "Active canonical names may not duplicate another skill.", "suggestedCorrection": "Merge the records or represent the second name as an alias." },
+    { "id": "SKILL-EVIDENCE-001", "severity": "error", "affectedField": "observability", "blocking": true, "explanation": "A governed skill must describe observable application.", "suggestedCorrection": "Add context, action and outcome evidence." },
+    { "id": "SKILL-EVIDENCE-002", "severity": "error", "affectedField": "evidence", "blocking": true, "explanation": "Every governed skill must retain source evidence.", "suggestedCorrection": "Attach a source excerpt and location." },
+    { "id": "TAXONOMY-PARENT-001", "severity": "error", "affectedField": "domainId", "blocking": true, "explanation": "Every active taxonomy node must resolve to an active parent.", "suggestedCorrection": "Move the node to an active parent." },
+    { "id": "MAPPING-EVIDENCE-001", "severity": "error", "affectedField": "evidence", "blocking": true, "explanation": "Every mapping must contain direct evidence and rationale.", "suggestedCorrection": "Add a source excerpt and explain the relationship." },
+    { "id": "MAPPING-CATALOG-001", "severity": "error", "affectedField": "skillId", "blocking": true, "explanation": "Published mappings must reference an approved catalog skill.", "suggestedCorrection": "Select an approved skill or route the proposed skill for review." },
+    { "id": "MAPPING-OVERRIDE-001", "severity": "error", "affectedField": "overrideReason", "blocking": true, "explanation": "A manual score override requires an accountable reason.", "suggestedCorrection": "Record the evidence-based override rationale." },
+    { "id": "KFLA-HIERARCHY-001", "severity": "error", "affectedField": "kflaFactors", "blocking": true, "explanation": "The public metadata layer must contain four factors.", "suggestedCorrection": "Restore four factors." },
+    { "id": "KFLA-HIERARCHY-002", "severity": "error", "affectedField": "kflaClusters", "blocking": true, "explanation": "The navigation layer must contain twelve governed clusters.", "suggestedCorrection": "Restore twelve clusters." },
+    { "id": "KFLA-HIERARCHY-003", "severity": "error", "affectedField": "kfla", "blocking": true, "explanation": "All 38 competencies must resolve to a cluster.", "suggestedCorrection": "Assign every competency to a governed cluster." }
+  ]
+}

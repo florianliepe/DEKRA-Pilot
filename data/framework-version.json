@@ -1,0 +1,11 @@
+{
+  "frameworkVersion": "3.1.0",
+  "schemaVersion": 3,
+  "rulesVersion": "rules-3.1.0",
+  "promptVersion": "skill-agent-2.0.0",
+  "mappingScoreVersion": "mapping-2.0.0",
+  "canonicalLanguage": "en",
+  "status": "approved",
+  "effectiveFrom": "2026-08-07",
+  "owner": "DEKRA Skill Governance"
+}

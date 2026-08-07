@@ -1,0 +1,37 @@
+{
+  "version": "3.1.0",
+  "rulesVersion": "rules-3.1.0",
+  "promptVersion": "skill-agent-2.0.0",
+  "canonicalLanguage": "en",
+  "supportedLanguages": ["en", "de"],
+  "mappingScoreVersion": "mapping-2.0.0",
+  "mappingWeights": {
+    "semanticRelevance": 14,
+    "directEvidenceStrength": 14,
+    "responsibilityCoverage": 10,
+    "outcomeRelevance": 10,
+    "taxonomyCompatibility": 9,
+    "granularityCompatibility": 8,
+    "kflaCompatibility": 6,
+    "controlledToolRelevance": 5,
+    "proficiencyCompatibility": 8,
+    "approvedMappingSimilarity": 6,
+    "duplicatePenalty": 4,
+    "contradictionPenalty": 3,
+    "missingEvidencePenalty": 3
+  },
+  "approvalRoles": ["taxonomy_steward", "framework_owner", "licensed_content_admin"],
+  "publication": {
+    "backend": "n8n",
+    "targetBranch": "main",
+    "approvedSnapshotPath": "data/skill-workspace.approved.json",
+    "manifestDirectory": "data/releases",
+    "optimisticConcurrency": true,
+    "idempotent": true
+  },
+  "licensedContent": {
+    "publicBundleAllowed": false,
+    "publicJsonAllowed": false,
+    "backendRole": "licensed_content_admin"
+  }
+}

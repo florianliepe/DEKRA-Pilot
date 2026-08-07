@@ -1,0 +1,16 @@
+{
+  "id": "REL-0000-BOOTSTRAP",
+  "revision": 0,
+  "schemaVersion": 3,
+  "frameworkVersion": "3.1.0",
+  "rulesVersion": "rules-3.1.0",
+  "promptVersion": "skill-agent-2.0.0",
+  "mappingScoreVersion": "mapping-2.0.0",
+  "state": "bootstrap",
+  "createdAt": "2026-08-07T00:00:00.000Z",
+  "createdBy": "bootstrap",
+  "githubPath": "data/skill-workspace.approved.json",
+  "objectCounts": {},
+  "validationSummary": { "blocking": 0, "warnings": 0 },
+  "note": "Not a populated approved release. The first accountable human-approved publication will create revision 1."
+}

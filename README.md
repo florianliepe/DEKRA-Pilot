@@ -13,6 +13,9 @@ A responsive project-management workspace for the Skill-Based Organisation pilot
 - Editable meeting summaries, participants, decisions and actions
 - Human and automation activity trail
 - Method Studio extension architecture for Skill Designer, Taxonomy and Job-to-Skill Mapping
+- Governed 4/12/38 KFLA reference workbench with public/licensed content separation
+- Resumable skill elicitation, thirteen-part mapping, review, versioning and release management
+- Deny-by-default registry for eleven auditable AI agent tools
 - n8n intake adapter for document extraction and canonical normalisation
 
 ## Local development
@@ -44,3 +47,4 @@ npm run test:e2e
 See [docs/architecture.md](docs/architecture.md) for the data flow and extension model and
 [docs/go-live.md](docs/go-live.md) for the production deployment checklist. The production
 [n8n redesign](docs/n8n-redesign.md) records the workflow audit and verification evidence.
+The complete Skill Framework v3 architecture, contracts, recovery model and user-validation guide are in [docs/skill-framework-v3.md](docs/skill-framework-v3.md).

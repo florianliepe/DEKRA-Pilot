@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://florianliepe.github.io/DEKRA-Pilot/schemas/agent-tool-registry.schema.json",
+  "title": "DEKRA callable agent-tool registry",
+  "type": "object",
+  "required": ["version", "policy", "tools"],
+  "properties": {
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "policy": {
+      "type": "object",
+      "required": ["defaultAccess", "credentialAccess", "workflowAdministration", "publicationAccess", "licensedContentAccess"],
+      "properties": {
+        "defaultAccess": { "const": "deny" },
+        "credentialAccess": { "const": false },
+        "workflowAdministration": { "const": false },
+        "publicationAccess": { "const": false },
+        "licensedContentAccess": { "const": false }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "purpose", "inputSchema", "outputSchema", "requiredPermission", "allowedDataClassifications", "timeoutMs", "retryPolicy", "rateLimit", "errorContract", "auditRequirements", "version", "lifecycleStatus", "owner", "allowedAgentActions"],
+        "properties": {
+          "id": { "type": "string", "minLength": 3 },
+          "name": { "type": "string", "minLength": 3 },
+          "purpose": { "type": "string", "minLength": 12 },
+          "inputSchema": { "type": "object" },
+          "outputSchema": { "type": "object" },
+          "requiredPermission": { "type": "string", "pattern": "^skill\\." },
+          "allowedDataClassifications": { "type": "array", "not": { "contains": { "const": "licensed" } } },
+          "timeoutMs": { "type": "integer", "minimum": 1 },
+          "retryPolicy": { "type": "object" },
+          "rateLimit": { "type": "object" },
+          "errorContract": { "type": "object" },
+          "auditRequirements": { "type": "array", "contains": { "const": "correlationId" } },
+          "version": { "type": "string" },
+          "lifecycleStatus": { "enum": ["draft", "active", "deprecated", "disabled"] },
+          "owner": { "type": "string" },
+          "allowedAgentActions": { "type": "array" }
+        }
+      }
+    }
+  }
+}

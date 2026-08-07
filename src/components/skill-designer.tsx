@@ -9,15 +9,19 @@ import { JobMappingWorkbench } from "./job-mapping-workbench";
 import { StrategicVectors } from "./strategic-vectors";
 import { AgentRunLog } from "./agent-run-log";
 import { TaxonomyStandardWorkbench } from "./taxonomy-standard-workbench";
+import { ElicitationWorkbench } from "./elicitation-workbench";
+import { GovernanceWorkbench } from "./governance-workbench";
+import { decideReview, prepareRelease, recordGovernedVersion } from "@/lib/skill-governance";
 
-type Tab = "overview" | "intake" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs";
+type Tab = "overview" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs" | "governance";
 type SkillDraft = Pick<Skill, "name" | "description" | "groupId" | "dimension" | "kflaCompetencyId" | "observability" | "futureRelevance" | "status"> & { aliases: string; action: string; object: string; outcome: string };
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: "overview", label: "Overview" }, { id: "intake", label: "Intake & interview" },
+  { id: "elicitation", label: "Elicitation wizard" },
   { id: "library", label: "Skill library" }, { id: "taxonomy", label: "Taxonomy" },
   { id: "jobs", label: "Jobs & mapping" }, { id: "profiles", label: "Role profiles" },
-  { id: "vectors", label: "Strategic vectors" }, { id: "review", label: "Review queue" }, { id: "runs", label: "Agent runs" },
+  { id: "vectors", label: "Strategic vectors" }, { id: "review", label: "Review queue" }, { id: "runs", label: "Agent runs" }, { id: "governance", label: "Governance" },
 ];
 const emptySkill = (groupId: string): SkillDraft => ({ name: "", description: "", groupId, dimension: "technical", kflaCompetencyId: "", aliases: "", observability: "", futureRelevance: "core", status: "draft", action: "", object: "", outcome: "" });
 const title = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -67,7 +71,8 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     if (!approvedBy?.trim()) return;
     setSync("saving"); setError("");
     try {
-      const payload = await publishSkillWorkspace(workspaceSecret, workspace, approvedBy.trim());
+      const prepared = prepareRelease(workspace, approvedBy.trim(), workspace.publication.revision, workspace.publication.githubCommitSha || workspace.publication.expectedGitHubSha);
+      const payload = await publishSkillWorkspace(workspaceSecret, workspace, approvedBy.trim(), prepared.manifest);
       setWorkspace(payload.workspace || workspace); setSync("live"); setMessage(payload.message || "Approved JSON release committed to GitHub main.");
     } catch (reason) { setSync("blueprint"); setError(reason instanceof Error ? reason.message : "Unable to publish the approved release."); }
   }
@@ -80,7 +85,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
       confidence: id ? workspace.skills.find((item) => item.id === id)?.confidence || 70 : 70, observability: values.observability.trim(), futureRelevance: values.futureRelevance, status: values.status,
       syntax: { action: values.action.trim(), object: values.object.trim(), outcome: values.outcome.trim() || undefined },
     };
-    mutate((current) => ({ ...current, skills: id ? current.skills.map((item) => item.id === id ? record : item) : [record, ...current.skills] }));
+    mutate((current) => recordGovernedVersion({ ...current, skills: id ? current.skills.map((item) => item.id === id ? record : item) : [record, ...current.skills] }, "skill", record.id, id ? "skill.updated" : "skill.created", "current-user", record as unknown as Record<string, unknown>));
     setEditing(null); setMessage(`${record.name} ${id ? "updated" : "created"}.`);
   }
 
@@ -88,7 +93,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     if (workspace.profiles.some((profile) => profile.skills.some((item) => item.skillId === skill.id))) {
       setError(`${skill.name} is linked to a role profile. Remove the mapping before deleting it.`); return;
     }
-    mutate((current) => ({ ...current, skills: current.skills.filter((item) => item.id !== skill.id) }));
+    mutate((current) => recordGovernedVersion({ ...current, skills: current.skills.map((item) => item.id === skill.id ? { ...item, status: "archived" } : item) }, "skill", skill.id, "skill.archived", "current-user", skill as unknown as Record<string, unknown>));
   }
 
   return <div className="skill-designer">
@@ -100,6 +105,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {message && <div className="success-banner"><span>{message}</span><button onClick={() => setMessage("")}><Icons.close/></button></div>}
     {tab === "overview" && <Overview workspace={workspace} approved={approved} pending={pending} evidence={evidence} onNavigate={setTab}/>}
     {tab === "intake" && <Intake workspace={workspace} secret={workspaceSecret} onWorkspace={setWorkspace} onMessage={setMessage} onError={setError}/>}
+    {tab === "elicitation" && <ElicitationWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} onDelete={deleteSkill}/>}
     {tab === "taxonomy" && <TaxonomyStandardWorkbench workspace={workspace} mutate={mutate}/>}
     {tab === "jobs" && <JobMappingWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
@@ -107,6 +113,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {tab === "vectors" && <StrategicVectors workspace={workspace} mutate={mutate}/>}
     {tab === "review" && <Review workspace={workspace} mutate={mutate}/>}
     {tab === "runs" && <AgentRunLog workspace={workspace}/>}
+    {tab === "governance" && <GovernanceWorkbench workspace={workspace} mutate={mutate} onMessage={setMessage} onError={setError}/>}
     {editing && <SkillEditor workspace={workspace} skill={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} onSave={saveSkill}/>}
     {tab === "library" && <button className="skill-fab button primary" onClick={() => setEditing("new")}><Icons.plus/>Create skill</button>}
   </div>;
@@ -153,25 +160,23 @@ function Profiles({ workspace, mutate }: { workspace: SkillWorkspace; mutate: (u
 
 function Review({ workspace, mutate }: { workspace: SkillWorkspace; mutate: (update: (current: SkillWorkspace) => SkillWorkspace) => void }) {
   const items = workspace.reviewQueue.filter((item) => item.status === "pending");
-  function decide(id: string, status: "accepted" | "rejected") {
-    mutate((current) => {
-      const review = current.reviewQueue.find((item) => item.id === id);
-      return {
-        ...current,
-        reviewQueue: current.reviewQueue.map((item) => item.id === id ? { ...item, status } : item),
-        skills: status === "accepted"
-          ? current.skills.map((skill) => (skill.name === review?.title || skill.id === review?.entityId) ? { ...skill, status: "approved" as Lifecycle } : skill)
-          : current.skills,
-        mappings: current.mappings.map((mapping) => mapping.id === review?.entityId
-          ? { ...mapping, status: status === "accepted" ? "approved" : "rejected" }
-          : mapping),
-        profiles: current.profiles.map((profile) => profile.id === review?.entityId && status === "accepted"
-          ? { ...profile, status: "approved" as Lifecycle }
-          : profile),
-      };
-    });
+  const [decision, setDecision] = useState<{ id: string; action: "accepted" | "rejected" | "deferred" | "merged" } | null>(null);
+  const [actor, setActor] = useState(""); const [reason, setReason] = useState(""); const [mergeTarget, setMergeTarget] = useState("");
+  function applyDecision() {
+    if (!decision) return;
+    try { mutate((current) => decideReview(current, decision.id, decision.action, actor, reason, mergeTarget || undefined)); setDecision(null); setActor(""); setReason(""); setMergeTarget(""); }
+    catch (error) { window.alert(error instanceof Error ? error.message : "Decision could not be recorded."); }
   }
-  return <div className="review-layout"><section className="panel review-queue"><header><div><span className="section-kicker">HUMAN GOVERNANCE GATE</span><h3>{items.length} decisions pending</h3></div></header>{items.length === 0 && <div className="empty-state"><Icons.check/><b>Review queue is clear</b><span>New agent proposals will appear here.</span></div>}{items.map((item) => <article key={item.id}><header><span className="review-type">{title(item.type)}</span><b>{item.confidence}% confidence</b></header><h4>{item.title}</h4><p>{item.summary}</p><small><Icons.document/>{item.evidence}</small><footer><button className="button ghost" onClick={() => decide(item.id, "rejected")}>Reject</button><button className="button primary" onClick={() => decide(item.id, "accepted")}><Icons.check/>Accept proposal</button></footer></article>)}</section><aside className="panel governance-checks"><span className="section-kicker">REVIEW CHECKLIST</span><h3>Before approval</h3>{["Atomic capability, not a task", "Action and outcome are observable", "No duplicate or overlapping meaning", "Taxonomy placement is coherent", "Dimension mapping is defensible", "Evidence and confidence are sufficient", "Proficiency can be demonstrated"].map((value) => <label key={value}><input type="checkbox"/><span>{value}</span></label>)}<p>The agent recommends; an accountable human approves. Every decision is retained in the revision history.</p></aside></div>;
+  function editSuggestion(id: string) {
+    const item = workspace.reviewQueue.find((candidate) => candidate.id === id); if (!item) return;
+    const summary = window.prompt("Edit the review summary. The proposal remains pending.", item.summary); if (!summary?.trim()) return;
+    mutate((current) => recordGovernedVersion({ ...current, reviewQueue: current.reviewQueue.map((candidate) => candidate.id === id ? { ...candidate, summary: summary.trim() } : candidate) }, "review_item", id, "review.edited", "current-user", { ...item, summary: summary.trim() }));
+  }
+  function reevaluate(id: string) {
+    const now = new Date().toISOString();
+    mutate((current) => ({ ...current, agentRuns: [{ id: `RUN-REVIEW-${Date.now()}`, mode: "regression", status: "needs_review", startedAt: now, completedAt: now, model: "governed-agent", tools: ["syntax_validator", "granularity_validator", "taxonomy_search", "review_package_generator"], trace: [{ step: "Re-evaluation requested", result: `Review ${id} remains pending; no approval state changed.` }], policyVersion: current.framework.version, promptVersion: current.framework.promptVersion }, ...current.agentRuns], auditLog: [{ id: `AUD-REEVAL-${Date.now()}`, at: now, actor: "human", action: "review.reevaluation_requested", entityType: "review_item", entityId: id, summary: "Allowlisted re-evaluation requested; suggestion remains draft." }, ...current.auditLog] }));
+  }
+  return <div className="review-layout"><section className="panel review-queue"><header><div><span className="section-kicker">HUMAN GOVERNANCE GATE</span><h3>{items.length} decisions pending</h3></div></header>{items.length === 0 && <div className="empty-state"><Icons.check/><b>Review queue is clear</b><span>New agent proposals will appear here.</span></div>}{items.map((item) => <article key={item.id}><header><span className="review-type">{title(item.type)}</span><b>{item.confidence}% confidence</b></header><h4>{item.title}</h4><p>{item.summary}</p><small><Icons.document/>{item.evidence}</small><small>{item.frameworkVersion || workspace.framework.version} · {item.rulesVersion || workspace.framework.rulesVersion}</small><footer className="review-actions"><button className="button ghost" onClick={() => setDecision({ id: item.id, action: "rejected" })}>Reject</button><button className="button ghost" onClick={() => setDecision({ id: item.id, action: "deferred" })}>Defer</button><button className="button ghost" onClick={() => editSuggestion(item.id)}>Edit</button><button className="button ghost" onClick={() => reevaluate(item.id)}>Re-evaluate</button><button className="button ghost" onClick={() => setDecision({ id: item.id, action: "merged" })}>Merge</button><button className="button primary" onClick={() => setDecision({ id: item.id, action: "accepted" })}><Icons.check/>Approve</button></footer></article>)}</section><aside className="panel governance-checks"><span className="section-kicker">REVIEW CHECKLIST</span><h3>Before approval</h3>{["Atomic capability, not a task", "Action and outcome are observable", "No duplicate or overlapping meaning", "Taxonomy placement is coherent", "Dimension mapping is defensible", "Evidence and confidence are sufficient", "Proficiency can be demonstrated"].map((value) => <label key={value}><input type="checkbox"/><span>{value}</span></label>)}<p>The agent recommends; an accountable human approves. Every decision and reason is retained in immutable version history.</p></aside>{decision && <div className="modal-backdrop"><form className="modal-card" onSubmit={(event) => { event.preventDefault(); applyDecision(); }}><header><div><span className="section-kicker">ACCOUNTABLE DECISION</span><h3>{title(decision.action)} review item</h3></div><button type="button" onClick={() => setDecision(null)}><Icons.close/></button></header><label><span>Reviewer name</span><input required value={actor} onChange={(event) => setActor(event.target.value)}/></label><label><span>Decision reason</span><textarea required value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reference the evidence and governance rationale."/></label>{decision.action === "merged" && <label><span>Approved merge target</span><select required value={mergeTarget} onChange={(event) => setMergeTarget(event.target.value)}><option value="">Select canonical skill</option>{workspace.skills.filter((skill) => skill.status === "approved").map((skill) => <option value={skill.id} key={skill.id}>{skill.name}</option>)}</select></label>}<footer><button type="button" className="button secondary" onClick={() => setDecision(null)}>Cancel</button><button className="button primary">Record decision</button></footer></form></div>}</div>;
 }
 
 function SkillEditor({ workspace, skill, onClose, onSave }: { workspace: SkillWorkspace; skill?: Skill; onClose: () => void; onSave: (values: SkillDraft, id?: string) => void }) {

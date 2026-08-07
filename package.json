@@ -8,6 +8,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "verify:public-bundle": "node scripts/verify-public-bundle.mjs",
+    "verify:governance-artifacts": "node scripts/verify-governance-artifacts.mjs",
+    "sync:n8n-v3": "node scripts/sync-n8n-v3.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

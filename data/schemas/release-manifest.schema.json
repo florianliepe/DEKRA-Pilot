@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://florianliepe.github.io/DEKRA-Pilot/schemas/release-manifest.schema.json",
+  "title": "DEKRA skill framework release manifest",
+  "type": "object",
+  "required": ["id", "revision", "schemaVersion", "frameworkVersion", "rulesVersion", "promptVersion", "mappingScoreVersion", "state", "approvedAt", "approvedBy", "expectedPreviousRevision", "githubPath", "idempotencyKey", "objectCounts", "validationSummary"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^REL-[0-9]{4}$" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "schemaVersion": { "const": 3 },
+    "frameworkVersion": { "type": "string" },
+    "rulesVersion": { "type": "string" },
+    "promptVersion": { "type": "string" },
+    "mappingScoreVersion": { "type": "string" },
+    "state": { "enum": ["prepared", "published", "failed", "rolled_back"] },
+    "approvedAt": { "type": "string", "format": "date-time" },
+    "approvedBy": { "type": "string", "minLength": 1 },
+    "expectedPreviousRevision": { "type": "integer", "minimum": 0 },
+    "expectedGitHubSha": { "type": "string" },
+    "githubCommitSha": { "type": "string" },
+    "githubPath": { "const": "data/skill-workspace.approved.json" },
+    "idempotencyKey": { "type": "string", "minLength": 12 },
+    "objectCounts": { "type": "object" },
+    "validationSummary": { "type": "object", "required": ["blocking", "warnings"] },
+    "rollbackOfRevision": { "type": "integer", "minimum": 1 }
+  },
+  "additionalProperties": false
+}

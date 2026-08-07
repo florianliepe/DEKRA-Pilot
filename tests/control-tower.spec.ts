@@ -330,6 +330,8 @@ test("creates, edits and removes a job-description record", async ({ page }) => 
   await page.getByRole("button", { name: "Save job description" }).click();
   await expect(page.getByText("Own governed safety data products and measurable adoption outcomes.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Delete Safety Data Product Owner" }).click();
+  await expect(page.getByRole("heading", { name: "Archive Safety Data Product Owner?" })).toBeVisible();
+  await page.getByRole("button", { name: "Archive job" }).click();
   await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toHaveCount(0);
 });
 

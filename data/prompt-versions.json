@@ -1,0 +1,13 @@
+{
+  "active": "skill-agent-2.0.0",
+  "versions": [
+    {
+      "id": "skill-agent-2.0.0",
+      "status": "approved",
+      "purpose": "Governed skill elicitation, evidence extraction and draft suggestion generation.",
+      "humanApprovalRequired": true,
+      "licensedContentGenerationAllowed": false,
+      "allowedToolRegistryVersion": "1.0.0"
+    }
+  ]
+}

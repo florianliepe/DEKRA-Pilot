@@ -1,5 +1,5 @@
 import { extractEvidence } from "./n8n-client";
-import type { SkillWorkspace } from "./skill-schema";
+import type { ReleaseManifest, SkillWorkspace } from "./skill-schema";
 
 const DEFAULT_SKILL_WEBHOOK_URL =
   "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-orchestrator";
@@ -46,7 +46,7 @@ async function call(secret: string, body: unknown, endpoint = url()) {
 
 export const loadSkillWorkspace = (secret: string) => call(secret, { mode: "skill.read" });
 export const saveSkillWorkspace = (secret: string, workspace: SkillWorkspace) => call(secret, { mode: "skill.save", workspace: { ...workspace, schemaVersion: 2 } });
-export const publishSkillWorkspace = (secret: string, workspace: SkillWorkspace, approvedBy: string) => call(secret, { mode: "skill.publish", workspace, approvedBy }, publishUrl());
+export const publishSkillWorkspace = (secret: string, workspace: SkillWorkspace, approvedBy: string, manifest?: ReleaseManifest) => call(secret, { mode: "skill.publish", workspace, approvedBy, manifest, expectedPreviousRevision: workspace.publication.revision, expectedGitHubSha: workspace.publication.githubCommitSha || workspace.publication.expectedGitHubSha }, publishUrl());
 
 export async function ingestSkillEvidence(secret: string, files: File[], brief: string, roleTitle: string) {
   const extracted = await extractEvidence(files);
@@ -60,3 +60,5 @@ export const runJobMapping = (secret: string, jobDescriptionId: string, workspac
   call(secret, { mode: "skill.map_job", jobDescriptionId, workspace });
 export const runTaxonomyRegression = (secret: string, workspace: SkillWorkspace) =>
   call(secret, { mode: "skill.regression", workspace });
+export const runSkillElicitation = (secret: string, sessionId: string, action: "rewrite" | "validate", workspace: SkillWorkspace) =>
+  call(secret, { mode: "skill.elicitation", sessionId, action, workspace });

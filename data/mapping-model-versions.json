@@ -1,0 +1,13 @@
+{
+  "active": "mapping-2.0.0",
+  "versions": [
+    {
+      "id": "mapping-2.0.0",
+      "status": "approved",
+      "dimensions": 13,
+      "weightsSource": "data/framework-config.json",
+      "reviewerOverrideReasonRequired": true,
+      "goldenDatasetStatus": "pilot_baseline_required"
+    }
+  ]
+}

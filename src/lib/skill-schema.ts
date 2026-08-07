@@ -6,22 +6,81 @@ export const proficiencyLevels = [
 ] as const;
 
 export type SkillDimension = "technical" | "competency" | "experience" | "trait" | "driver";
-export type Lifecycle = "draft" | "in_review" | "approved" | "retired";
+export type Lifecycle = "draft" | "in_review" | "approved" | "archived" | "deprecated" | "retired";
+export type ReviewStatus = "pending" | "accepted" | "rejected" | "deferred" | "merged";
+export type DataClassification = "public" | "internal" | "confidential" | "licensed";
+export type SourceClassification = "public" | "organization_authored" | "licensed";
 
-export type TaxonomyNode = { id: string; name: string; description: string; status: Lifecycle };
+export type GovernanceMeta = {
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+  replacedById?: string;
+};
+
+export type TaxonomyNode = { id: string; name: string; description: string; status: Lifecycle; governance?: GovernanceMeta };
+export type TaxonomyRelationship = {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  type: "broader" | "narrower" | "related" | "prerequisite" | "replacement" | "synonym";
+  rationale: string;
+  status: Lifecycle;
+  governance?: GovernanceMeta;
+};
+
+export type KflaFactor = {
+  id: "KFLA-FACTOR-THOUGHT" | "KFLA-FACTOR-RESULTS" | "KFLA-FACTOR-PEOPLE" | "KFLA-FACTOR-SELF";
+  name: "Thought" | "Results" | "People" | "Self";
+  description: string;
+  sourceClassification: SourceClassification;
+};
+
+export type KflaCluster = {
+  id: string;
+  factorId: KflaFactor["id"];
+  name: string;
+  description: string;
+  sourceClassification: SourceClassification;
+  assignmentBasis: "organization_authored_navigation" | "licensed_verified";
+  status: Lifecycle;
+};
+
 export type KflaCompetency = {
   id: string;
   number: number;
   name: string;
-  factor: "Thought" | "Results" | "People" | "Self";
+  factor: KflaFactor["name"];
+  factorId: KflaFactor["id"];
+  clusterId: string;
   enabled: boolean;
   definition: string;
   source: "public-name" | "licensed" | "custom";
+  sourceClassification: SourceClassification;
+  licenceStatus: "public_metadata" | "internal_explanation" | "licensed_available" | "licensed_restricted";
+  sourceVersion: string;
+  reviewDate: string;
+  contentOwner: string;
+  reviewStatus: "verified_public_metadata" | "internal_review" | "licensed_review_required";
   publicSummary: string;
+  internalInterpretation: string;
+  licensedDefinitionRef?: string;
   observableSignals: string[];
+  inclusionCriteria: string[];
+  exclusionCriteria: string[];
+  positiveExamples: string[];
+  counterExamples: string[];
+  typicalEvidence: string[];
+  relatedCompetencyIds: string[];
+  mappingMistakes: string[];
   boundaryNotes: string;
-  provenance: Array<{ label: string; url: string; access: "public" | "licensed" | "internal" }>;
+  localizedLabels?: Record<string, string>;
+  provenance: Array<{ label: string; url: string; access: "public" | "licensed" | "internal"; reviewedAt?: string }>;
+  governance?: GovernanceMeta;
 };
+
 export type ControlledTool = {
   id: string;
   name: string;
@@ -31,17 +90,77 @@ export type ControlledTool = {
   skillIds: string[];
   allowedAgentActions: Array<"read" | "suggest_mapping" | "validate">;
   status: Lifecycle;
+  governance?: GovernanceMeta;
 };
+
+export type JsonSchemaShape = { type: "object"; required?: string[]; properties: Record<string, { type: string; description?: string }> };
+export type AgentToolDefinition = {
+  id: string;
+  name: string;
+  purpose: string;
+  inputSchema: JsonSchemaShape;
+  outputSchema: JsonSchemaShape;
+  requiredPermission: string;
+  allowedDataClassifications: DataClassification[];
+  timeoutMs: number;
+  retryPolicy: { maxAttempts: number; backoffMs: number; retryableErrors: string[] };
+  rateLimit: { requests: number; windowSeconds: number };
+  errorContract: { codes: string[]; redactInputs: boolean };
+  auditRequirements: string[];
+  version: string;
+  lifecycleStatus: "draft" | "active" | "deprecated" | "disabled";
+  owner: string;
+  allowedAgentActions: string[];
+};
+
 export type AuditEvent = {
   id: string;
   at: string;
   actor: "human" | "agent" | "n8n";
+  actorId?: string;
   action: string;
   entityType: string;
   entityId: string;
   summary: string;
+  correlationId?: string;
+  frameworkVersion?: string;
+  beforeVersion?: number;
+  afterVersion?: number;
 };
-export type Publication = { revision: number; state: "working" | "approved_release"; approvedAt?: string; approvedBy?: string; githubPath: string };
+
+export type ReleaseManifest = {
+  id: string;
+  revision: number;
+  schemaVersion: 3;
+  frameworkVersion: string;
+  rulesVersion: string;
+  promptVersion: string;
+  mappingScoreVersion: string;
+  state: "prepared" | "published" | "failed" | "rolled_back";
+  approvedAt: string;
+  approvedBy: string;
+  expectedPreviousRevision: number;
+  expectedGitHubSha?: string;
+  githubCommitSha?: string;
+  githubPath: string;
+  idempotencyKey: string;
+  objectCounts: Record<string, number>;
+  validationSummary: { blocking: number; warnings: number };
+  rollbackOfRevision?: number;
+};
+
+export type Publication = {
+  revision: number;
+  state: "working" | "approved_release" | "publishing" | "conflict" | "failed";
+  approvedAt?: string;
+  approvedBy?: string;
+  githubPath: string;
+  githubCommitSha?: string;
+  expectedGitHubSha?: string;
+  idempotencyKey?: string;
+  lastError?: string;
+};
+
 export type Skill = {
   id: string;
   name: string;
@@ -57,9 +176,11 @@ export type Skill = {
   status: Lifecycle;
   syntax?: { action: string; object: string; outcome?: string; context?: string };
   externalRefs?: Array<{ framework: "ESCO" | "ONET" | "KornFerry" | "custom"; id: string; label: string }>;
+  governance?: GovernanceMeta;
 };
+
 export type ProfileSkill = { skillId: string; targetLevel: 1 | 2 | 3 | 4; weight: number; critical: boolean };
-export type RoleProfile = { id: string; title: string; jobFamily: string; purpose: string; status: Lifecycle; skills: ProfileSkill[]; jobDescriptionId?: string; strategicVectorIds?: string[] };
+export type RoleProfile = { id: string; title: string; jobFamily: string; purpose: string; status: Lifecycle; skills: ProfileSkill[]; jobDescriptionId?: string; strategicVectorIds?: string[]; governance?: GovernanceMeta };
 export type JobDescription = {
   id: string;
   title: string;
@@ -70,10 +191,27 @@ export type JobDescription = {
   sourceText: string;
   responsibilities: string[];
   outcomes: string[];
-  status: "draft" | "analysed" | "mapped" | "approved";
+  status: "draft" | "analysed" | "mapped" | "approved" | "archived";
   version: number;
   updatedAt: string;
 };
+
+export type MappingScoreBreakdown = {
+  semanticRelevance: number;
+  directEvidenceStrength: number;
+  responsibilityCoverage: number;
+  outcomeRelevance: number;
+  taxonomyCompatibility: number;
+  granularityCompatibility: number;
+  kflaCompatibility: number;
+  controlledToolRelevance: number;
+  proficiencyCompatibility: number;
+  approvedMappingSimilarity: number;
+  duplicatePenalty: number;
+  contradictionPenalty: number;
+  missingEvidencePenalty: number;
+};
+
 export type JobSkillMapping = {
   id: string;
   jobDescriptionId: string;
@@ -82,14 +220,20 @@ export type JobSkillMapping = {
   weight: number;
   critical: boolean;
   relevance: number;
+  confidence?: number;
   rationale: string;
   evidence: string[];
   strategicVectorIds: string[];
   source: "agent" | "manual";
-  status: "proposed" | "approved" | "rejected";
-  scoreBreakdown?: { evidence: number; taxonomy: number; proficiency: number; strategic: number };
+  status: "proposed" | "approved" | "rejected" | "deferred";
+  scoreBreakdown?: MappingScoreBreakdown;
+  scoreVersion?: string;
   toolIds?: string[];
+  overrideReason?: string;
+  reviewerFeedback?: string;
+  governance?: GovernanceMeta;
 };
+
 export type StrategicVector = {
   id: string;
   name: string;
@@ -99,9 +243,25 @@ export type StrategicVector = {
   skillIds: string[];
   status: Lifecycle;
 };
+
+export type AgentToolInvocation = {
+  toolId: string;
+  toolVersion: string;
+  inputRef: string;
+  outputRef?: string;
+  durationMs: number;
+  result: "success" | "error" | "denied";
+  errorCode?: string;
+  retryCount: number;
+  rulesVersion: string;
+  frameworkVersion: string;
+  actingUser: string;
+  correlationId: string;
+};
+
 export type AgentRun = {
   id: string;
-  mode: "ingest" | "interview" | "job_mapping" | "regression";
+  mode: "ingest" | "interview" | "job_mapping" | "regression" | "elicitation";
   status: "running" | "completed" | "needs_review" | "failed";
   jobDescriptionId?: string;
   startedAt: string;
@@ -109,8 +269,11 @@ export type AgentRun = {
   model: string;
   tools: string[];
   trace: Array<{ step: string; result: string }>;
+  invocations?: AgentToolInvocation[];
   policyVersion?: string;
+  promptVersion?: string;
 };
+
 export type Interview = {
   id: string;
   roleTitle: string;
@@ -120,36 +283,127 @@ export type Interview = {
   currentQuestion: number;
   responses: Array<{ question: string; answer: string }>;
 };
+
 export type ReviewItem = {
   id: string;
   title: string;
-  type: "new_skill" | "duplicate" | "mapping" | "profile";
+  type: "new_skill" | "duplicate" | "mapping" | "profile" | "taxonomy_change" | "tool_association";
   summary: string;
   confidence: number;
   evidence: string;
-  status: "pending" | "accepted" | "rejected";
+  explanation?: string;
+  rulesVersion?: string;
+  frameworkVersion?: string;
+  status: ReviewStatus;
   entityId?: string;
+  mergeTargetId?: string;
+  decisionBy?: string;
+  decisionAt?: string;
+  decisionReason?: string;
   payload?: Record<string, unknown>;
 };
+
+export type ValidationRule = {
+  id: string;
+  name: string;
+  description: string;
+  severity: "info" | "warning" | "error";
+  affectedField: string;
+  suggestedCorrection: string;
+  blocking: boolean;
+  frameworkVersion: string;
+  status: Lifecycle;
+};
+
+export type ValidationFinding = {
+  id: string;
+  ruleId: string;
+  severity: ValidationRule["severity"];
+  explanation: string;
+  entityType: string;
+  entityId: string;
+  affectedField: string;
+  suggestedCorrection: string;
+  blocking: boolean;
+  frameworkVersion: string;
+  evidenceReference?: string;
+};
+
+export type FrameworkConfig = {
+  version: string;
+  rulesVersion: string;
+  promptVersion: string;
+  canonicalLanguage: string;
+  supportedLanguages: string[];
+  mappingScoreVersion: string;
+  mappingWeights: Record<keyof MappingScoreBreakdown, number>;
+  approvalRoles: string[];
+};
+
+export type ElicitationSession = {
+  id: string;
+  title: string;
+  status: "draft" | "in_progress" | "submitted" | "completed";
+  currentStep: number;
+  updatedAt: string;
+  fields: {
+    capability: string;
+    activities: string;
+    outcomes: string;
+    knowledge: string;
+    tools: string;
+    context: string;
+    constraints: string;
+    granularity: "atomic" | "composite" | "umbrella";
+    synonyms: string;
+    kflaCompetencyIds: string[];
+    proficiencyIndicators: string;
+  };
+};
+
+export type ObjectVersion = {
+  id: string;
+  entityType: string;
+  entityId: string;
+  version: number;
+  recordedAt: string;
+  recordedBy: string;
+  action: string;
+  snapshot: Record<string, unknown>;
+};
+
 export type SkillWorkspace = {
   schemaVersion: 3;
   revision: number;
   updatedAt: string;
   domains: TaxonomyNode[];
   groups: Array<TaxonomyNode & { domainId: string }>;
+  relationships: TaxonomyRelationship[];
   skills: Skill[];
   profiles: RoleProfile[];
   interviews: Interview[];
+  elicitationSessions: ElicitationSession[];
   reviewQueue: ReviewItem[];
+  kflaFactors: KflaFactor[];
+  kflaClusters: KflaCluster[];
   kfla: KflaCompetency[];
   jobDescriptions: JobDescription[];
   mappings: JobSkillMapping[];
   strategicVectors: StrategicVector[];
   agentRuns: AgentRun[];
   tools: ControlledTool[];
+  agentTools: AgentToolDefinition[];
+  validationRules: ValidationRule[];
   auditLog: AuditEvent[];
+  objectVersions: ObjectVersion[];
+  releaseHistory: ReleaseManifest[];
+  framework: FrameworkConfig;
   publication: Publication;
 };
+
+function arrayOr<T>(value: T[] | undefined, fallback: T[]): T[] {
+  return Array.isArray(value) ? value : fallback;
+}
 
 export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace): SkillWorkspace {
   if (!value || typeof value !== "object") return fallback;
@@ -158,57 +412,114 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
     ...fallback,
     ...source,
     schemaVersion: 3,
-    domains: Array.isArray(source.domains) ? source.domains : fallback.domains,
-    groups: Array.isArray(source.groups) ? source.groups : fallback.groups,
-    skills: Array.isArray(source.skills) ? source.skills : fallback.skills,
-    profiles: Array.isArray(source.profiles) ? source.profiles : fallback.profiles,
-    interviews: Array.isArray(source.interviews) ? source.interviews : fallback.interviews,
-    reviewQueue: Array.isArray(source.reviewQueue) ? source.reviewQueue : fallback.reviewQueue,
-    jobDescriptions: Array.isArray(source.jobDescriptions) ? source.jobDescriptions : fallback.jobDescriptions,
-    mappings: Array.isArray(source.mappings) ? source.mappings : fallback.mappings,
-    strategicVectors: Array.isArray(source.strategicVectors) ? source.strategicVectors : fallback.strategicVectors,
-    agentRuns: Array.isArray(source.agentRuns) ? source.agentRuns : fallback.agentRuns,
-    tools: Array.isArray(source.tools) ? source.tools : fallback.tools,
-    auditLog: Array.isArray(source.auditLog) ? source.auditLog : fallback.auditLog,
+    domains: arrayOr(source.domains, fallback.domains),
+    groups: arrayOr(source.groups, fallback.groups),
+    relationships: arrayOr(source.relationships, fallback.relationships),
+    skills: arrayOr(source.skills, fallback.skills),
+    profiles: arrayOr(source.profiles, fallback.profiles),
+    interviews: arrayOr(source.interviews, fallback.interviews),
+    elicitationSessions: arrayOr(source.elicitationSessions, fallback.elicitationSessions),
+    reviewQueue: arrayOr(source.reviewQueue, fallback.reviewQueue),
+    kflaFactors: arrayOr(source.kflaFactors, fallback.kflaFactors),
+    kflaClusters: arrayOr(source.kflaClusters, fallback.kflaClusters),
+    jobDescriptions: arrayOr(source.jobDescriptions, fallback.jobDescriptions),
+    mappings: arrayOr(source.mappings, fallback.mappings).map((mapping) => ({
+      ...mapping,
+      scoreBreakdown: mapping.scoreBreakdown && "evidence" in mapping.scoreBreakdown
+        ? legacyScoreBreakdown(mapping.scoreBreakdown as unknown as Record<string, number>)
+        : mapping.scoreBreakdown,
+    })),
+    strategicVectors: arrayOr(source.strategicVectors, fallback.strategicVectors),
+    agentRuns: arrayOr(source.agentRuns, fallback.agentRuns),
+    tools: arrayOr(source.tools, fallback.tools),
+    agentTools: arrayOr(source.agentTools, fallback.agentTools),
+    validationRules: arrayOr(source.validationRules, fallback.validationRules),
+    auditLog: arrayOr(source.auditLog, fallback.auditLog),
+    objectVersions: arrayOr(source.objectVersions, fallback.objectVersions),
+    releaseHistory: arrayOr(source.releaseHistory, fallback.releaseHistory),
+    framework: source.framework || fallback.framework,
     publication: source.publication || fallback.publication,
-    kfla: (Array.isArray(source.kfla) ? source.kfla : fallback.kfla).map((item) => {
+    kfla: arrayOr(source.kfla, fallback.kfla).map((item) => {
       const baseline = fallback.kfla.find((candidate) => candidate.id === item.id);
       return { ...baseline, ...item } as KflaCompetency;
     }),
   };
 }
 
-export function workspaceFindings(workspace: SkillWorkspace) {
-  const findings: string[] = [];
-  const names = new Set<string>();
-  for (const skill of workspace.skills.filter((item) => item.status !== "retired")) {
-    const key = skill.name.trim().toLowerCase();
-    if (names.has(key)) findings.push(`${skill.name}: duplicate canonical name`);
-    names.add(key);
-    const quality = skillQuality(skill, workspace);
-    if (skill.status === "approved" && quality.score < 100) findings.push(`${skill.name}: approved with ${quality.score}% design quality`);
-  }
-  for (const group of workspace.groups.filter((item) => item.status !== "retired")) {
-    if (!workspace.domains.some((domain) => domain.id === group.domainId && domain.status !== "retired")) findings.push(`${group.name}: parent domain unavailable`);
-  }
-  for (const mapping of workspace.mappings.filter((item) => item.status !== "rejected")) {
-    if (!mapping.evidence.length || !mapping.rationale.trim()) findings.push(`${mapping.id}: evidence or rationale missing`);
-    if (!workspace.skills.some((skill) => skill.id === mapping.skillId && skill.status === "approved")) findings.push(`${mapping.id}: mapping is not grounded in an approved skill`);
-  }
-  return findings;
+function legacyScoreBreakdown(value: Record<string, number>): MappingScoreBreakdown {
+  return {
+    semanticRelevance: value.taxonomy || 0,
+    directEvidenceStrength: value.evidence || 0,
+    responsibilityCoverage: value.evidence || 0,
+    outcomeRelevance: value.strategic || 0,
+    taxonomyCompatibility: value.taxonomy || 0,
+    granularityCompatibility: value.taxonomy || 0,
+    kflaCompatibility: value.strategic || 0,
+    controlledToolRelevance: value.strategic || 0,
+    proficiencyCompatibility: value.proficiency || 0,
+    approvedMappingSimilarity: value.taxonomy || 0,
+    duplicatePenalty: 0,
+    contradictionPenalty: 0,
+    missingEvidencePenalty: value.evidence ? 0 : 100,
+  };
 }
 
 export function skillQuality(skill: Skill, workspace: SkillWorkspace) {
-  const duplicate = workspace.skills.some((item) => item.id !== skill.id && (item.name.toLowerCase() === skill.name.toLowerCase() || item.aliases.some((alias) => alias.toLowerCase() === skill.name.toLowerCase())));
+  const duplicate = workspace.skills.some((item) => item.id !== skill.id && item.status !== "retired" && item.status !== "archived" && (item.name.toLowerCase() === skill.name.toLowerCase() || item.aliases.some((alias) => alias.toLowerCase() === skill.name.toLowerCase())));
   const checks = {
     syntax: Boolean(skill.syntax?.action && skill.syntax.object),
     observable: skill.observability.trim().length >= 20,
     definition: skill.description.trim().length >= 25,
-    taxonomy: workspace.groups.some((group) => group.id === skill.groupId),
+    taxonomy: workspace.groups.some((group) => group.id === skill.groupId && group.status !== "retired" && group.status !== "archived"),
     unique: !duplicate,
     evidence: skill.evidence.length > 0,
   };
   return { checks, score: Math.round(Object.values(checks).filter(Boolean).length / Object.keys(checks).length * 100) };
+}
+
+export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[] {
+  const findings: ValidationFinding[] = [];
+  const add = (ruleId: string, entityType: string, entityId: string, explanation: string, affectedField: string, suggestedCorrection: string, blocking = true, evidenceReference?: string) => {
+    const rule = workspace.validationRules.find((candidate) => candidate.id === ruleId);
+    findings.push({
+      id: `FND-${ruleId}-${entityId}`,
+      ruleId,
+      severity: rule?.severity || (blocking ? "error" : "warning"),
+      explanation,
+      entityType,
+      entityId,
+      affectedField,
+      suggestedCorrection,
+      blocking: rule?.blocking ?? blocking,
+      frameworkVersion: rule?.frameworkVersion || workspace.framework.version,
+      evidenceReference,
+    });
+  };
+  const names = new Map<string, string>();
+  for (const skill of workspace.skills.filter((item) => !["retired", "archived"].includes(item.status))) {
+    const key = skill.name.trim().toLowerCase();
+    if (names.has(key)) add("SKILL-UNIQUE-001", "skill", skill.id, `Canonical name duplicates ${names.get(key)}.`, "name", "Merge the records or define one as an alias.");
+    names.set(key, skill.id);
+    if (!skill.syntax?.action || !skill.syntax.object) add("SKILL-SYNTAX-001", "skill", skill.id, "Action + object syntax is incomplete.", "syntax", "Add one observable action and one enduring object.");
+    if (skill.observability.trim().length < 20) add("SKILL-EVIDENCE-001", "skill", skill.id, "Observable outcome evidence is missing or too short.", "observability", "Describe evidence a reviewer can observe in real work.");
+    if (!skill.evidence.length) add("SKILL-EVIDENCE-002", "skill", skill.id, "No source evidence is linked.", "evidence", "Attach a source excerpt and location.");
+  }
+  for (const group of workspace.groups.filter((item) => !["retired", "archived"].includes(item.status))) {
+    if (!workspace.domains.some((domain) => domain.id === group.domainId && !["retired", "archived"].includes(domain.status))) add("TAXONOMY-PARENT-001", "group", group.id, "Parent domain is unavailable.", "domainId", "Move the group to an active domain.");
+  }
+  for (const mapping of workspace.mappings.filter((item) => item.status !== "rejected" && item.status !== "deferred")) {
+    if (!mapping.evidence.length || !mapping.rationale.trim()) add("MAPPING-EVIDENCE-001", "mapping", mapping.id, "Mapping evidence or rationale is missing.", "evidence", "Add a source excerpt and explain the relationship.");
+    if (!workspace.skills.some((skill) => skill.id === mapping.skillId && skill.status === "approved")) add("MAPPING-CATALOG-001", "mapping", mapping.id, "Mapping is not grounded in an approved skill.", "skillId", "Select an approved catalog skill or route the skill proposal for approval.");
+    if (mapping.overrideReason === "") add("MAPPING-OVERRIDE-001", "mapping", mapping.id, "A reviewer override requires a reason.", "overrideReason", "Record the evidence-based override rationale.");
+  }
+  if (workspace.kflaFactors.length !== 4) add("KFLA-HIERARCHY-001", "workspace", "KFLA", "KFLA must contain exactly four factors.", "kflaFactors", "Restore the canonical four-factor public metadata layer.");
+  if (workspace.kflaClusters.length !== 12) add("KFLA-HIERARCHY-002", "workspace", "KFLA", "KFLA must contain exactly twelve clusters.", "kflaClusters", "Provide twelve governed navigation clusters.");
+  if (workspace.kfla.length !== 38 || workspace.kfla.some((item) => !workspace.kflaClusters.some((cluster) => cluster.id === item.clusterId))) add("KFLA-HIERARCHY-003", "workspace", "KFLA", "All 38 competencies must resolve to a governed cluster.", "kfla", "Restore missing competencies or cluster relationships.");
+  return findings;
+}
+
+export function workspaceFindings(workspace: SkillWorkspace) {
+  return validateWorkspace(workspace).filter((finding) => finding.blocking).map((finding) => `${finding.entityId}: ${finding.explanation}`);
 }
 
 export function profileGuidance(profile: RoleProfile, skills: Skill[]) {
