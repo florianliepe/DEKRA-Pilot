@@ -2,7 +2,7 @@ import { extractEvidence } from "./n8n-client";
 import type { ReleaseManifest, SkillWorkspace } from "./skill-schema";
 
 const DEFAULT_SKILL_WEBHOOK_URL =
-  "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-orchestrator";
+  "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-orchestrator-v3";
 
 export type SkillWorkflowResponse = {
   ok?: boolean;
@@ -19,7 +19,7 @@ function url() {
 }
 function publishUrl() {
   return process.env.NEXT_PUBLIC_N8N_SKILL_PUBLISH_WEBHOOK_URL?.trim() ||
-    "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-publisher";
+    "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-publisher-v3";
 }
 
 function unwrap(raw: unknown): SkillWorkflowResponse {
@@ -45,7 +45,7 @@ async function call(secret: string, body: unknown, endpoint = url()) {
 }
 
 export const loadSkillWorkspace = (secret: string) => call(secret, { mode: "skill.read" });
-export const saveSkillWorkspace = (secret: string, workspace: SkillWorkspace) => call(secret, { mode: "skill.save", workspace: { ...workspace, schemaVersion: 2 } });
+export const saveSkillWorkspace = (secret: string, workspace: SkillWorkspace) => call(secret, { mode: "skill.save", workspace: { ...workspace, schemaVersion: 3 } });
 export const publishSkillWorkspace = (secret: string, workspace: SkillWorkspace, approvedBy: string, manifest?: ReleaseManifest) => call(secret, { mode: "skill.publish", workspace, approvedBy, manifest, expectedPreviousRevision: workspace.publication.revision, expectedGitHubSha: workspace.publication.githubCommitSha || workspace.publication.expectedGitHubSha }, publishUrl());
 
 export async function ingestSkillEvidence(secret: string, files: File[], brief: string, roleTitle: string) {

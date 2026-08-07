@@ -94,7 +94,12 @@ Workflow artifacts:
 - `docs/n8n-skill-designer-v3.workflow.json`
 - `docs/n8n-skill-publisher-v3.workflow.json`
 
-Import each into a new n8n workflow, verify credential bindings, save, publish, test the authenticated read/save contract, and only then change frontend endpoints to the `-v3` webhook paths.
+Active isolated production workflows:
+
+- Orchestrator v3: `1jgGJdy3wXW6kH87` → `/webhook/skill-designer-orchestrator-v3`
+- Atomic publisher v3: `d8RFwzlJJHxBv2HI` → `/webhook/skill-designer-publisher-v3`
+
+Both workflows were imported from commit `4de21ab`, retained the existing header-auth and GitHub credential bindings, and were published before the frontend defaults moved to the `-v3` paths. An unauthenticated or incorrect-secret request returns HTTP 403 by design; complete the authenticated read/save validation with the current shared pilot password.
 
 ## Workbench user validation
 
