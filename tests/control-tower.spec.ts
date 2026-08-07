@@ -507,6 +507,21 @@ test("submits KFLA structural lifecycle changes for human approval before mutati
   await expect(page.getByText("move KFLA competency KFLA-08", { exact: true })).toBeVisible();
 });
 
+test("submits KFLA metadata edits as accountable non-mutating candidates", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await page.getByRole("button", { name: "38 KFLA dimensions" }).click();
+  await page.getByRole("button", { name: "Edit competency" }).click();
+  const candidateSummary = "Reviewed public-safe interpretation for the accountable pilot evidence package.";
+  await page.getByLabel("Public-safe summary").fill(candidateSummary);
+  await page.getByLabel("Accountable proposer").fill("KFLA Steward");
+  await page.getByLabel("Evidence-based reason").fill("Refresh the internal interpretation after reviewed public research evidence.");
+  await page.getByRole("button", { name: "Submit metadata for review" }).click();
+  await expect(page.getByText(candidateSummary, { exact: true })).not.toBeVisible();
+  await page.getByRole("tab", { name: "Review" }).click();
+  await expect(page.getByText(/Update KFLA competency metadata:/)).toBeVisible();
+});
+
 test("submits taxonomy group moves with dependency impact and accountable review", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Taxonomy" }).click();

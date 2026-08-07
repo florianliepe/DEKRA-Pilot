@@ -95,6 +95,15 @@ reference migration and replacement lineage atomically; rejection or deferral
 leaves the structure unchanged. Release validation requires the complete,
 enabled and internally aligned 4/12/38 model.
 
+Public-safe factor, cluster and competency metadata follows the same gate. The
+complete candidate, accountable proposer, evidence reason and dependency counts
+are retained in a review payload. Rejection or deferral is non-mutating;
+approval applies the metadata atomically, synchronizes factor assignments for
+affected child competencies and creates an immutable object version. Canonical
+IDs, factor names, competency names and competency numbers cannot be changed
+through the metadata editor. Licensed definitions remain outside this public
+workflow and bundle.
+
 ## Callable agent-tool lifecycle
 
 The callable registry is governed separately from business tools. Contract

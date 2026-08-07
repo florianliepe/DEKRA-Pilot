@@ -36,6 +36,8 @@ The skill library exposes these lifecycle controls for individual and bulk selec
 
 KFLA structural lifecycle requests are also review-first. Factor, cluster and competency archive, restore, deprecate, replace and move requests preview affected clusters, competencies, skills, mappings and jobs, then enter the human review queue without mutating the hierarchy. An accepted decision applies the migration and records the proposer, reviewer, reasons, impact and replacement lineage. A rejected or deferred request leaves the canonical 4/12/38 structure unchanged. The release gate requires four approved factors, twelve approved and factor-aligned clusters, and 38 enabled competencies with matching cluster/factor assignments.
 
+Factor, cluster and competency metadata edits are review-first as well. The public-safe candidate, proposer, evidence reason and dependency impact are retained in the review payload; only an accepted decision replaces active metadata and synchronizes affected factor assignments. Canonical IDs, factor names, competency names and competency numbers remain protected, while licensed definitions stay outside the public workflow.
+
 Authoritative machine-readable contracts:
 
 - `data/schemas/skill-workspace.schema.json`
