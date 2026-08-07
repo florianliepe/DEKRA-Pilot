@@ -412,12 +412,19 @@ test("creates and archives a governed validation rule", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Governance" }).click();
   await page.getByRole("button", { name: "Configuration" }).click();
+  await page.getByRole("button", { name: "Save configuration" }).click();
+  await expect(page.getByRole("heading", { name: "Save framework configuration" })).toBeVisible();
+  await page.getByLabel("Accountable actor").fill("Framework Owner");
+  await page.getByLabel("Evidence-based reason").fill("Confirm the governed language and thirteen-weight configuration.");
+  await page.getByRole("button", { name: "Save governed configuration" }).click();
   await page.getByRole("button", { name: "Add rule" }).click();
   await page.getByLabel("Name").fill("Outcome traceability");
   await page.getByLabel("Affected field").fill("outcomes");
   await page.getByLabel("Description").fill("Every approved skill must retain an observable outcome.");
   await page.getByLabel("Suggested correction").fill("Add an outcome and supporting evidence reference.");
   await page.getByLabel("Blocks approved release").check();
+  await page.getByLabel("Accountable actor").fill("Framework Owner");
+  await page.getByLabel("Evidence-based reason").fill("Add a release-blocking traceability contract.");
   await page.getByRole("button", { name: "Save governed rule" }).click();
   await expect(page.getByText("Outcome traceability", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Archive Outcome traceability" }).click();
@@ -434,6 +441,8 @@ test("governs source, evidence and proficiency records", async ({ page }) => {
   await page.getByRole("button", { name: "Add source" }).click();
   await page.getByLabel("Source title").fill("Synthetic safety role workshop");
   await page.getByLabel("Source type").selectOption("workshop");
+  await page.getByLabel("Accountable actor").fill("Evidence Steward");
+  await page.getByLabel("Evidence-based reason").fill("Register the synthetic source for evidence lifecycle testing.");
   await page.getByRole("button", { name: "Save governed source" }).click();
   await expect(page.getByText("Synthetic safety role workshop", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Archive source Synthetic safety role workshop" }).click();
@@ -446,11 +455,15 @@ test("governs source, evidence and proficiency records", async ({ page }) => {
   await page.getByLabel("Evidence summary").fill("Explains a concrete safety decision and its measurable outcome.");
   await page.getByLabel("Source location").fill("workshop note 4");
   await page.getByLabel("Supported entity IDs").fill("SK-MC, JD-DATA");
+  await page.getByLabel("Accountable actor").fill("Evidence Steward");
+  await page.getByLabel("Evidence-based reason").fill("Trace the workshop evidence to governed entities.");
   await page.getByRole("button", { name: "Save governed evidence" }).click();
   await expect(page.getByText("Explains a concrete safety decision and its measurable outcome.", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Edit proficiency Application" }).click();
   await page.getByLabel("Behavioral indicators").fill("Applies the capability independently.\nExplains the resulting outcome.");
+  await page.getByLabel("Accountable actor").fill("Framework Owner");
+  await page.getByLabel("Evidence-based reason").fill("Make the application level observable and outcome based.");
   await page.getByRole("button", { name: "Save proficiency definition" }).click();
   await expect(page.getByText("Explains the resulting outcome.", { exact: false })).toBeVisible();
 });
