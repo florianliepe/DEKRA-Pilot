@@ -24,6 +24,12 @@ Blocked actions: approve, publish, hard-delete, retire an in-use record, change 
 
 The displayed relevance score is a versioned weighted calculation over thirteen reviewable dimensions: semantic relevance, direct evidence strength, responsibility coverage, outcome relevance, taxonomy compatibility, granularity compatibility, KFLA compatibility, controlled-tool relevance, proficiency compatibility, similarity to approved mappings, duplicate penalty, contradiction penalty and missing-evidence penalty. Weights live in `data/framework-config.json`. A reviewer can override the result only with an accountable reason; the original composition remains in history.
 
+Job-description create, edit and archive operations require a named job-architecture owner and governance reason. Governed mapping create/edit operations carry the same accountability data in their immutable version snapshots; mapping feedback remains a separate reviewer decision and never implies approval.
+
+Guided elicitation save/resume, AI rewrite and review submission share one accountable capability-owner context. The actor and rationale are persisted with each session version and copied into the review payload; AI assistance is unavailable until that context is supplied.
+
+Skill and role-profile editors require a named owner and reason for every create or material edit. Profile skill additions, removals and target-level changes use a separate impact-confirmation gate. Review-summary edits and controlled re-evaluation requests remain pending, require reviewer identity and rationale, and create immutable history. Strategic vectors use versioned create/edit/archive/restore rather than hard deletion; dependent mapping references are preserved and returned to proposed review state.
+
 ## Release transaction
 
 1. Save edits as n8n working state.

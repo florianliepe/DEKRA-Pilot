@@ -276,10 +276,14 @@ test("creates and edits a governed core skill", async ({ page }) => {
   await page.getByLabel("Object").fill("role capabilities");
   await page.getByLabel("Definition").fill("Derives durable capabilities from role evidence.");
   await page.getByLabel("Observable evidence").fill("Separates tasks from reusable capabilities and retains evidence.");
+  await page.getByLabel("Accountable actor").fill("Skill Taxonomy Owner");
+  await page.getByLabel("Governance reason").fill("Create an evidence-backed atomic capability for extraction work.");
   await page.getByRole("button", { name: "Create skill", exact: true }).last().click();
   await expect(page.getByText("Semantic Skill Extraction", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Edit Semantic Skill Extraction" }).click();
   await page.getByLabel("Lifecycle").selectOption("approved");
+  await page.getByLabel("Accountable actor").fill("Skill Taxonomy Owner");
+  await page.getByLabel("Governance reason").fill("Route the validated capability to accountable approval.");
   await page.getByRole("button", { name: "Apply changes" }).click();
   await expect(page.locator(".skill-table > div").filter({ hasText: "Semantic Skill Extraction" }).getByText("In Review", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: /Review queue/ }).click();
@@ -341,8 +345,15 @@ test("creates a strategic vector linked to an approved skill", async ({ page }) 
   await page.getByLabel("Name").fill("Safety Innovation");
   await page.getByLabel("Strategic intent").fill("Advance safety outcomes through governed digital capabilities.");
   await page.getByLabel("Data Visualization").check();
+  await page.getByLabel("Accountable actor").fill("Strategy Owner");
+  await page.getByLabel("Governance reason").fill("Create a time-bound strategic capability demand signal.");
   await page.getByRole("button", { name: "Save vector" }).click();
   await expect(page.getByRole("heading", { name: "Safety Innovation" })).toBeVisible();
+  await page.getByRole("button", { name: "Archive Safety Innovation" }).click();
+  await page.getByLabel("Accountable actor").fill("Strategy Owner");
+  await page.getByLabel("Governance reason").fill("Archive the synthetic vector while preserving mapping references.");
+  await page.getByRole("button", { name: "Apply vector lifecycle" }).click();
+  await expect(page.getByRole("button", { name: "Restore Safety Innovation" })).toBeVisible();
 });
 
 test("creates, edits and removes a job-description record", async ({ page }) => {
@@ -353,14 +364,20 @@ test("creates, edits and removes a job-description record", async ({ page }) => 
   await page.getByLabel("Job family").fill("Digital Safety");
   await page.getByLabel("Role purpose").fill("Own safety data products that improve operational decisions.");
   await page.getByLabel("Full job description").fill("Translates safety priorities into governed data products and measurable operational outcomes. Aligns stakeholders around product decisions and validates adoption evidence.");
+  await page.getByLabel("Accountable actor").fill("Job Architecture Owner");
+  await page.getByLabel("Governance reason").fill("Register a governed synthetic role for job-mapping verification.");
   await page.getByRole("button", { name: "Save job description" }).click();
   await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Edit Safety Data Product Owner" }).click();
   await page.getByLabel("Role purpose").fill("Own governed safety data products and measurable adoption outcomes.");
+  await page.getByLabel("Accountable actor").fill("Job Architecture Owner");
+  await page.getByLabel("Governance reason").fill("Clarify the role purpose and outcome accountability.");
   await page.getByRole("button", { name: "Save job description" }).click();
   await expect(page.getByText("Own governed safety data products and measurable adoption outcomes.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Delete Safety Data Product Owner" }).click();
   await expect(page.getByRole("heading", { name: "Archive Safety Data Product Owner?" })).toBeVisible();
+  await page.getByLabel("Accountable actor").fill("Job Architecture Owner");
+  await page.getByLabel("Governance reason").fill("Retire the synthetic role after lifecycle verification.");
   await page.getByRole("button", { name: "Archive job" }).click();
   await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toHaveCount(0);
 });
@@ -370,8 +387,15 @@ test("governs role-profile editing, duplication and archival with accountable im
   await page.getByRole("tab", { name: "Role profiles" }).click();
   await page.getByRole("button", { name: "Edit Global Reporting Analyst profile" }).click();
   await page.getByLabel("Profile purpose").fill("Turn governed operational data into trusted management insight.");
+  await page.getByLabel("Accountable actor").fill("Profile Owner");
+  await page.getByLabel("Governance reason").fill("Clarify the governed profile purpose and decision outcome.");
   await page.getByRole("button", { name: "Save governed profile" }).click();
   await expect(page.getByText("Turn governed operational data into trusted management insight.", { exact: true })).toBeVisible();
+
+  await page.locator(".profile-skill select").first().selectOption("4");
+  await page.getByLabel("Accountable actor").fill("Profile Owner");
+  await page.getByLabel("Governance reason").fill("Raise the governed target proficiency for the selected core skill.");
+  await page.getByRole("button", { name: "Apply profile skill change" }).click();
 
   await page.getByRole("button", { name: "Duplicate Global Reporting Analyst profile" }).click();
   await expect(page.getByRole("heading", { name: "Duplicate Global Reporting Analyst" })).toBeVisible();
@@ -478,10 +502,14 @@ test("creates, edits and archives a governed multilingual label", async ({ page 
   await page.getByLabel("Translation language").selectOption("de");
   await page.getByRole("textbox", { name: "Localized label", exact: true }).fill("Skill-Taxonomie gestalten");
   await page.getByLabel("Localized description").fill("Gestaltet eine konsistente und kontrollierte Skill-Taxonomie.");
+  await page.getByLabel("Accountable editor").fill("Terminology Owner");
   await page.getByLabel("Governance reason").fill("Add a reviewed German pilot label.");
   await page.getByRole("button", { name: "Save governed label" }).click();
   await expect(page.getByText("Skill-Taxonomie gestalten", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Archive localized label Skill-Taxonomie gestalten" }).click();
+  await page.getByLabel("Accountable actor").fill("Terminology Owner");
+  await page.getByLabel("Governance reason").fill("Retire the synthetic translation after lifecycle verification.");
+  await page.getByRole("button", { name: "Apply label lifecycle" }).click();
   await expect(page.getByRole("button", { name: "Restore localized label Skill-Taxonomie gestalten" })).toBeVisible();
 });
 
@@ -607,9 +635,45 @@ test("aligns mapping evidence and strategic vectors with the enriched job draft"
   await page.getByLabel("Job-description evidence").fill("Builds governed dashboards for executive and operational decision-making.");
   await page.getByLabel("AI & Data").check();
   await page.getByLabel("Critical skill for this role").check();
+  await page.getByLabel("Accountable actor").fill("Job Architecture Owner");
+  await page.getByLabel("Governance reason").fill("Align the mapping with direct evidence and strategic uplift.");
   await page.getByRole("button", { name: "Save mapping" }).click();
   const mappingRow = page.locator(".mapping-row").filter({ hasText: "Data Visualization" });
   await expect(mappingRow.getByText("AI & Data", { exact: true })).toBeVisible();
   await expect(mappingRow).toContainText("critical");
   await expect(page.locator(".enriched-preview pre")).toContainText("AI & Data:");
+  await page.getByLabel("Data Visualization mapped level").selectOption("4");
+  await page.getByLabel("Accountable actor").fill("Job Architecture Owner");
+  await page.getByLabel("Governance reason").fill("Raise the target level based on reviewed responsibility evidence.");
+  await page.getByRole("button", { name: "Apply mapping change" }).click();
+  await expect(page.getByLabel("Data Visualization mapped level")).toHaveValue("4");
+});
+
+test("requires accountable context before elicitation save or AI assistance", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Elicitation wizard" }).click();
+  await expect(page.getByRole("button", { name: "Save draft" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "AI-assisted rewrite" })).toBeDisabled();
+  await page.getByLabel("Accountable actor").fill("Capability Owner");
+  await page.getByLabel("Governance reason").fill("Retain an evidence-backed checkpoint for the elicitation package.");
+  await expect(page.getByRole("button", { name: "Save draft" })).toBeEnabled();
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page.getByText(/saved at \d+% completion/)).toBeVisible();
+});
+
+test("records accountable review edits and controlled re-evaluation requests", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: /Review queue/ }).click();
+  await page.getByRole("button", { name: "Edit" }).first().click();
+  await page.getByLabel("Review summary").fill("Refined evidence summary retained as a pending proposal.");
+  await page.getByLabel("Reviewer name").fill("Skill Governance Lead");
+  await page.getByLabel("Edit reason").fill("Clarify the evidence boundary without changing the decision state.");
+  await page.getByRole("button", { name: "Save review edit" }).click();
+  await expect(page.getByText("Refined evidence summary retained as a pending proposal.", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Re-evaluate" }).first().click();
+  await page.getByLabel("Reviewer name").fill("Skill Governance Lead");
+  await page.getByLabel("Re-evaluation reason").fill("Run the allowlisted validators against the clarified evidence.");
+  await page.getByRole("button", { name: "Request controlled re-evaluation" }).click();
+  await expect(page.getByRole("heading", { name: /decisions pending/ })).toBeVisible();
 });
