@@ -50,7 +50,9 @@ The agent has no unrestricted network, filesystem, credential, workflow-administ
 
 Deterministic release findings contain rule ID, severity, object, field, explanation, correction, blocking state, framework/rule version and evidence reference. The mapping score uses thirteen configurable dimensions. Positive dimensions are weighted; duplicate, contradiction and missing-evidence dimensions subtract from the result. Manual overrides require a reason and retain both the calculated and overridden values.
 
-Golden evaluation data should be expanded with real, licensed-to-use DEKRA examples before model-quality claims are made. The current automated suite verifies score composition and governance invariants, not external model accuracy.
+`data/evaluation/mapping-golden-baseline.json` and its JSON schema provide an executable, version-bound regression gate for direct matches, ambiguous evidence, missing evidence and contradictions. `npm run verify:mapping-evaluation` verifies score composition, expected ranking, thresholds and margins. The baseline is deliberately synthetic and public-safe; empirical mapping quality still requires a representative, accountable human-labelled dataset.
+
+Agent-tool execution is deny-by-default at runtime through `authorizeAgentToolCall`. A call is permitted only when the registry entry exists and is active, the acting identity holds the exact permission, the requested action is allowlisted, the data classification is allowed and non-licensed, and correlation/input references are present. Every decision produces an invocation-shaped audit record, including denied calls.
 
 ## Review and approved-release transaction
 
@@ -124,4 +126,4 @@ Known external gates:
 
 - An accountable human must decide every pending suggestion before revision 1.
 - Licensed KFLA material and authorization are not supplied; licensed administration therefore remains a protected-reference boundary rather than content ingestion.
-- Mapping-quality calibration requires a human-approved golden dataset with permitted source material.
+- Production mapping-quality calibration requires a representative human-labelled evaluation extension; the repository baseline proves deterministic regression behavior but does not establish empirical validity.

@@ -1,0 +1,77 @@
+{
+  "$schema": "../schemas/mapping-evaluation.schema.json",
+  "id": "DEKRA-MAPPING-GOLDEN-001",
+  "version": "1.0.0",
+  "mappingModelVersion": "mapping-2.0.0",
+  "sourceClassification": "organization_authored",
+  "licenceStatus": "internal_public_safe_synthetic",
+  "approvedForRegressionBy": "DEKRA Skill Governance",
+  "approvedAt": "2026-08-07",
+  "description": "Synthetic, public-safe regression cases for deterministic score composition and candidate ranking. This dataset does not claim empirical model validity.",
+  "cases": [
+    {
+      "id": "GOLDEN-DASHBOARD-01",
+      "title": "Direct dashboard evidence ranks data visualization first",
+      "evidence": "Build interactive dashboards and explain weekly revenue movements to senior decision makers.",
+      "expectedTopCandidateId": "SK-DV",
+      "minimumTopScore": 85,
+      "minimumMargin": 30,
+      "candidates": [
+        {
+          "skillId": "SK-DV",
+          "breakdown": { "semanticRelevance": 98, "directEvidenceStrength": 96, "responsibilityCoverage": 94, "outcomeRelevance": 92, "taxonomyCompatibility": 96, "granularityCompatibility": 94, "kflaCompatibility": 70, "controlledToolRelevance": 98, "proficiencyCompatibility": 88, "approvedMappingSimilarity": 92, "duplicatePenalty": 0, "contradictionPenalty": 0, "missingEvidencePenalty": 0 }
+        },
+        {
+          "skillId": "SK-MC",
+          "breakdown": { "semanticRelevance": 45, "directEvidenceStrength": 35, "responsibilityCoverage": 40, "outcomeRelevance": 55, "taxonomyCompatibility": 70, "granularityCompatibility": 68, "kflaCompatibility": 62, "controlledToolRelevance": 10, "proficiencyCompatibility": 60, "approvedMappingSimilarity": 35, "duplicatePenalty": 0, "contradictionPenalty": 5, "missingEvidencePenalty": 10 }
+        }
+      ]
+    },
+    {
+      "id": "GOLDEN-COMPLEXITY-01",
+      "title": "Ambiguous performance analysis ranks managing complexity first",
+      "evidence": "Integrate contradictory operational and financial evidence, frame trade-offs and recommend a viable course of action.",
+      "expectedTopCandidateId": "SK-MC",
+      "minimumTopScore": 80,
+      "minimumMargin": 25,
+      "candidates": [
+        {
+          "skillId": "SK-MC",
+          "breakdown": { "semanticRelevance": 95, "directEvidenceStrength": 92, "responsibilityCoverage": 90, "outcomeRelevance": 88, "taxonomyCompatibility": 94, "granularityCompatibility": 91, "kflaCompatibility": 98, "controlledToolRelevance": 30, "proficiencyCompatibility": 84, "approvedMappingSimilarity": 86, "duplicatePenalty": 0, "contradictionPenalty": 0, "missingEvidencePenalty": 0 }
+        },
+        {
+          "skillId": "SK-DV",
+          "breakdown": { "semanticRelevance": 32, "directEvidenceStrength": 20, "responsibilityCoverage": 25, "outcomeRelevance": 45, "taxonomyCompatibility": 65, "granularityCompatibility": 60, "kflaCompatibility": 35, "controlledToolRelevance": 5, "proficiencyCompatibility": 50, "approvedMappingSimilarity": 25, "duplicatePenalty": 0, "contradictionPenalty": 12, "missingEvidencePenalty": 20 }
+        }
+      ]
+    },
+    {
+      "id": "GOLDEN-MISSING-EVIDENCE-01",
+      "title": "Job-title-only inference remains below review threshold",
+      "evidence": "Reporting specialist.",
+      "expectedTopCandidateId": "SK-DV",
+      "maximumTopScore": 45,
+      "minimumMargin": 0,
+      "candidates": [
+        {
+          "skillId": "SK-DV",
+          "breakdown": { "semanticRelevance": 55, "directEvidenceStrength": 8, "responsibilityCoverage": 5, "outcomeRelevance": 5, "taxonomyCompatibility": 70, "granularityCompatibility": 50, "kflaCompatibility": 20, "controlledToolRelevance": 0, "proficiencyCompatibility": 10, "approvedMappingSimilarity": 40, "duplicatePenalty": 0, "contradictionPenalty": 0, "missingEvidencePenalty": 95 }
+        }
+      ]
+    },
+    {
+      "id": "GOLDEN-CONTRADICTION-01",
+      "title": "Explicit exclusion penalizes an otherwise plausible skill",
+      "evidence": "The role consumes approved dashboards but does not design, build or maintain visualizations.",
+      "expectedTopCandidateId": "SK-DV",
+      "maximumTopScore": 35,
+      "minimumMargin": 0,
+      "candidates": [
+        {
+          "skillId": "SK-DV",
+          "breakdown": { "semanticRelevance": 60, "directEvidenceStrength": 35, "responsibilityCoverage": 10, "outcomeRelevance": 15, "taxonomyCompatibility": 75, "granularityCompatibility": 60, "kflaCompatibility": 20, "controlledToolRelevance": 25, "proficiencyCompatibility": 10, "approvedMappingSimilarity": 55, "duplicatePenalty": 0, "contradictionPenalty": 100, "missingEvidencePenalty": 40 }
+        }
+      ]
+    }
+  ]
+}

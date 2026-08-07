@@ -1,6 +1,50 @@
-import { validateWorkspace, type AuditEvent, type JobSkillMapping, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type SkillWorkspace } from "./skill-schema";
+import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type DataClassification, type JobSkillMapping, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type SkillWorkspace } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
+
+export type AgentToolCallContext = {
+  permissions: string[];
+  dataClassification: DataClassification;
+  action: string;
+  actingUser: string;
+  correlationId: string;
+  inputRef: string;
+};
+
+export type AgentToolAuthorization = {
+  allowed: boolean;
+  code: "ALLOWED" | "TOOL_NOT_FOUND" | "TOOL_INACTIVE" | "PERMISSION_DENIED" | "DATA_CLASSIFICATION_DENIED" | "ACTION_DENIED" | "INVALID_CONTEXT";
+  reason: string;
+  invocation: AgentToolInvocation;
+};
+
+export function authorizeAgentToolCall(workspace: SkillWorkspace, toolId: string, context: AgentToolCallContext): AgentToolAuthorization {
+  const tool = workspace.agentTools.find((candidate) => candidate.id === toolId);
+  const base = {
+    toolId,
+    toolVersion: tool?.version || "unknown",
+    inputRef: context.inputRef,
+    durationMs: 0,
+    retryCount: 0,
+    rulesVersion: workspace.framework.rulesVersion,
+    frameworkVersion: workspace.framework.version,
+    actingUser: context.actingUser,
+    correlationId: context.correlationId,
+  };
+  const denied = (code: Exclude<AgentToolAuthorization["code"], "ALLOWED">, reason: string): AgentToolAuthorization => ({
+    allowed: false,
+    code,
+    reason,
+    invocation: { ...base, result: "denied", errorCode: code },
+  });
+  if (!context.actingUser.trim() || !context.correlationId.trim() || !context.inputRef.trim()) return denied("INVALID_CONTEXT", "Acting user, correlation ID and an opaque input reference are required.");
+  if (!tool) return denied("TOOL_NOT_FOUND", "The tool is not present in the allowlisted registry.");
+  if (tool.lifecycleStatus !== "active") return denied("TOOL_INACTIVE", `Tool lifecycle is ${tool.lifecycleStatus}.`);
+  if (!context.permissions.includes(tool.requiredPermission)) return denied("PERMISSION_DENIED", `Missing permission ${tool.requiredPermission}.`);
+  if (context.dataClassification === "licensed" || !tool.allowedDataClassifications.includes(context.dataClassification)) return denied("DATA_CLASSIFICATION_DENIED", `${context.dataClassification} data is outside the tool contract.`);
+  if (!tool.allowedAgentActions.includes(context.action)) return denied("ACTION_DENIED", `Action ${context.action} is not allowlisted.`);
+  return { allowed: true, code: "ALLOWED", reason: "Tool contract permits this invocation.", invocation: { ...base, result: "success" } };
+}
 
 export function calculateMappingScore(breakdown: MappingScoreBreakdown, weights: SkillWorkspace["framework"]["mappingWeights"]) {
   const weighted = (Object.keys(weights) as Array<keyof MappingScoreBreakdown>).reduce((sum, key) => {

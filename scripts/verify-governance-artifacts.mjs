@@ -16,6 +16,8 @@ const requiredJson = [
   "data/schemas/skill-workspace.schema.json",
   "data/schemas/release-manifest.schema.json",
   "data/schemas/agent-tool-registry.schema.json",
+  "data/schemas/mapping-evaluation.schema.json",
+  "data/evaluation/mapping-golden-baseline.json",
 ];
 for (const path of requiredJson) json(path);
 

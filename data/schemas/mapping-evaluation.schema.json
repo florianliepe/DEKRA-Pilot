@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://florianliepe.github.io/DEKRA-Pilot/schemas/mapping-evaluation.schema.json",
+  "title": "DEKRA mapping golden evaluation dataset",
+  "type": "object",
+  "required": ["id", "version", "mappingModelVersion", "sourceClassification", "licenceStatus", "description", "cases"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^DEKRA-MAPPING-GOLDEN-" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "mappingModelVersion": { "type": "string" },
+    "sourceClassification": { "const": "organization_authored" },
+    "licenceStatus": { "const": "internal_public_safe_synthetic" },
+    "approvedForRegressionBy": { "type": "string" },
+    "approvedAt": { "type": "string", "format": "date" },
+    "description": { "type": "string", "minLength": 20 },
+    "cases": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "evidence", "expectedTopCandidateId", "minimumMargin", "candidates"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "evidence": { "type": "string" },
+          "expectedTopCandidateId": { "type": "string" },
+          "minimumTopScore": { "type": "number", "minimum": 0, "maximum": 100 },
+          "maximumTopScore": { "type": "number", "minimum": 0, "maximum": 100 },
+          "minimumMargin": { "type": "number", "minimum": 0, "maximum": 100 },
+          "candidates": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["skillId", "breakdown"],
+              "properties": {
+                "skillId": { "type": "string" },
+                "breakdown": { "type": "object", "minProperties": 13, "maxProperties": 13, "additionalProperties": { "type": "number", "minimum": 0, "maximum": 100 } }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

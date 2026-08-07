@@ -10,6 +10,7 @@
 - Approved releases contain approved objects only. Draft skills, non-approved mappings, working elicitation sessions, agent traces and object-version snapshots remain in protected n8n working state.
 - `agent-tool-registry.json` is a deny-by-default, fully expanded contract for the eleven callable agent tools; it is separate from controlled business tools.
 - `framework-version.json`, `prompt-versions.json` and `mapping-model-versions.json` pin the exact governed framework, prompt and score contracts used by a release.
+- `evaluation/mapping-golden-baseline.json` is a versioned, organization-authored regression baseline for deterministic thirteen-dimensional scoring. It uses synthetic public-safe evidence and does not substitute for a representative human-labelled empirical dataset.
 - `releases/index.json` and revision manifests are append-only release receipts. Rollback publishes a new reviewed revision.
 
 The JSON contract is schema version 3. Consumers must reject newer major schema versions until their migration has been tested.

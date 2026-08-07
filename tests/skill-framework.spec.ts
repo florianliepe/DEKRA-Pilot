@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, sanitizeApprovedWorkspace } from "../src/lib/skill-governance";
+import { authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, sanitizeApprovedWorkspace } from "../src/lib/skill-governance";
 import { validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -49,6 +49,24 @@ test("publishes a fully expanded deny-by-default agent-tool registry", () => {
     expect(tool.auditRequirements).toContain("correlationId");
     expect(tool.version).toMatch(/^\d+\.\d+\.\d+$/);
   }
+});
+
+test("enforces agent-tool permissions, classifications, lifecycle and audit context", () => {
+  const base = { action: "execute", actingUser: "mapping-agent", correlationId: "CORR-001", inputRef: "working://inputs/1", dataClassification: "internal" as const };
+  const allowed = authorizeAgentToolCall(bootstrapSkillWorkspace, "mapping_scorer", { ...base, permissions: ["skill.mapping.score"] });
+  expect(allowed).toMatchObject({ allowed: true, code: "ALLOWED" });
+  expect(allowed.invocation).toMatchObject({ toolId: "mapping_scorer", actingUser: "mapping-agent", correlationId: "CORR-001", result: "success" });
+
+  const missingPermission = authorizeAgentToolCall(bootstrapSkillWorkspace, "mapping_scorer", { ...base, permissions: [] });
+  expect(missingPermission).toMatchObject({ allowed: false, code: "PERMISSION_DENIED" });
+  expect(missingPermission.invocation.result).toBe("denied");
+
+  const licensed = authorizeAgentToolCall(bootstrapSkillWorkspace, "kfla_lookup", { ...base, permissions: ["skill.kfla.read_public"], dataClassification: "licensed" });
+  expect(licensed).toMatchObject({ allowed: false, code: "DATA_CLASSIFICATION_DENIED" });
+
+  const inactiveWorkspace = structuredClone(bootstrapSkillWorkspace);
+  inactiveWorkspace.agentTools = inactiveWorkspace.agentTools.map((tool) => tool.id === "mapping_scorer" ? { ...tool, lifecycleStatus: "disabled" as const } : tool);
+  expect(authorizeAgentToolCall(inactiveWorkspace, "mapping_scorer", { ...base, permissions: ["skill.mapping.score"] })).toMatchObject({ allowed: false, code: "TOOL_INACTIVE" });
 });
 
 test("returns structured validation findings with release-gate metadata", () => {
