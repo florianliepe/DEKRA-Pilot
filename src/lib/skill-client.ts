@@ -17,6 +17,10 @@ export type SkillWorkflowResponse = {
 function url() {
   return process.env.NEXT_PUBLIC_N8N_SKILL_WEBHOOK_URL?.trim() || DEFAULT_SKILL_WEBHOOK_URL;
 }
+function publishUrl() {
+  return process.env.NEXT_PUBLIC_N8N_SKILL_PUBLISH_WEBHOOK_URL?.trim() ||
+    "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-publisher";
+}
 
 function unwrap(raw: unknown): SkillWorkflowResponse {
   if (Array.isArray(raw)) {
@@ -27,8 +31,8 @@ function unwrap(raw: unknown): SkillWorkflowResponse {
   return (raw || {}) as SkillWorkflowResponse;
 }
 
-async function call(secret: string, body: unknown) {
-  const response = await fetch(url(), {
+async function call(secret: string, body: unknown, endpoint = url()) {
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-n8n-webhook-secret": secret.trim() },
     body: JSON.stringify(body),
@@ -41,7 +45,8 @@ async function call(secret: string, body: unknown) {
 }
 
 export const loadSkillWorkspace = (secret: string) => call(secret, { mode: "skill.read" });
-export const saveSkillWorkspace = (secret: string, workspace: SkillWorkspace) => call(secret, { mode: "skill.save", workspace });
+export const saveSkillWorkspace = (secret: string, workspace: SkillWorkspace) => call(secret, { mode: "skill.save", workspace: { ...workspace, schemaVersion: 2 } });
+export const publishSkillWorkspace = (secret: string, workspace: SkillWorkspace, approvedBy: string) => call(secret, { mode: "skill.publish", workspace, approvedBy }, publishUrl());
 
 export async function ingestSkillEvidence(secret: string, files: File[], brief: string, roleTitle: string) {
   const extracted = await extractEvidence(files);

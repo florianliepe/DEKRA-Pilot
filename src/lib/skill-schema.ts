@@ -17,7 +17,31 @@ export type KflaCompetency = {
   enabled: boolean;
   definition: string;
   source: "public-name" | "licensed" | "custom";
+  publicSummary: string;
+  observableSignals: string[];
+  boundaryNotes: string;
+  provenance: Array<{ label: string; url: string; access: "public" | "licensed" | "internal" }>;
 };
+export type ControlledTool = {
+  id: string;
+  name: string;
+  category: "method" | "technology" | "regulation" | "data" | "workflow";
+  description: string;
+  aliases: string[];
+  skillIds: string[];
+  allowedAgentActions: Array<"read" | "suggest_mapping" | "validate">;
+  status: Lifecycle;
+};
+export type AuditEvent = {
+  id: string;
+  at: string;
+  actor: "human" | "agent" | "n8n";
+  action: string;
+  entityType: string;
+  entityId: string;
+  summary: string;
+};
+export type Publication = { revision: number; state: "working" | "approved_release"; approvedAt?: string; approvedBy?: string; githubPath: string };
 export type Skill = {
   id: string;
   name: string;
@@ -63,6 +87,8 @@ export type JobSkillMapping = {
   strategicVectorIds: string[];
   source: "agent" | "manual";
   status: "proposed" | "approved" | "rejected";
+  scoreBreakdown?: { evidence: number; taxonomy: number; proficiency: number; strategic: number };
+  toolIds?: string[];
 };
 export type StrategicVector = {
   id: string;
@@ -83,6 +109,7 @@ export type AgentRun = {
   model: string;
   tools: string[];
   trace: Array<{ step: string; result: string }>;
+  policyVersion?: string;
 };
 export type Interview = {
   id: string;
@@ -105,7 +132,7 @@ export type ReviewItem = {
   payload?: Record<string, unknown>;
 };
 export type SkillWorkspace = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   revision: number;
   updatedAt: string;
   domains: TaxonomyNode[];
@@ -119,6 +146,9 @@ export type SkillWorkspace = {
   mappings: JobSkillMapping[];
   strategicVectors: StrategicVector[];
   agentRuns: AgentRun[];
+  tools: ControlledTool[];
+  auditLog: AuditEvent[];
+  publication: Publication;
 };
 
 export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace): SkillWorkspace {
@@ -127,19 +157,45 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
   return {
     ...fallback,
     ...source,
-    schemaVersion: 2,
+    schemaVersion: 3,
     domains: Array.isArray(source.domains) ? source.domains : fallback.domains,
     groups: Array.isArray(source.groups) ? source.groups : fallback.groups,
     skills: Array.isArray(source.skills) ? source.skills : fallback.skills,
     profiles: Array.isArray(source.profiles) ? source.profiles : fallback.profiles,
     interviews: Array.isArray(source.interviews) ? source.interviews : fallback.interviews,
     reviewQueue: Array.isArray(source.reviewQueue) ? source.reviewQueue : fallback.reviewQueue,
-    kfla: Array.isArray(source.kfla) ? source.kfla : fallback.kfla,
     jobDescriptions: Array.isArray(source.jobDescriptions) ? source.jobDescriptions : fallback.jobDescriptions,
     mappings: Array.isArray(source.mappings) ? source.mappings : fallback.mappings,
     strategicVectors: Array.isArray(source.strategicVectors) ? source.strategicVectors : fallback.strategicVectors,
     agentRuns: Array.isArray(source.agentRuns) ? source.agentRuns : fallback.agentRuns,
+    tools: Array.isArray(source.tools) ? source.tools : fallback.tools,
+    auditLog: Array.isArray(source.auditLog) ? source.auditLog : fallback.auditLog,
+    publication: source.publication || fallback.publication,
+    kfla: (Array.isArray(source.kfla) ? source.kfla : fallback.kfla).map((item) => {
+      const baseline = fallback.kfla.find((candidate) => candidate.id === item.id);
+      return { ...baseline, ...item } as KflaCompetency;
+    }),
   };
+}
+
+export function workspaceFindings(workspace: SkillWorkspace) {
+  const findings: string[] = [];
+  const names = new Set<string>();
+  for (const skill of workspace.skills.filter((item) => item.status !== "retired")) {
+    const key = skill.name.trim().toLowerCase();
+    if (names.has(key)) findings.push(`${skill.name}: duplicate canonical name`);
+    names.add(key);
+    const quality = skillQuality(skill, workspace);
+    if (skill.status === "approved" && quality.score < 100) findings.push(`${skill.name}: approved with ${quality.score}% design quality`);
+  }
+  for (const group of workspace.groups.filter((item) => item.status !== "retired")) {
+    if (!workspace.domains.some((domain) => domain.id === group.domainId && domain.status !== "retired")) findings.push(`${group.name}: parent domain unavailable`);
+  }
+  for (const mapping of workspace.mappings.filter((item) => item.status !== "rejected")) {
+    if (!mapping.evidence.length || !mapping.rationale.trim()) findings.push(`${mapping.id}: evidence or rationale missing`);
+    if (!workspace.skills.some((skill) => skill.id === mapping.skillId && skill.status === "approved")) findings.push(`${mapping.id}: mapping is not grounded in an approved skill`);
+  }
+  return findings;
 }
 
 export function skillQuality(skill: Skill, workspace: SkillWorkspace) {

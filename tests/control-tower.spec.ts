@@ -260,7 +260,7 @@ test("opens the governed Skill Designer with all nine workspaces", async ({ page
   }
   await page.getByRole("tab", { name: "Taxonomy" }).click();
   await expect(page.getByRole("heading", { name: "38 KFLA competency names" })).toBeVisible();
-  await expect(page.locator(".kfla-grid label")).toHaveCount(38);
+  await expect(page.locator(".kfla-grid .kfla-card")).toHaveCount(38);
 });
 
 test("creates and edits a governed core skill", async ({ page }) => {
@@ -297,7 +297,7 @@ test("runs a governed AI mapping and records the agent trace", async ({ page }) 
   await page.getByRole("button", { name: "Run governed mapping" }).click();
   const body = (await requestPromise).postDataJSON() as { jobDescriptionId: string; workspace: SkillWorkspace };
   expect(body.jobDescriptionId).toBe("JD-DATA");
-  expect(body.workspace.schemaVersion).toBe(2);
+  expect(body.workspace.schemaVersion).toBe(3);
   await expect(page.getByText("AI mapping draft added to human review.")).toBeVisible();
   await page.getByRole("tab", { name: "Agent runs" }).click();
   await expect(page.getByText("Catalog grounding")).toBeVisible();

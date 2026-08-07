@@ -1,0 +1,93 @@
+{
+  "name": "DEKRA Skill Taxonomy Publisher",
+  "active": false,
+  "settings": { "executionOrder": "v1", "availableInMCP": false },
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "skill-designer-publisher",
+        "responseMode": "responseNode",
+        "options": { "allowedOrigins": "https://florianliepe.github.io" }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-560, 0],
+      "id": "48fa8f2b-3612-491d-b3b9-a699f7b18a22",
+      "name": "Approved Release API",
+      "webhookId": "skill-designer-publisher",
+      "credentials": { "httpHeaderAuth": { "id": "XeRspTWURk5bdcPi", "name": "DEKRA PMO Webhook Auth" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body=$json.body||{};\nconst workspace=body.workspace;\nconst approvedBy=String(body.approvedBy||'').trim();\nif(body.mode!=='skill.publish'||!workspace||workspace.schemaVersion!==3||!approvedBy)return[{json:{ok:false,statusCode:400,error:'Schema v3 workspace and accountable approver are required.'}}];\nconst findings=[];\nconst pending=(workspace.reviewQueue||[]).filter(item=>item.status==='pending');\nif(pending.length)findings.push(`${pending.length} human review decision(s) remain pending.`);\nconst names=new Set();\nfor(const skill of (workspace.skills||[]).filter(item=>item.status!=='retired')){const key=String(skill.name||'').trim().toLowerCase();if(names.has(key))findings.push(`${skill.name}: duplicate canonical name`);names.add(key);if(skill.status==='approved'){if(!String(skill.syntax?.action||'').trim()||!String(skill.syntax?.object||'').trim())findings.push(`${skill.name}: Action + Object syntax incomplete`);if(String(skill.description||'').trim().length<25)findings.push(`${skill.name}: definition too short`);if(String(skill.observability||'').trim().length<20)findings.push(`${skill.name}: observable evidence missing`);if(!Array.isArray(skill.evidence)||!skill.evidence.length)findings.push(`${skill.name}: source evidence missing`);}}\nconst approvedSkills=new Set((workspace.skills||[]).filter(item=>item.status==='approved').map(item=>item.id));\nfor(const mapping of (workspace.mappings||[]).filter(item=>item.status!=='rejected')){if(!approvedSkills.has(mapping.skillId))findings.push(`${mapping.id}: not grounded in an approved skill`);if(!String(mapping.rationale||'').trim()||!Array.isArray(mapping.evidence)||!mapping.evidence.length)findings.push(`${mapping.id}: evidence or rationale missing`);}\nif(findings.length)return[{json:{ok:false,statusCode:409,error:'Release validation failed.',findings}}];\nconst now=new Date().toISOString();\nconst revision=Math.max(Number(workspace.revision||0),Number(workspace.publication?.revision||0))+1;\nconst released={...workspace,schemaVersion:3,revision,updatedAt:now,publication:{revision,state:'approved_release',approvedAt:now,approvedBy,githubPath:'data/skill-workspace.approved.json'},auditLog:[{id:`AUD-REL-${Date.now()}`,at:now,actor:'human',action:'workspace.released',entityType:'skill_workspace',entityId:`revision-${revision}`,summary:`Approved by ${approvedBy} and released to GitHub main.`},...(workspace.auditLog||[])].slice(0,250)};\nreturn[{json:{ok:true,workspace:released,fileContent:JSON.stringify(released,null,2),commitMessage:`skill-taxonomy: release approved revision ${revision} [skip ci]`}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-320, 0],
+      "id": "ea08cdcb-9ed6-45fa-ae07-bf7856dd2db9",
+      "name": "Validate Approved Release"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [{ "id": "d0bc68a7-daba-43af-988d-5a0ec2354b08", "leftValue": "={{ $json.ok ? 'yes' : 'no' }}", "rightValue": "yes", "operator": { "type": "string", "operation": "equals" } }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-80, 0],
+      "id": "d1fdc227-d2c9-4a39-8c04-703578c202ca",
+      "name": "Release Valid"
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "resource": "file",
+        "operation": "edit",
+        "owner": { "__rl": true, "value": "florianliepe", "mode": "name" },
+        "repository": { "__rl": true, "value": "DEKRA-Pilot", "mode": "name" },
+        "filePath": "data/skill-workspace.approved.json",
+        "binaryData": false,
+        "fileContent": "={{ $json.fileContent }}",
+        "commitMessage": "={{ $json.commitMessage }}",
+        "additionalParameters": { "branch": { "branch": "main" } }
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [160, -96],
+      "id": "8522908a-3633-4e9f-b43a-21c61b990070",
+      "name": "Commit Approved JSON",
+      "credentials": { "githubApi": { "id": "3V46mglu7fpoPISX", "name": "GitHub account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const release=$node['Validate Approved Release'].json;\nreturn[{json:{ok:true,workspace:release.workspace,message:`Approved skill-taxonomy revision ${release.workspace.revision} committed to GitHub main.`,commit:$json.commit?.sha||$json.sha||null}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, -96],
+      "id": "2c78bb0c-e8cc-4d80-9b49-baa3353e5cc2",
+      "name": "Release Receipt"
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ $json }}", "options": { "responseCode": "={{ $json.statusCode || 200 }}" } },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [640, 0],
+      "id": "f36813d0-f4f1-4a48-9612-ea37974563e1",
+      "name": "Respond to Publisher"
+    }
+  ],
+  "connections": {
+    "Approved Release API": { "main": [[{ "node": "Validate Approved Release", "type": "main", "index": 0 }]] },
+    "Validate Approved Release": { "main": [[{ "node": "Release Valid", "type": "main", "index": 0 }]] },
+    "Release Valid": { "main": [[{ "node": "Commit Approved JSON", "type": "main", "index": 0 }], [{ "node": "Respond to Publisher", "type": "main", "index": 0 }]] },
+    "Commit Approved JSON": { "main": [[{ "node": "Release Receipt", "type": "main", "index": 0 }]] },
+    "Release Receipt": { "main": [[{ "node": "Respond to Publisher", "type": "main", "index": 0 }]] }
+  }
+}

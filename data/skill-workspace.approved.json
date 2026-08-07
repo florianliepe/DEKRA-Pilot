@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 3,
+  "revision": 0,
+  "updatedAt": "2026-08-07T00:00:00.000Z",
+  "publication": {
+    "revision": 0,
+    "state": "approved_release",
+    "approvedAt": "2026-08-07T00:00:00.000Z",
+    "approvedBy": "bootstrap",
+    "githubPath": "data/skill-workspace.approved.json"
+  },
+  "domains": [],
+  "groups": [],
+  "skills": [],
+  "profiles": [],
+  "interviews": [],
+  "reviewQueue": [],
+  "kfla": [],
+  "jobDescriptions": [],
+  "mappings": [],
+  "strategicVectors": [],
+  "agentRuns": [],
+  "tools": [],
+  "auditLog": []
+}

@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { Icons } from "./icons";
 import { bootstrapSkillWorkspace } from "@/lib/skill-fixtures";
-import { ingestSkillEvidence, loadSkillWorkspace, runSkillInterview, saveSkillWorkspace } from "@/lib/skill-client";
-import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, skillQuality, type Lifecycle, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
+import { ingestSkillEvidence, loadSkillWorkspace, publishSkillWorkspace, runSkillInterview, saveSkillWorkspace } from "@/lib/skill-client";
+import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, skillQuality, workspaceFindings, type Lifecycle, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
 import { JobMappingWorkbench } from "./job-mapping-workbench";
 import { StrategicVectors } from "./strategic-vectors";
 import { AgentRunLog } from "./agent-run-log";
+import { TaxonomyStandardWorkbench } from "./taxonomy-standard-workbench";
 
 type Tab = "overview" | "intake" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs";
 type SkillDraft = Pick<Skill, "name" | "description" | "groupId" | "dimension" | "kflaCompetencyId" | "observability" | "futureRelevance" | "status"> & { aliases: string; action: string; object: string; outcome: string };
@@ -49,13 +50,26 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     setSync("blueprint");
   }
 
-  async function publish() {
+  async function saveWorkingState() {
     setSync("saving"); setError("");
     try {
-      const candidate = { ...workspace, revision: workspace.revision + 1, updatedAt: new Date().toISOString() };
+      const candidate = { ...workspace, updatedAt: new Date().toISOString(), publication: { ...workspace.publication, state: "working" as const } };
       const payload = await saveSkillWorkspace(workspaceSecret, candidate);
-      setWorkspace(payload.workspace || candidate); setSync("live"); setMessage(`Skill workspace revision ${candidate.revision} published.`);
-    } catch (reason) { setSync("blueprint"); setError(reason instanceof Error ? reason.message : "Unable to publish skill workspace."); }
+      setWorkspace(payload.workspace || candidate); setSync("live"); setMessage("Working state saved to n8n.");
+    } catch (reason) { setSync("blueprint"); setError(reason instanceof Error ? reason.message : "Unable to save the n8n working state."); }
+  }
+
+  async function publish() {
+    const findings = workspaceFindings(workspace);
+    const pendingReviews = workspace.reviewQueue.filter((item) => item.status === "pending");
+    if (findings.length || pendingReviews.length) { setError(`Release blocked: resolve ${findings.length} validation finding(s) and ${pendingReviews.length} pending review(s).`); return; }
+    const approvedBy = window.prompt("Accountable approver name");
+    if (!approvedBy?.trim()) return;
+    setSync("saving"); setError("");
+    try {
+      const payload = await publishSkillWorkspace(workspaceSecret, workspace, approvedBy.trim());
+      setWorkspace(payload.workspace || workspace); setSync("live"); setMessage(payload.message || "Approved JSON release committed to GitHub main.");
+    } catch (reason) { setSync("blueprint"); setError(reason instanceof Error ? reason.message : "Unable to publish the approved release."); }
   }
 
   function saveSkill(values: SkillDraft, id?: string) {
@@ -80,14 +94,14 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
   return <div className="skill-designer">
     <section className="skill-command-bar">
       <div className="skill-tabs" role="tablist" aria-label="Skill Designer sections">{tabs.map((item) => <button key={item.id} role="tab" aria-selected={tab === item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}>{item.label}{item.id === "review" && pending > 0 && <em>{pending}</em>}</button>)}</div>
-      <div className="skill-actions"><span className={`skill-sync ${sync}`}>{sync === "live" ? "n8n live" : sync === "saving" ? "Publishing…" : sync === "connecting" ? "Connecting…" : "Unpublished changes"}</span><button className="button primary" disabled={sync === "saving"} onClick={() => void publish()}><Icons.github/>Publish taxonomy</button></div>
+      <div className="skill-actions"><span className={`skill-sync ${sync}`}>{sync === "live" ? "n8n working state" : sync === "saving" ? "Saving..." : sync === "connecting" ? "Connecting..." : "Unsaved changes"}</span><button className="button secondary" disabled={sync === "saving"} onClick={() => void saveWorkingState()}>Save working state</button><button className="button primary" disabled={sync === "saving"} onClick={() => void publish()}><Icons.github/>Release approved JSON</button></div>
     </section>
     {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError("")}><Icons.close/></button></div>}
     {message && <div className="success-banner"><span>{message}</span><button onClick={() => setMessage("")}><Icons.close/></button></div>}
     {tab === "overview" && <Overview workspace={workspace} approved={approved} pending={pending} evidence={evidence} onNavigate={setTab}/>}
     {tab === "intake" && <Intake workspace={workspace} secret={workspaceSecret} onWorkspace={setWorkspace} onMessage={setMessage} onError={setError}/>}
     {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} onDelete={deleteSkill}/>}
-    {tab === "taxonomy" && <Taxonomy workspace={workspace} mutate={mutate}/>}
+    {tab === "taxonomy" && <TaxonomyStandardWorkbench workspace={workspace} mutate={mutate}/>}
     {tab === "jobs" && <JobMappingWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "profiles" && <Profiles workspace={workspace} mutate={mutate}/>}
     {tab === "vectors" && <StrategicVectors workspace={workspace} mutate={mutate}/>}
@@ -125,13 +139,6 @@ function AgentRail() { return <aside className="panel agent-rail"><span classNam
 function Library({ workspace, query, onQuery, onEdit, onDelete }: { workspace: SkillWorkspace; query: string; onQuery: (value: string) => void; onEdit: (skill: Skill | "new") => void; onDelete: (skill: Skill) => void }) {
   const filtered = workspace.skills.filter((skill) => `${skill.name} ${skill.description} ${skill.aliases.join(" ")}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="skill-stack"><section className="library-toolbar"><div className="search-box"><Icons.search/><input aria-label="Search skill library" value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search skills, aliases or descriptions…"/></div><span>{filtered.length} skills</span><button className="button primary" onClick={() => onEdit("new")}><Icons.plus/>Create skill</button></section><section className="skill-table panel"><header><span>Skill</span><span>Taxonomy</span><span>Dimension</span><span>Confidence</span><span>Quality</span><span>Status</span><span/></header>{filtered.map((skill) => { const group = workspace.groups.find((item) => item.id === skill.groupId); const domain = workspace.domains.find((item) => item.id === group?.domainId); const kfla = workspace.kfla.find((item) => item.id === skill.kflaCompetencyId); const quality = skillQuality(skill, workspace); return <div key={skill.id}><span><b>{skill.name}</b><small>{skill.description}</small>{skill.aliases.length > 0 && <em>Aliases: {skill.aliases.join(", ")}</em>}</span><span><b>{domain?.name}</b><small>{group?.name}</small></span><span><i className={`dimension-dot ${skill.dimension}`}/>{title(skill.dimension)}{kfla && <small>{kfla.number}. {kfla.name}</small>}</span><span><b>{skill.confidence}%</b><small>{skill.evidence.length} evidence links</small></span><span><b>{quality.score}%</b><small>{Object.values(quality.checks).filter(Boolean).length}/6 standards</small></span><span><em className={`lifecycle ${skill.status}`}>{title(skill.status)}</em></span><span className="record-actions"><button aria-label={`Edit ${skill.name}`} onClick={() => onEdit(skill)}><Icons.edit/></button><button aria-label={`Delete ${skill.name}`} onClick={() => onDelete(skill)}><Icons.trash/></button></span></div>; })}</section></div>;
-}
-
-function Taxonomy({ workspace, mutate }: { workspace: SkillWorkspace; mutate: (update: (current: SkillWorkspace) => SkillWorkspace) => void }) {
-  const [factor, setFactor] = useState("All");
-  const filtered = workspace.kfla.filter((item) => factor === "All" || item.factor === factor);
-  function addNode(kind: "domain" | "group") { const name = window.prompt(`New ${kind} name`); if (!name?.trim()) return; mutate((current) => kind === "domain" ? { ...current, domains: [...current.domains, { id: `DOM-${Date.now()}`, name: name.trim(), description: "", status: "draft" }] } : { ...current, groups: [...current.groups, { id: `GRP-${Date.now()}`, domainId: current.domains[0]?.id || "", name: name.trim(), description: "", status: "draft" }] }); }
-  return <div className="skill-stack"><section className="taxonomy-tree panel"><header><div><span className="section-kicker">L1–L3 TAXONOMY</span><h3>Capability hierarchy</h3></div><div><button className="button secondary" onClick={() => addNode("domain")}><Icons.plus/>Domain</button><button className="button secondary" onClick={() => addNode("group")}><Icons.plus/>Skill group</button></div></header>{workspace.domains.map((domain) => <div className="domain-row" key={domain.id}><div><b>L1</b><span><strong>{domain.name}</strong><small>{domain.description || "Description required"}</small></span></div>{workspace.groups.filter((group) => group.domainId === domain.id).map((group) => <div className="group-row" key={group.id}><b>L2</b><span><strong>{group.name}</strong><small>{workspace.skills.filter((skill) => skill.groupId === group.id).length} L3 core skills</small></span><div>{workspace.skills.filter((skill) => skill.groupId === group.id).map((skill) => <em key={skill.id}>{skill.name}</em>)}</div></div>)}</div>)}</section><section className="panel kfla-panel"><header><div><span className="section-kicker">CONFIGURABLE REFERENCE LIBRARY</span><h3>38 KFLA competency names</h3><p>Public names and factor placement only. Definitions are blank until licensed content is supplied.</p></div><select aria-label="Filter KFLA factor" value={factor} onChange={(event) => setFactor(event.target.value)}>{["All", "Thought", "Results", "People", "Self"].map((value) => <option key={value}>{value}</option>)}</select></header><div className="kfla-grid">{filtered.map((item) => <label key={item.id}><input type="checkbox" checked={item.enabled} onChange={() => mutate((current) => ({ ...current, kfla: current.kfla.map((value) => value.id === item.id ? { ...value, enabled: !value.enabled } : value) }))}/><b>{item.number}</b><span><strong>{item.name}</strong><small>{item.factor} · {item.source === "public-name" ? "public name" : item.source}</small></span></label>)}</div></section></div>;
 }
 
 function Profiles({ workspace, mutate }: { workspace: SkillWorkspace; mutate: (update: (current: SkillWorkspace) => SkillWorkspace) => void }) {
