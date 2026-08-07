@@ -42,6 +42,15 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Verify governed JSON and n8n contracts
+        run: npm run verify:governance-artifacts
+
+      - name: Verify least-privilege agent policy
+        run: npm run verify:agent-policy
+
+      - name: Verify mapping regression baseline
+        run: npm run verify:mapping-evaluation
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
