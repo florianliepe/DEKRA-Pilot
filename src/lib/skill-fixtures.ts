@@ -1,4 +1,4 @@
-import type { AgentToolDefinition, FrameworkConfig, KflaCluster, KflaCompetency, KflaFactor, MappingScoreBreakdown, SkillWorkspace, ValidationRule } from "./skill-schema";
+import { proficiencyLevels, type AgentToolDefinition, type FrameworkConfig, type KflaCluster, type KflaCompetency, type KflaFactor, type MappingScoreBreakdown, type SkillWorkspace, type ValidationRule } from "./skill-schema";
 
 const factors: Record<KflaCompetency["factor"], number[]> = {
   Thought: [5, 8, 11, 12, 17, 18, 19, 32, 33, 35],
@@ -147,6 +147,8 @@ export const validationRules: ValidationRule[] = [
   ["KFLA-HIERARCHY-002", "Twelve-cluster integrity", "The navigation layer must contain twelve clusters.", "error", "kflaClusters", "Restore twelve clusters.", true],
   ["KFLA-HIERARCHY-003", "Competency assignment integrity", "All 38 competencies must resolve to a cluster.", "error", "kfla", "Assign every competency to a governed cluster.", true],
   ["KFLA-METADATA-001", "KFLA governance metadata", "Every factor, cluster and competency must retain source, licence, owner, version and review metadata.", "error", "metadata", "Complete the governed provenance metadata before release.", true],
+  ["PROFICIENCY-INTEGRITY-001", "Four-level proficiency integrity", "The framework must retain four unique governed proficiency definitions.", "error", "proficiencyDefinitions", "Restore levels one through four and their behavioral indicators.", true],
+  ["EVIDENCE-SOURCE-001", "Evidence source integrity", "Every evidence record must resolve to a governed source.", "error", "sourceId", "Select an existing governed source or create one before attaching evidence.", true],
 ].map(([id, name, description, severity, affectedField, suggestedCorrection, blocking]) => ({ id, name, description, severity, affectedField, suggestedCorrection, blocking, frameworkVersion: "3.1.0", status: "approved" })) as ValidationRule[];
 
 const schema = (required: string[], properties: Record<string, { type: string; description?: string }>) => ({ type: "object" as const, required, properties });
@@ -251,6 +253,17 @@ export const bootstrapSkillWorkspace: SkillWorkspace = {
   ],
   agentTools,
   validationRules,
+  proficiencyDefinitions: proficiencyLevels.map((level) => ({ ...level, behavioralIndicators: level.id === 1 ? ["Explains the concept and completes work with direct guidance."] : level.id === 2 ? ["Applies the capability independently in routine situations."] : level.id === 3 ? ["Solves non-routine problems and coaches others."] : ["Shapes enterprise practice and pioneers new approaches."], status: "approved" })),
+  sources: [
+    { id: "SRC-JD-DATA", title: "Synthetic Global Reporting Analyst job description", sourceType: "job_description", sourceClassification: "organization_authored", licenceStatus: "internally_authored", sourceVersion: "1.0", reviewDate: "2026-08-07", contentOwner: "DEKRA Skill Governance", status: "approved" },
+    { id: "SRC-SBO-WS", title: "SBO design workshop", sourceType: "workshop", sourceClassification: "organization_authored", licenceStatus: "internally_authored", sourceVersion: "1.0", reviewDate: "2026-08-07", contentOwner: "DEKRA Skill Governance", status: "approved" },
+    { id: "SRC-PROGRAMME-INT", title: "Programme Lead interview", sourceType: "interview", sourceClassification: "organization_authored", licenceStatus: "internally_authored", sourceVersion: "1.0", reviewDate: "2026-08-07", contentOwner: "DEKRA Skill Governance", status: "approved" },
+  ],
+  evidenceRecords: [
+    { id: "EVD-DV-001", sourceId: "SRC-JD-DATA", summary: "Builds interactive dashboards for weekly revenue reporting.", location: "responsibility 1", dataClassification: "public", supportedEntityIds: ["SK-DV", "MAP-DV", "JD-DATA"], confidence: 98, status: "approved" },
+    { id: "EVD-ST-001", sourceId: "SRC-SBO-WS", summary: "Defines reusable taxonomy concepts and resolves overlap.", location: "workshop synthesis", dataClassification: "internal", supportedEntityIds: ["SK-ST", "REV-001"], confidence: 88, status: "in_review" },
+    { id: "EVD-MC-001", sourceId: "SRC-PROGRAMME-INT", summary: "Frames contradictory evidence and recommends a viable action.", location: "critical incident 2", dataClassification: "internal", supportedEntityIds: ["SK-MC", "MAP-MC"], confidence: 83, status: "approved" },
+  ],
   auditLog: [{ id: "AUD-001", at: "2026-08-06T10:00:00.000Z", actor: "agent", action: "mapping.proposed", entityType: "job_mapping", entityId: "MAP-MC", summary: "Evidence-grounded mapping routed to human review." }],
   objectVersions: [],
   releaseHistory: [],

@@ -30,6 +30,18 @@ test("migrates legacy KFLA factors and clusters with complete governance metadat
   expect(validateWorkspace(migrated).some((finding) => finding.ruleId === "KFLA-METADATA-001")).toBe(false);
 });
 
+test("migrates first-class proficiency, source and evidence collections", () => {
+  const legacy = structuredClone(bootstrapSkillWorkspace) as unknown as Record<string, unknown>;
+  delete legacy.proficiencyDefinitions;
+  delete legacy.sources;
+  delete legacy.evidenceRecords;
+  const migrated = migrateSkillWorkspace(legacy, bootstrapSkillWorkspace);
+  expect(migrated.proficiencyDefinitions).toHaveLength(4);
+  expect(migrated.sources.length).toBeGreaterThan(0);
+  expect(migrated.evidenceRecords.every((evidence) => migrated.sources.some((source) => source.id === evidence.sourceId))).toBe(true);
+  expect(validateWorkspace(migrated).some((finding) => ["PROFICIENCY-INTEGRITY-001", "EVIDENCE-SOURCE-001"].includes(finding.ruleId))).toBe(false);
+});
+
 test("defines eleven permissioned and auditable agent tools", () => {
   const tools = bootstrapSkillWorkspace.agentTools;
   expect(tools).toHaveLength(11);
@@ -149,12 +161,18 @@ test("removes licensed definitions from public approved snapshots", () => {
   expect(sanitized.elicitationSessions).toEqual([]);
   expect(sanitized.agentRuns).toEqual([]);
   expect(sanitized.objectVersions).toEqual([]);
+  expect(sanitized.proficiencyDefinitions).toHaveLength(4);
+  expect(sanitized.evidenceRecords.every((evidence) => evidence.dataClassification === "public")).toBe(true);
+  expect(sanitized.evidenceRecords.some((evidence) => evidence.id === "EVD-ST-001")).toBe(false);
+  expect(sanitized.sources.every((source) => sanitized.evidenceRecords.some((evidence) => evidence.sourceId === source.id))).toBe(true);
 });
 
 test("performs dependency analysis and routes rollback through review", () => {
   const impact = impactAnalysis(bootstrapSkillWorkspace, "SK-DV");
   expect(impact.mappings.length).toBeGreaterThan(0);
   expect(impact.profiles.length).toBeGreaterThan(0);
+  expect(impact.evidenceRecords.length).toBeGreaterThan(0);
+  expect(impact.sources.length).toBeGreaterThan(0);
   const release: ReleaseManifest = { id: "REL-0001", revision: 1, schemaVersion: 3, frameworkVersion: "3.1.0", rulesVersion: "rules-3.1.0", promptVersion: "skill-agent-2.0.0", mappingScoreVersion: "mapping-2.0.0", state: "published", approvedAt: new Date().toISOString(), approvedBy: "Framework Owner", expectedPreviousRevision: 0, githubCommitSha: "abc123", githubPath: "data/skill-workspace.approved.json", idempotencyKey: "release-1-test", objectCounts: {}, validationSummary: { blocking: 0, warnings: 0 } };
   const rolledBack = requestRollback({ ...bootstrapSkillWorkspace, releaseHistory: [release] }, release, "Framework Owner");
   expect(rolledBack.reviewQueue[0].title).toBe("Rollback to revision 1");

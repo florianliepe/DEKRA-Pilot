@@ -66,6 +66,9 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
   const tools = workspace.tools.filter((tool) => tool.skillIds.some((id) => skillIds.has(id)));
   const relationships = workspace.relationships.filter((relationship) => relationship.sourceId === entityId || relationship.targetId === entityId || skillIds.has(relationship.sourceId) || skillIds.has(relationship.targetId));
   const jobs = workspace.jobDescriptions.filter((job) => mappings.some((mapping) => mapping.jobDescriptionId === job.id));
+  const evidenceRecords = workspace.evidenceRecords.filter((evidence) => evidence.id === entityId || evidence.sourceId === entityId || evidence.supportedEntityIds.includes(entityId) || evidence.supportedEntityIds.some((id) => skillIds.has(id)));
+  const sourceIds = new Set(evidenceRecords.map((evidence) => evidence.sourceId));
+  const sources = workspace.sources.filter((source) => source.id === entityId || sourceIds.has(source.id));
   return {
     skills,
     mappings,
@@ -73,7 +76,9 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
     tools,
     relationships,
     jobs,
-    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length,
+    evidenceRecords,
+    sources,
+    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length,
   };
 }
 
@@ -161,6 +166,9 @@ export function releaseObjectCounts(workspace: SkillWorkspace): Record<string, n
     controlledTools: workspace.tools.length,
     agentTools: workspace.agentTools.length,
     validationRules: workspace.validationRules.length,
+    proficiencyDefinitions: workspace.proficiencyDefinitions.length,
+    sources: workspace.sources.length,
+    evidenceRecords: workspace.evidenceRecords.length,
     reviewDecisions: workspace.reviewQueue.filter((item) => item.status !== "pending").length,
     auditEvents: workspace.auditLog.length,
   };
@@ -178,6 +186,9 @@ export function sanitizeApprovedWorkspace(workspace: SkillWorkspace): SkillWorks
   const approvedGroups = workspace.groups.filter((group) => group.status === "approved");
   const approvedGroupIds = new Set(approvedGroups.map((group) => group.id));
   const approvedDomainIds = new Set(approvedGroups.map((group) => group.domainId));
+  const publicEligibleSourceIds = new Set(workspace.sources.filter((source) => source.status === "approved" && source.sourceClassification !== "licensed" && source.licenceStatus !== "licensed_restricted").map((source) => source.id));
+  const approvedEvidence = workspace.evidenceRecords.filter((evidence) => evidence.status === "approved" && evidence.dataClassification === "public" && publicEligibleSourceIds.has(evidence.sourceId));
+  const approvedSourceIds = new Set(approvedEvidence.map((evidence) => evidence.sourceId));
   return {
     ...workspace,
     domains: workspace.domains.filter((domain) => domain.status === "approved" && approvedDomainIds.has(domain.id)),
@@ -191,6 +202,9 @@ export function sanitizeApprovedWorkspace(workspace: SkillWorkspace): SkillWorks
     tools: workspace.tools.filter((tool) => tool.status === "approved").map((tool) => ({ ...tool, skillIds: tool.skillIds.filter((id) => approvedSkillIds.has(id)) })),
     agentTools: workspace.agentTools.filter((tool) => tool.lifecycleStatus === "active"),
     validationRules: workspace.validationRules.filter((rule) => rule.status === "approved"),
+    proficiencyDefinitions: workspace.proficiencyDefinitions.filter((level) => level.status === "approved"),
+    sources: workspace.sources.filter((source) => approvedSourceIds.has(source.id) && source.status === "approved" && source.sourceClassification !== "licensed" && source.licenceStatus !== "licensed_restricted"),
+    evidenceRecords: approvedEvidence,
     interviews: [],
     elicitationSessions: [],
     agentRuns: [],

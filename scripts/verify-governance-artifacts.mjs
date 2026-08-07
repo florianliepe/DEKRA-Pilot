@@ -21,6 +21,11 @@ const requiredJson = [
 ];
 for (const path of requiredJson) json(path);
 
+const snapshot = json("data/skill-workspace.approved.json");
+const requiredWorkspaceArrays = ["domains", "groups", "relationships", "skills", "profiles", "interviews", "elicitationSessions", "reviewQueue", "kflaFactors", "kflaClusters", "kfla", "jobDescriptions", "mappings", "strategicVectors", "agentRuns", "tools", "agentTools", "validationRules", "proficiencyDefinitions", "sources", "evidenceRecords", "auditLog", "objectVersions", "releaseHistory"];
+if (requiredWorkspaceArrays.some((key) => !Array.isArray(snapshot[key]))) throw new Error("Approved workspace bootstrap is missing a schema-v3 collection.");
+if (!snapshot.framework?.mappingWeights || Object.keys(snapshot.framework.mappingWeights).length !== 13 || !snapshot.publication) throw new Error("Approved workspace bootstrap is missing framework or publication contracts.");
+
 const registry = json("data/agent-tool-registry.json");
 if (registry.policy?.defaultAccess !== "deny" || registry.tools?.length !== 11) throw new Error("Agent-tool registry must be deny-by-default with exactly eleven tools.");
 for (const tool of registry.tools) {
@@ -44,6 +49,7 @@ for (const [path, expectedWebhook] of workflows) {
     try { new Function(node.parameters.jsCode); }
     catch (reason) { throw new Error(`${path} node ${node.name} contains invalid JavaScript: ${reason.message}`); }
   }
+  if (path.includes("publisher") && (!JSON.stringify(workflow).includes("PROFICIENCY-INTEGRITY-001") || !JSON.stringify(workflow).includes("evidenceRecords"))) throw new Error("Publisher v3 must validate and sanitize proficiency, source and evidence contracts.");
 }
 
 console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 2 n8n v3 workflows.`);

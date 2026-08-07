@@ -351,6 +351,31 @@ test("creates and archives a governed validation rule", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Restore Outcome traceability" })).toBeVisible();
 });
 
+test("governs source, evidence and proficiency records", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  await page.getByRole("button", { name: "Evidence & levels" }).click();
+  await page.getByRole("button", { name: "Add source" }).click();
+  await page.getByLabel("Source title").fill("Synthetic safety role workshop");
+  await page.getByLabel("Source type").selectOption("workshop");
+  await page.getByRole("button", { name: "Save governed source" }).click();
+  await expect(page.getByText("Synthetic safety role workshop", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Archive source Synthetic safety role workshop" }).click();
+  await expect(page.getByRole("button", { name: "Restore source Synthetic safety role workshop" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Add evidence" }).click();
+  await page.getByLabel("Evidence summary").fill("Explains a concrete safety decision and its measurable outcome.");
+  await page.getByLabel("Source location").fill("workshop note 4");
+  await page.getByLabel("Supported entity IDs").fill("SK-MC, JD-DATA");
+  await page.getByRole("button", { name: "Save governed evidence" }).click();
+  await expect(page.getByText("Explains a concrete safety decision and its measurable outcome.", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit proficiency Application" }).click();
+  await page.getByLabel("Behavioral indicators").fill("Applies the capability independently.\nExplains the resulting outcome.");
+  await page.getByRole("button", { name: "Save proficiency definition" }).click();
+  await expect(page.getByText("Explains the resulting outcome.", { exact: false })).toBeVisible();
+});
+
 test("aligns mapping evidence and strategic vectors with the enriched job draft", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();

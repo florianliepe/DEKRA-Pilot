@@ -5,6 +5,15 @@ export const proficiencyLevels = [
   { id: 4, name: "Strategic / Expert", description: "Shapes strategy and pioneers new methods." },
 ] as const;
 
+export type ProficiencyDefinition = {
+  id: 1 | 2 | 3 | 4;
+  name: string;
+  description: string;
+  behavioralIndicators: string[];
+  status: Lifecycle;
+  governance?: GovernanceMeta;
+};
+
 export type SkillDimension = "technical" | "competency" | "experience" | "trait" | "driver";
 export type Lifecycle = "draft" | "in_review" | "approved" | "archived" | "deprecated" | "retired";
 export type ReviewStatus = "pending" | "accepted" | "rejected" | "deferred" | "merged";
@@ -340,6 +349,32 @@ export type ValidationFinding = {
   evidenceReference?: string;
 };
 
+export type SourceRecord = {
+  id: string;
+  title: string;
+  sourceType: "job_description" | "interview" | "workshop" | "public_research" | "internal_document" | "licensed_reference";
+  sourceClassification: SourceClassification;
+  licenceStatus: "public" | "internally_authored" | "licensed_restricted";
+  sourceVersion: string;
+  reviewDate: string;
+  contentOwner: string;
+  uri?: string;
+  status: Lifecycle;
+  governance?: GovernanceMeta;
+};
+
+export type EvidenceRecord = {
+  id: string;
+  sourceId: string;
+  summary: string;
+  location: string;
+  dataClassification: DataClassification;
+  supportedEntityIds: string[];
+  confidence: number;
+  status: Lifecycle;
+  governance?: GovernanceMeta;
+};
+
 export type FrameworkConfig = {
   version: string;
   rulesVersion: string;
@@ -405,6 +440,9 @@ export type SkillWorkspace = {
   tools: ControlledTool[];
   agentTools: AgentToolDefinition[];
   validationRules: ValidationRule[];
+  proficiencyDefinitions: ProficiencyDefinition[];
+  sources: SourceRecord[];
+  evidenceRecords: EvidenceRecord[];
   auditLog: AuditEvent[];
   objectVersions: ObjectVersion[];
   releaseHistory: ReleaseManifest[];
@@ -445,6 +483,9 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
     tools: arrayOr(source.tools, fallback.tools),
     agentTools: arrayOr(source.agentTools, fallback.agentTools),
     validationRules: arrayOr(source.validationRules, fallback.validationRules),
+    proficiencyDefinitions: arrayOr(source.proficiencyDefinitions, fallback.proficiencyDefinitions),
+    sources: arrayOr(source.sources, fallback.sources),
+    evidenceRecords: arrayOr(source.evidenceRecords, fallback.evidenceRecords),
     auditLog: arrayOr(source.auditLog, fallback.auditLog),
     objectVersions: arrayOr(source.objectVersions, fallback.objectVersions),
     releaseHistory: arrayOr(source.releaseHistory, fallback.releaseHistory),
@@ -528,6 +569,10 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
   if (workspace.kfla.length !== 38 || workspace.kfla.some((item) => !workspace.kflaClusters.some((cluster) => cluster.id === item.clusterId))) add("KFLA-HIERARCHY-003", "workspace", "KFLA", "All 38 competencies must resolve to a governed cluster.", "kfla", "Restore missing competencies or cluster relationships.");
   const kflaMetadata = [...workspace.kflaFactors, ...workspace.kflaClusters, ...workspace.kfla];
   if (kflaMetadata.some((item) => !item.sourceClassification || !("licenceStatus" in item) || !item.licenceStatus || !("sourceVersion" in item) || !item.sourceVersion || !("reviewDate" in item) || !item.reviewDate || !("contentOwner" in item) || !item.contentOwner)) add("KFLA-METADATA-001", "workspace", "KFLA", "KFLA governance metadata is incomplete.", "metadata", "Complete source classification, licence status, source version, review date and content owner.");
+  if (workspace.proficiencyDefinitions.length !== 4 || new Set(workspace.proficiencyDefinitions.map((item) => item.id)).size !== 4 || workspace.proficiencyDefinitions.some((item) => !item.behavioralIndicators.length)) add("PROFICIENCY-INTEGRITY-001", "workspace", "PROFICIENCY", "The governed four-level proficiency model is incomplete.", "proficiencyDefinitions", "Restore levels one through four with observable behavioral indicators.");
+  for (const evidence of workspace.evidenceRecords.filter((item) => !["archived", "retired"].includes(item.status))) {
+    if (!workspace.sources.some((source) => source.id === evidence.sourceId && !["archived", "retired"].includes(source.status))) add("EVIDENCE-SOURCE-001", "evidence", evidence.id, "Evidence does not resolve to an active governed source.", "sourceId", "Select an active governed source or restore the referenced source.", true, evidence.location);
+  }
   return findings;
 }
 
