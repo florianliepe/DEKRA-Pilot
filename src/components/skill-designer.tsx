@@ -37,11 +37,22 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
 
   useEffect(() => {
     let current = true;
-    void loadSkillWorkspace(workspaceSecret).then((payload) => {
+    void loadSkillWorkspace(workspaceSecret).then(async (payload) => {
       if (!current) return;
-      if (payload.workspace?.skills && payload.workspace?.kfla) { setWorkspace(migrateSkillWorkspace(payload.workspace, bootstrapSkillWorkspace)); setSync("live"); }
+      if (payload.workspace?.skills && payload.workspace?.kfla) {
+        const remote = migrateSkillWorkspace(payload.workspace, bootstrapSkillWorkspace);
+        const isFreshV3Store = remote.skills.length === 0 && remote.kfla.length === 0 && remote.agentTools.length === 0;
+        if (isFreshV3Store) {
+          const seed = { ...bootstrapSkillWorkspace, revision: remote.revision, publication: { ...bootstrapSkillWorkspace.publication, ...remote.publication, state: "working" as const } };
+          const initialized = await saveSkillWorkspace(workspaceSecret, seed);
+          if (!current) return;
+          setWorkspace(initialized.workspace ? migrateSkillWorkspace(initialized.workspace, seed) : seed);
+          setMessage("Governed v3 working state initialized in n8n; human review decisions remain pending.");
+        } else setWorkspace(remote);
+        setSync("live");
+      }
       else setSync("blueprint");
-    }).catch(() => { if (current) setSync("blueprint"); });
+    }).catch((reason) => { if (current) { setSync("blueprint"); setError(reason instanceof Error ? reason.message : "Unable to connect to the governed n8n workspace."); } });
     return () => { current = false; };
   }, [workspaceSecret]);
 
