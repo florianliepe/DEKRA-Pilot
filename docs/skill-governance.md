@@ -4,6 +4,8 @@
 
 The active n8n workflow is the source of truth for mutable working state. GitHub stores approved release snapshots only. The frontend never receives a GitHub credential and never writes directly to GitHub.
 
+Mapping feedback is immutable, versioned and auditable. A reviewer and evidence-based reason are mandatory; adjusted confidence must remain between 0 and 100. Reviewer feedback is retained in protected working state and excluded from public approved JSON to avoid publishing internal identities or rationales.
+
 ## Agent boundary
 
 Allowed actions:

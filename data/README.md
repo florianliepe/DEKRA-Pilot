@@ -11,6 +11,7 @@
 - Approved `localizedLabels` reference stable canonical concept IDs and contain public or organization-authored terminology only; licensed translations remain backend-only.
 - Approved role profiles must resolve to an active governed job description and contain unique links to active approved skills. Lifecycle and impact history remains protected n8n working state.
 - Controlled business tools are released independently from callable agent tools. Approved mappings may reference only unique active controlled tools; replacement and merge history remains protected working state.
+- Mapping feedback is a protected governance record: reviewer identity, rationale, calibrated confidence and evidence completeness persist through n8n but are removed from the public approved snapshot. Feedback never changes approval status by itself.
 - `agent-tool-registry.json` is a deny-by-default, fully expanded contract for the eleven callable agent tools; it is separate from controlled business tools.
 - `framework-version.json`, `prompt-versions.json` and `mapping-model-versions.json` pin the exact governed framework, prompt and score contracts used by a release.
 - `evaluation/mapping-golden-baseline.json` is a versioned, organization-authored regression baseline for deterministic thirteen-dimensional scoring. It uses synthetic public-safe evidence and does not substitute for a representative human-labelled empirical dataset.

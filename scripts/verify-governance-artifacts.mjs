@@ -22,7 +22,7 @@ const requiredJson = [
 for (const path of requiredJson) json(path);
 
 const snapshot = json("data/skill-workspace.approved.json");
-const requiredWorkspaceArrays = ["domains", "groups", "relationships", "skills", "profiles", "interviews", "elicitationSessions", "reviewQueue", "kflaFactors", "kflaClusters", "kfla", "jobDescriptions", "mappings", "strategicVectors", "agentRuns", "tools", "agentTools", "validationRules", "proficiencyDefinitions", "sources", "evidenceRecords", "localizedLabels", "auditLog", "objectVersions", "releaseHistory"];
+const requiredWorkspaceArrays = ["domains", "groups", "relationships", "skills", "profiles", "interviews", "elicitationSessions", "reviewQueue", "kflaFactors", "kflaClusters", "kfla", "jobDescriptions", "mappings", "mappingFeedback", "strategicVectors", "agentRuns", "tools", "agentTools", "validationRules", "proficiencyDefinitions", "sources", "evidenceRecords", "localizedLabels", "auditLog", "objectVersions", "releaseHistory"];
 if (requiredWorkspaceArrays.some((key) => !Array.isArray(snapshot[key]))) throw new Error("Approved workspace bootstrap is missing a schema-v3 collection.");
 if (!snapshot.framework?.mappingWeights || Object.keys(snapshot.framework.mappingWeights).length !== 13 || !snapshot.publication) throw new Error("Approved workspace bootstrap is missing framework or publication contracts.");
 

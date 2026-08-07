@@ -264,7 +264,23 @@ export type JobSkillMapping = {
   toolIds?: string[];
   overrideReason?: string;
   reviewerFeedback?: string;
+  evidenceCompleteness?: number;
   governance?: GovernanceMeta;
+};
+
+export type MappingFeedback = {
+  id: string;
+  mappingId: string;
+  decision: "confirmed" | "adjusted" | "rejected" | "needs_evidence";
+  reviewer: string;
+  reason: string;
+  recordedAt: string;
+  confidenceBefore: number;
+  confidenceAfter?: number;
+  evidenceCompleteness: number;
+  frameworkVersion: string;
+  rulesVersion: string;
+  scoreVersion: string;
 };
 
 export type StrategicVector = {
@@ -448,6 +464,7 @@ export type SkillWorkspace = {
   kfla: KflaCompetency[];
   jobDescriptions: JobDescription[];
   mappings: JobSkillMapping[];
+  mappingFeedback: MappingFeedback[];
   strategicVectors: StrategicVector[];
   agentRuns: AgentRun[];
   tools: ControlledTool[];
@@ -492,6 +509,7 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
         ? legacyScoreBreakdown(mapping.scoreBreakdown as unknown as Record<string, number>)
         : mapping.scoreBreakdown,
     })),
+    mappingFeedback: arrayOr(source.mappingFeedback, fallback.mappingFeedback),
     strategicVectors: arrayOr(source.strategicVectors, fallback.strategicVectors),
     agentRuns: arrayOr(source.agentRuns, fallback.agentRuns),
     tools: arrayOr(source.tools, fallback.tools),
@@ -578,6 +596,9 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     if (!mapping.evidence.length || !mapping.rationale.trim()) add("MAPPING-EVIDENCE-001", "mapping", mapping.id, "Mapping evidence or rationale is missing.", "evidence", "Add a source excerpt and explain the relationship.");
     if (!workspace.skills.some((skill) => skill.id === mapping.skillId && skill.status === "approved")) add("MAPPING-CATALOG-001", "mapping", mapping.id, "Mapping is not grounded in an approved skill.", "skillId", "Select an approved catalog skill or route the skill proposal for approval.");
     if (mapping.overrideReason === "") add("MAPPING-OVERRIDE-001", "mapping", mapping.id, "A reviewer override requires a reason.", "overrideReason", "Record the evidence-based override rationale.");
+  }
+  for (const feedback of workspace.mappingFeedback) {
+    if (!workspace.mappings.some((mapping) => mapping.id === feedback.mappingId) || !feedback.reviewer.trim() || !feedback.reason.trim() || feedback.evidenceCompleteness < 0 || feedback.evidenceCompleteness > 100) add("MAPPING-FEEDBACK-001", "mapping_feedback", feedback.id, "Mapping feedback requires an existing mapping, accountable reviewer, reason and evidence completeness between 0 and 100.", "mappingId", "Link an existing mapping and complete the accountable feedback record.");
   }
   for (const profile of workspace.profiles.filter((item) => !["archived", "retired"].includes(item.status))) {
     const skillIds = profile.skills.map((link) => link.skillId);

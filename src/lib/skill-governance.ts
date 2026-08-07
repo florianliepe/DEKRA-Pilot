@@ -1,4 +1,4 @@
-import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace } from "./skill-schema";
+import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
 
@@ -397,6 +397,75 @@ export function recordGovernedVersion(workspace: SkillWorkspace, entityType: str
   };
 }
 
+export function calculateEvidenceCompleteness(mapping: JobSkillMapping, workspace: SkillWorkspace) {
+  const job = workspace.jobDescriptions.find((candidate) => candidate.id === mapping.jobDescriptionId);
+  const source = `${job?.sourceText || ""} ${(job?.responsibilities || []).join(" ")} ${(job?.outcomes || []).join(" ")}`.toLowerCase();
+  const sourceMatched = mapping.evidence.some((excerpt) => excerpt.trim().length >= 12 && source.includes(excerpt.trim().toLowerCase()));
+  const linkedEvidence = workspace.evidenceRecords.some((evidence) => evidence.supportedEntityIds.includes(mapping.id) && !["archived", "retired"].includes(evidence.status));
+  const skill = workspace.skills.find((candidate) => candidate.id === mapping.skillId);
+  const grounded = Boolean((mapping.toolIds?.length || 0) > 0 || skill?.kflaCompetencyId);
+  return Math.min(100,
+    (mapping.evidence.length ? 25 : 0) +
+    (mapping.rationale.trim().length >= 20 ? 15 : 0) +
+    (sourceMatched ? 25 : 0) +
+    (linkedEvidence ? 15 : 0) +
+    (mapping.scoreBreakdown ? 10 : 0) +
+    (grounded ? 10 : 0));
+}
+
+export type MappingFeedbackRequest = Pick<MappingFeedback, "mappingId" | "decision" | "reviewer" | "reason"> & { confidenceAfter?: number };
+
+export function recordMappingFeedback(workspace: SkillWorkspace, request: MappingFeedbackRequest): SkillWorkspace {
+  const mapping = workspace.mappings.find((candidate) => candidate.id === request.mappingId);
+  if (!mapping) throw new Error("The mapping feedback target does not exist.");
+  if (!request.reviewer.trim() || !request.reason.trim()) throw new Error("An accountable reviewer and reason are required.");
+  if (request.decision === "adjusted" && (request.confidenceAfter === undefined || request.confidenceAfter < 0 || request.confidenceAfter > 100)) throw new Error("Adjusted feedback requires a calibrated confidence between 0 and 100.");
+  const at = new Date().toISOString();
+  const evidenceCompleteness = calculateEvidenceCompleteness(mapping, workspace);
+  const feedback: MappingFeedback = {
+    id: `MFB-${mapping.id}-${Date.now()}`,
+    mappingId: mapping.id,
+    decision: request.decision,
+    reviewer: request.reviewer.trim(),
+    reason: request.reason.trim(),
+    recordedAt: at,
+    confidenceBefore: mapping.confidence ?? mapping.relevance,
+    confidenceAfter: request.decision === "adjusted" ? request.confidenceAfter : undefined,
+    evidenceCompleteness,
+    frameworkVersion: workspace.framework.version,
+    rulesVersion: workspace.framework.rulesVersion,
+    scoreVersion: mapping.scoreVersion || workspace.framework.mappingScoreVersion,
+  };
+  const updated = {
+    ...mapping,
+    confidence: feedback.confidenceAfter ?? mapping.confidence,
+    evidenceCompleteness,
+    reviewerFeedback: `${feedback.decision}: ${feedback.reason}`,
+  };
+  return recordGovernedVersion({
+    ...workspace,
+    mappings: workspace.mappings.map((candidate) => candidate.id === mapping.id ? updated : candidate),
+    mappingFeedback: [feedback, ...workspace.mappingFeedback],
+  }, "mapping_feedback", feedback.id, "mapping.feedback_recorded", feedback.reviewer, feedback as unknown as Record<string, unknown>);
+}
+
+export function mappingCalibrationSummary(workspace: SkillWorkspace) {
+  const records = workspace.mappingFeedback;
+  const bins = [
+    { label: "0–59", min: 0, max: 59 },
+    { label: "60–79", min: 60, max: 79 },
+    { label: "80–100", min: 80, max: 100 },
+  ].map((bin) => {
+    const items = records.filter((item) => item.confidenceBefore >= bin.min && item.confidenceBefore <= bin.max);
+    const confirmed = items.filter((item) => item.decision === "confirmed").length;
+    return { label: bin.label, count: items.length, predicted: items.length ? Math.round(items.reduce((sum, item) => sum + item.confidenceBefore, 0) / items.length) : 0, observed: items.length ? Math.round(confirmed / items.length * 100) : 0 };
+  });
+  const predicted = records.length ? Math.round(records.reduce((sum, item) => sum + item.confidenceBefore, 0) / records.length) : 0;
+  const observed = records.length ? Math.round(records.filter((item) => item.decision === "confirmed").length / records.length * 100) : 0;
+  const evidenceCompleteness = records.length ? Math.round(records.reduce((sum, item) => sum + item.evidenceCompleteness, 0) / records.length) : 0;
+  return { sampleSize: records.length, predicted, observed, calibrationGap: observed - predicted, evidenceCompleteness, bins };
+}
+
 export function detectReleaseDrift(working: SkillWorkspace, approved: SkillWorkspace) {
   const workingCounts = releaseObjectCounts(working);
   const approvedCounts = releaseObjectCounts(approved);
@@ -422,6 +491,7 @@ export function releaseObjectCounts(workspace: SkillWorkspace): Record<string, n
     kflaCompetencies: workspace.kfla.length,
     jobDescriptions: workspace.jobDescriptions.length,
     mappings: workspace.mappings.length,
+    mappingFeedback: workspace.mappingFeedback.length,
     localizedLabels: workspace.localizedLabels.length,
     controlledTools: workspace.tools.length,
     agentTools: workspace.agentTools.length,
@@ -479,6 +549,7 @@ export function sanitizeApprovedWorkspace(workspace: SkillWorkspace): SkillWorks
     interviews: [],
     elicitationSessions: [],
     agentRuns: [],
+    mappingFeedback: [],
     objectVersions: [],
     kfla: workspace.kfla.map((competency) => ({
       ...competency,

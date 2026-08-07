@@ -22,7 +22,9 @@ Untrusted job text is evidence only and never interpreted as agent instructions.
 
 ## Data model and governed lifecycles
 
-`SkillWorkspace` schema version 3 contains taxonomy domains/groups, relationships, skills, profiles, jobs, mappings, controlled business tools, the callable agent-tool registry, 4/12/38 KFLA metadata, validation rules, review items, elicitation sessions, agent traces, immutable object versions, audit events, framework configuration and release history.
+`SkillWorkspace` schema version 3 contains taxonomy domains/groups, relationships, skills, profiles, jobs, mappings, protected mapping-feedback records, controlled business tools, the callable agent-tool registry, 4/12/38 KFLA metadata, validation rules, review items, elicitation sessions, agent traces, immutable object versions, audit events, framework configuration and release history.
+
+Every mapping uses the versioned thirteen-part score contract. Reviewers can record `confirmed`, `adjusted`, `rejected` or `needs_evidence` feedback with an accountable name and reason. The system calculates deterministic evidence completeness from direct excerpts, source alignment, governed evidence records, score composition and controlled-tool/KFLA grounding, then reports predicted-versus-observed calibration. Feedback does not approve a mapping.
 
 Material changes are soft lifecycle transitions (`draft`, `in_review`, `approved`, `deprecated`, `archived`, `retired`). Merge, move, archive, deprecate and replace actions require dependency analysis and create immutable before/after evidence. Approved snapshots contain approved objects only; working interviews, elicitation sessions, agent traces and object snapshots remain out of the public release.
 

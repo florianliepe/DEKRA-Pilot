@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyControlledToolLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyControlledToolLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -134,6 +134,18 @@ test("calculates the transparent thirteen-part weighted score and penalties", ()
   expect(Object.keys(base)).toHaveLength(13);
   expect(clean).toBe(80);
   expect(penalized).toBeLessThan(clean);
+});
+
+test("records accountable mapping feedback without changing approval status", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  expect(calculateEvidenceCompleteness(workspace.mappings[0], workspace)).toBe(100);
+  expect(() => recordMappingFeedback(workspace, { mappingId: "MAP-DV", decision: "confirmed", reviewer: "", reason: "Evidence verified." })).toThrow(/reviewer/i);
+  const reviewed = recordMappingFeedback(workspace, { mappingId: "MAP-DV", decision: "adjusted", reviewer: "Mapping Steward", reason: "Direct evidence is strong, but confidence is reduced pending a second role sample.", confidenceAfter: 86 });
+  expect(reviewed.mappings.find((mapping) => mapping.id === "MAP-DV")).toMatchObject({ status: "approved", confidence: 86, evidenceCompleteness: 100 });
+  expect(reviewed.mappingFeedback[0]).toMatchObject({ mappingId: "MAP-DV", decision: "adjusted", reviewer: "Mapping Steward", confidenceBefore: 92, confidenceAfter: 86, evidenceCompleteness: 100 });
+  expect(reviewed.objectVersions[0]).toMatchObject({ entityType: "mapping_feedback", action: "mapping.feedback_recorded" });
+  expect(mappingCalibrationSummary(reviewed)).toMatchObject({ sampleSize: 1, predicted: 92, observed: 0, calibrationGap: -92, evidenceCompleteness: 100 });
+  expect(sanitizeApprovedWorkspace(reviewed).mappingFeedback).toEqual([]);
 });
 
 test("requires accountable review decisions and supports approve, defer and merge", () => {
