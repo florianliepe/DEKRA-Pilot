@@ -91,6 +91,8 @@ The first populated release is revision 1. The repository currently carries revi
 - Drift compares release revisions and object counts. Resolve it by reloading the GitHub-approved snapshot, reviewing working changes and preparing a new release.
 - Rollback is requested from release history, enters the human review queue and publishes a new revision that points to the prior snapshot. No Git history is force-rewritten.
 
+Rollback requests require a named requester and evidence-based reason, retain the target manifest and commit SHA, and reject duplicate pending requests for the same revision. Governed JSON imports are canonicalized to known schema fields, scanned for credential-like material and protected KFLA content, validated, and shown as collection-level change previews. A valid import remains inside a review payload until acceptance; release history, publication state, audit history and object versions cannot be overwritten by the imported file. Working-state exports require an accountable actor and reason and include an immutable export receipt in the exported workspace.
+
 ## n8n API contracts
 
 Both endpoints require the configured header-auth shared secret.

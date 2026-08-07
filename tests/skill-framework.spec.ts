@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareRelease, proposeKflaLifecycle, recordMappingFeedback, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -347,9 +347,46 @@ test("performs dependency analysis and routes rollback through review", () => {
   expect(impact.evidenceRecords.length).toBeGreaterThan(0);
   expect(impact.sources.length).toBeGreaterThan(0);
   const release: ReleaseManifest = { id: "REL-0001", revision: 1, schemaVersion: 3, frameworkVersion: "3.1.0", rulesVersion: "rules-3.1.0", promptVersion: "skill-agent-2.0.0", mappingScoreVersion: "mapping-2.0.0", state: "published", approvedAt: new Date().toISOString(), approvedBy: "Framework Owner", expectedPreviousRevision: 0, githubCommitSha: "abc123", githubPath: "data/skill-workspace.approved.json", idempotencyKey: "release-1-test", objectCounts: {}, validationSummary: { blocking: 0, warnings: 0 } };
-  const rolledBack = requestRollback({ ...bootstrapSkillWorkspace, releaseHistory: [release] }, release, "Framework Owner");
+  expect(() => requestRollback({ ...bootstrapSkillWorkspace, releaseHistory: [release] }, release, "Framework Owner")).toThrow(/reason/i);
+  const rolledBack = requestRollback({ ...bootstrapSkillWorkspace, releaseHistory: [release] }, release, "Framework Owner", "Restore the last verified release after a confirmed regression.");
   expect(rolledBack.reviewQueue[0].title).toBe("Rollback to revision 1");
   expect(rolledBack.reviewQueue[0].status).toBe("pending");
+  expect(rolledBack.reviewQueue[0].payload).toMatchObject({ operation: "release_rollback", rollbackOfRevision: 1, targetCommitSha: "abc123" });
+  expect(() => requestRollback(rolledBack, release, "Framework Owner", "Submit the same rollback twice.")).toThrow(/already pending/i);
+});
+
+test("previews and reviews governed imports before replacing working data", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const candidate = structuredClone(workspace);
+  candidate.framework = { ...candidate.framework, supportedLanguages: [...candidate.framework.supportedLanguages, "fr"] };
+  const preview = previewGovernedImport(workspace, candidate, "candidate.json");
+  expect(preview.changes).toContainEqual({ collection: "framework", current: 1, incoming: 1, delta: 0 });
+  expect(preview.protectedContentDetected).toBe(false);
+  const proposed = requestGovernedImport(workspace, preview, "Data Steward", "Import the reviewed multilingual framework candidate.");
+  expect(proposed.framework.supportedLanguages).not.toContain("fr");
+  const review = proposed.reviewQueue.find((item) => item.payload?.operation === "workspace_import")!;
+  const approved = decideReview(proposed, review.id, "accepted", "Framework Owner", "The preview, schema and validation consequences are approved.");
+  expect(approved.framework.supportedLanguages).toContain("fr");
+  expect(approved.revision).toBe(workspace.revision + 1);
+  expect(approved.objectVersions.some((item) => item.action === "workspace.import_applied")).toBe(true);
+});
+
+test("blocks protected browser imports and records accountable exports", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const candidate = structuredClone(workspace);
+  candidate.kfla[0] = { ...candidate.kfla[0], source: "licensed", definition: "Restricted definition", licensedDefinitionRef: "protected:KFLA-01" };
+  const preview = previewGovernedImport(workspace, candidate, "restricted.json");
+  expect(preview.protectedContentDetected).toBe(true);
+  expect(() => requestGovernedImport(workspace, preview, "Data Steward", "Attempt protected import.")).toThrow(/licensed definitions/i);
+  const credentialCandidate = structuredClone(workspace);
+  credentialCandidate.skills[0].description = "github_pat_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+  const credentialPreview = previewGovernedImport(workspace, credentialCandidate, "credential.json");
+  expect(credentialPreview.credentialLikeContentDetected).toBe(true);
+  expect(() => requestGovernedImport(workspace, credentialPreview, "Data Steward", "Attempt credential import.")).toThrow(/credential-like/i);
+  expect(() => prepareGovernedExport(workspace, "", "Evidence package")).toThrow(/exporter/i);
+  const exported = prepareGovernedExport(workspace, "Data Steward", "Share a traceable working-state backup for review.");
+  expect(exported.fileName).toContain(`r${workspace.revision}`);
+  expect(exported.workspace.auditLog[0]).toMatchObject({ action: "workspace.exported", actorId: "Data Steward" });
 });
 
 test("governs skill lifecycle changes and rewires merge dependencies", () => {

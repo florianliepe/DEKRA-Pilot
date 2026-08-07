@@ -492,6 +492,39 @@ test("governs agent-tool edits and lifecycle through accountable review", async 
   await expect(page.getByText("1.1.0 · disabled", { exact: true })).toBeVisible();
 });
 
+test("previews governed workspace imports before submitting them for review", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  await page.getByRole("button", { name: "Versions & release" }).click();
+  const candidate = structuredClone(bootstrapSkillWorkspace);
+  candidate.framework = { ...candidate.framework, supportedLanguages: [...candidate.framework.supportedLanguages, "fr"] };
+  await page.locator('input[type="file"][accept*="json"]').setInputFiles({ name: "governed-candidate.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(candidate)) });
+  await expect(page.getByRole("heading", { name: "governed-candidate.json" })).toBeVisible();
+  await expect(page.getByText("No active working data changes at this step.")).toBeVisible();
+  await expect(page.getByText("framework", { exact: true })).toBeVisible();
+  await page.getByLabel("Accountable importer").fill("Data Steward");
+  await page.getByLabel("Governance reason").fill("Import the reviewed multilingual framework candidate.");
+  await page.getByRole("button", { name: "Submit import for review" }).click();
+  await page.getByRole("tab", { name: "Review" }).click();
+  await expect(page.getByText("Import governed workspace: governed-candidate.json", { exact: true })).toBeVisible();
+});
+
+test("exports working JSON with an accountable audit receipt", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  await page.getByRole("button", { name: "Versions & release" }).click();
+  await page.getByRole("button", { name: "Export working JSON" }).click();
+  await page.getByLabel("Accountable actor").fill("Data Steward");
+  await page.getByLabel("Evidence-based reason").fill("Create a traceable working-state backup for review.");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export governed JSON" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toContain("skill-workspace-working-r");
+  await page.getByRole("button", { name: "Audit log" }).click();
+  await expect(page.getByText("workspace.exported", { exact: true })).toBeVisible();
+});
+
 test("submits KFLA structural lifecycle changes for human approval before mutation", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Taxonomy" }).click();

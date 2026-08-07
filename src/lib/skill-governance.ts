@@ -761,6 +761,7 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
   if (approved && review.payload?.operation === "taxonomy_node_lifecycle") next = executeTaxonomyNodeLifecycle(next, review.payload as unknown as TaxonomyNodeLifecycleRequest, actor.trim(), reason.trim());
   if (approved && review.payload?.operation === "kfla_metadata_review") next = executeKflaMetadataReview(next, review.payload as unknown as KflaMetadataRequest, actor.trim(), reason.trim());
   if (approved && review.payload?.operation === "kfla_lifecycle") next = executeKflaLifecycle(next, review.payload as unknown as KflaLifecycleRequest, actor.trim(), reason.trim());
+  if (approved && review.payload?.operation === "workspace_import") next = executeGovernedImport(next, review.payload as unknown as WorkspaceImportPayload, actor.trim(), reason.trim());
   return { ...next, objectVersions: [reviewVersion, ...next.objectVersions], auditLog: [auditEvent(`review.${decision}`, review, actor.trim(), reason.trim(), at), ...next.auditLog], updatedAt: at };
 }
 
@@ -949,6 +950,98 @@ export function releaseObjectCounts(workspace: SkillWorkspace): Record<string, n
   };
 }
 
+const governedImportCollections = [
+  "domains", "groups", "relationships", "skills", "profiles", "interviews", "elicitationSessions", "kflaFactors", "kflaClusters", "kfla", "jobDescriptions", "mappings", "mappingFeedback", "strategicVectors", "agentRuns", "tools", "agentTools", "validationRules", "proficiencyDefinitions", "sources", "evidenceRecords", "localizedLabels",
+] as const;
+
+export type GovernedImportPreview = {
+  fileName: string;
+  candidate: SkillWorkspace;
+  changes: Array<{ collection: typeof governedImportCollections[number] | "framework"; current: number; incoming: number; delta: number }>;
+  findings: ReturnType<typeof validateWorkspace>;
+  protectedContentDetected: boolean;
+  credentialLikeContentDetected: boolean;
+};
+
+export function previewGovernedImport(workspace: SkillWorkspace, candidate: SkillWorkspace, fileName: string): GovernedImportPreview {
+  const canonicalCandidate: SkillWorkspace = {
+    schemaVersion: 3, revision: Number(candidate.revision || 0), updatedAt: candidate.updatedAt,
+    domains: candidate.domains, groups: candidate.groups, relationships: candidate.relationships, skills: candidate.skills, profiles: candidate.profiles,
+    interviews: candidate.interviews, elicitationSessions: candidate.elicitationSessions, reviewQueue: candidate.reviewQueue,
+    kflaFactors: candidate.kflaFactors, kflaClusters: candidate.kflaClusters, kfla: candidate.kfla,
+    jobDescriptions: candidate.jobDescriptions, mappings: candidate.mappings, mappingFeedback: candidate.mappingFeedback, strategicVectors: candidate.strategicVectors,
+    agentRuns: candidate.agentRuns, tools: candidate.tools, agentTools: candidate.agentTools, validationRules: candidate.validationRules,
+    proficiencyDefinitions: candidate.proficiencyDefinitions, sources: candidate.sources, evidenceRecords: candidate.evidenceRecords, localizedLabels: candidate.localizedLabels,
+    auditLog: candidate.auditLog, objectVersions: candidate.objectVersions, releaseHistory: candidate.releaseHistory, framework: candidate.framework, publication: candidate.publication,
+  };
+  const changes: GovernedImportPreview["changes"] = governedImportCollections.map((collection) => ({
+    collection,
+    current: workspace[collection].length,
+    incoming: canonicalCandidate[collection].length,
+    delta: canonicalCandidate[collection].length - workspace[collection].length,
+  })).filter((change) => change.delta !== 0);
+  if (JSON.stringify(workspace.framework) !== JSON.stringify(canonicalCandidate.framework)) changes.push({ collection: "framework", current: 1, incoming: 1, delta: 0 });
+  const protectedContentDetected = canonicalCandidate.kfla.some((item) => Boolean(item.licensedDefinitionRef || (item.source === "licensed" && item.definition.trim())));
+  const serialized = JSON.stringify(canonicalCandidate);
+  const credentialLikeContentDetected = /(?:eyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{12,}|github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|sk-[A-Za-z0-9_-]{20,})/.test(serialized);
+  return { fileName, candidate: canonicalCandidate, changes, findings: validateWorkspace(canonicalCandidate), protectedContentDetected, credentialLikeContentDetected };
+}
+
+export function requestGovernedImport(workspace: SkillWorkspace, preview: GovernedImportPreview, actor: string, reason: string): SkillWorkspace {
+  if (!actor.trim() || !reason.trim()) throw new Error("An accountable importer and governance reason are required.");
+  const verified = previewGovernedImport(workspace, preview.candidate, preview.fileName);
+  if (verified.protectedContentDetected) throw new Error("Browser import cannot contain licensed definitions or protected definition references.");
+  if (verified.credentialLikeContentDetected) throw new Error("Browser import contains credential-like material and cannot enter governed working state.");
+  const blocking = verified.findings.filter((finding) => finding.blocking);
+  if (blocking.length) throw new Error(`Import validation failed with ${blocking.length} blocking finding(s).`);
+  if (workspace.reviewQueue.some((item) => item.status === "pending" && item.payload?.operation === "workspace_import")) throw new Error("A governed workspace import is already pending review.");
+  const requestId = `IMPORT-${Date.now()}`;
+  const review: ReviewItem = {
+    id: `REV-${requestId}`,
+    title: `Import governed workspace: ${preview.fileName}`,
+    type: "taxonomy_change",
+    summary: `${verified.changes.length} collection or framework change(s) will replace working data after approval; ${verified.findings.length} validation finding(s) were previewed.`,
+    confidence: 100,
+    evidence: reason.trim(),
+    explanation: "The parsed candidate is retained only in the review payload. Active working data, release history and publication state remain unchanged until accountable approval.",
+    frameworkVersion: workspace.framework.version,
+    rulesVersion: workspace.framework.rulesVersion,
+    status: "pending",
+    entityId: requestId,
+    payload: { operation: "workspace_import", fileName: verified.fileName, requestedBy: actor.trim(), requestReason: reason.trim(), candidate: verified.candidate as unknown as Record<string, unknown>, changes: verified.changes as unknown as Record<string, unknown> },
+  };
+  return recordGovernedVersion({ ...workspace, reviewQueue: [review, ...workspace.reviewQueue] }, "skill_workspace", requestId, "workspace.import_requested", actor.trim(), { reviewId: review.id, fileName: verified.fileName, changes: verified.changes as unknown as Record<string, unknown>, findings: verified.findings.length });
+}
+
+type WorkspaceImportPayload = { fileName: string; requestedBy: string; requestReason: string; candidate: SkillWorkspace };
+
+function executeGovernedImport(workspace: SkillWorkspace, payload: WorkspaceImportPayload, reviewer: string, decisionReason: string): SkillWorkspace {
+  const preview = previewGovernedImport(workspace, payload.candidate, payload.fileName);
+  if (preview.protectedContentDetected) throw new Error("Approved import contains protected licensed content and cannot be applied in the browser workspace.");
+  if (preview.credentialLikeContentDetected) throw new Error("Approved import contains credential-like material and cannot be applied.");
+  const blocking = preview.findings.filter((finding) => finding.blocking);
+  if (blocking.length) throw new Error(`Approved import no longer passes validation: ${blocking.length} blocking finding(s).`);
+  const candidate = payload.candidate;
+  const next: SkillWorkspace = {
+    ...candidate,
+    revision: workspace.revision + 1,
+    updatedAt: new Date().toISOString(),
+    reviewQueue: workspace.reviewQueue,
+    auditLog: workspace.auditLog,
+    objectVersions: workspace.objectVersions,
+    releaseHistory: workspace.releaseHistory,
+    publication: { ...workspace.publication, state: "working", lastError: undefined },
+  };
+  return recordGovernedVersion(next, "skill_workspace", `import-${workspace.revision + 1}`, "workspace.import_applied", reviewer, { fileName: payload.fileName, requestedBy: payload.requestedBy, requestReason: payload.requestReason, decisionReason, changes: preview.changes as unknown as Record<string, unknown> });
+}
+
+export function prepareGovernedExport(workspace: SkillWorkspace, actor: string, reason: string) {
+  if (!actor.trim() || !reason.trim()) throw new Error("An accountable exporter and governance reason are required.");
+  const exportId = `EXPORT-${workspace.revision}-${Date.now()}`;
+  const exported = recordGovernedVersion(workspace, "skill_workspace", exportId, "workspace.exported", actor.trim(), { revision: workspace.revision, reason: reason.trim(), schemaVersion: workspace.schemaVersion });
+  return { workspace: exported, exportId, fileName: `skill-workspace-working-r${workspace.revision}.json` };
+}
+
 function stableKey(value: string) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
@@ -1065,14 +1158,16 @@ export function markReleaseFailed(workspace: SkillWorkspace, message: string): S
   };
 }
 
-export function requestRollback(workspace: SkillWorkspace, target: ReleaseManifest, actor: string): SkillWorkspace {
+export function requestRollback(workspace: SkillWorkspace, target: ReleaseManifest, actor: string, reason = ""): SkillWorkspace {
   if (target.state !== "published") throw new Error("Only a published release can be restored.");
+  if (!actor.trim() || !reason.trim()) throw new Error("An accountable rollback requester and reason are required.");
+  if (workspace.reviewQueue.some((item) => item.status === "pending" && item.payload?.operation === "release_rollback" && item.payload.rollbackOfRevision === target.revision)) throw new Error(`Rollback to revision ${target.revision} is already pending review.`);
   const at = new Date().toISOString();
   return {
     ...workspace,
     publication: { ...workspace.publication, state: "working", lastError: undefined },
-    reviewQueue: [{ id: `REV-ROLLBACK-${target.revision}`, title: `Rollback to revision ${target.revision}`, type: "taxonomy_change", summary: `Restore the approved snapshot from ${target.githubCommitSha || target.id}.`, confidence: 100, evidence: target.githubCommitSha || target.id, explanation: "Rollback requires a new accountable approval and creates a new revision; history is never rewritten.", frameworkVersion: workspace.framework.version, rulesVersion: workspace.framework.rulesVersion, status: "pending", payload: { rollbackOfRevision: target.revision } }, ...workspace.reviewQueue],
-    auditLog: [{ id: `AUD-ROLLBACK-${target.revision}-${Date.now()}`, at, actor: "human", actorId: actor, action: "rollback.requested", entityType: "release", entityId: target.id, summary: `Rollback to revision ${target.revision} routed for human approval.` }, ...workspace.auditLog],
+    reviewQueue: [{ id: `REV-ROLLBACK-${target.revision}-${Date.now()}`, title: `Rollback to revision ${target.revision}`, type: "taxonomy_change", summary: `Restore the approved snapshot from ${target.githubCommitSha || target.id}.`, confidence: 100, evidence: reason.trim(), explanation: "Rollback requires a new accountable approval and creates a new revision; history is never rewritten.", frameworkVersion: workspace.framework.version, rulesVersion: workspace.framework.rulesVersion, status: "pending", payload: { operation: "release_rollback", rollbackOfRevision: target.revision, targetManifestId: target.id, targetCommitSha: target.githubCommitSha, requestedBy: actor.trim(), requestReason: reason.trim() } }, ...workspace.reviewQueue],
+    auditLog: [{ id: `AUD-ROLLBACK-${target.revision}-${Date.now()}`, at, actor: "human", actorId: actor.trim(), action: "rollback.requested", entityType: "release", entityId: target.id, summary: `Rollback to revision ${target.revision} routed for human approval: ${reason.trim()}` }, ...workspace.auditLog],
   };
 }
 

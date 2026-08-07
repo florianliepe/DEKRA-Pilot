@@ -113,3 +113,18 @@ immutable versions and show recorded run/invocation impact. Restore, replace
 and merge require approval before activation. Historical invocation tool IDs,
 versions and correlation IDs are never rewritten, and the release gate blocks
 missing, inactive, duplicated or incomplete canonical tool contracts.
+
+## Governed portability and rollback
+
+Workspace imports are parsed into schema-v3 fields, scanned for credential-like
+material and protected KFLA definitions, validated, and previewed by changed
+collection before submission. The active workspace remains unchanged until an
+accountable reviewer accepts the import. Application preserves the local
+release history, publication receipt, audit history and immutable object
+versions, so an imported file cannot rewrite governance evidence. Working JSON
+exports require a named actor and reason and add an export receipt to the audit
+and object-version history.
+
+Rollback requests require a named requester and evidence reason, retain the
+target manifest, revision and Git commit, and reject duplicate pending requests.
+Approval is a forward publication transaction; it never rewrites Git history.
