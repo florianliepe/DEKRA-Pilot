@@ -9,6 +9,7 @@ if (!node) throw new Error("Publisher validation node not found.");
 
 const legacySanitizer = "const now=new Date().toISOString();const sanitized={...workspace,kfla:(workspace.kfla||[]).map(item=>({...item,definition:item.source==='licensed'?'':item.definition,licensedDefinitionRef:undefined}))};";
 const approvedSanitizer = "const now=new Date().toISOString();const approvedSkills=(workspace.skills||[]).filter(item=>item.status==='approved');const approvedSkillIds=new Set(approvedSkills.map(item=>item.id));const approvedGroups=(workspace.groups||[]).filter(item=>item.status==='approved');const approvedGroupIds=new Set(approvedGroups.map(item=>item.id));const approvedDomainIds=new Set(approvedGroups.map(item=>item.domainId));const sanitized={...workspace,domains:(workspace.domains||[]).filter(item=>item.status==='approved'&&approvedDomainIds.has(item.id)),groups:approvedGroups,relationships:(workspace.relationships||[]).filter(item=>item.status==='approved'&&approvedSkillIds.has(item.sourceId)&&approvedSkillIds.has(item.targetId)),skills:approvedSkills.filter(item=>approvedGroupIds.has(item.groupId)),profiles:(workspace.profiles||[]).filter(item=>item.status==='approved').map(item=>({...item,skills:(item.skills||[]).filter(link=>approvedSkillIds.has(link.skillId))})),jobDescriptions:(workspace.jobDescriptions||[]).filter(item=>item.status==='mapped'),mappings:(workspace.mappings||[]).filter(item=>item.status==='approved'&&approvedSkillIds.has(item.skillId)),strategicVectors:(workspace.strategicVectors||[]).map(item=>({...item,skillIds:(item.skillIds||[]).filter(id=>approvedSkillIds.has(id))})),tools:(workspace.tools||[]).filter(item=>item.status==='approved').map(item=>({...item,skillIds:(item.skillIds||[]).filter(id=>approvedSkillIds.has(id))})),agentTools:(workspace.agentTools||[]).filter(item=>item.lifecycleStatus==='active'),validationRules:(workspace.validationRules||[]).filter(item=>item.enabled),interviews:[],elicitationSessions:[],agentRuns:[],agentToolInvocations:[],objectVersions:[],kfla:(workspace.kfla||[]).map(item=>({...item,definition:item.source==='licensed'?'':item.definition,licensedDefinitionRef:undefined}))};";
+const publisherValidationBlock = "if((workspace.proficiencyDefinitions||[]).length!==4||new Set((workspace.proficiencyDefinitions||[]).map(item=>item.id)).size!==4||(workspace.proficiencyDefinitions||[]).some(item=>!Array.isArray(item.behavioralIndicators)||!item.behavioralIndicators.length))findings.push({ruleId:'PROFICIENCY-INTEGRITY-001',explanation:'Four governed proficiency definitions with behavioral indicators are required.',blocking:true});for(const evidence of (workspace.evidenceRecords||[]).filter(item=>!['archived','retired'].includes(item.status))){if(!(workspace.sources||[]).some(source=>source.id===evidence.sourceId&&!['archived','retired'].includes(source.status)))findings.push({ruleId:'EVIDENCE-SOURCE-001',entityId:evidence.id,explanation:'Evidence does not resolve to an active governed source.',blocking:true});}";
 
 if (node.parameters.jsCode.includes(legacySanitizer)) node.parameters.jsCode = node.parameters.jsCode.replace(legacySanitizer, approvedSanitizer);
 node.parameters.jsCode = node.parameters.jsCode
@@ -17,9 +18,100 @@ node.parameters.jsCode = node.parameters.jsCode
   .replace("validationRules:(workspace.validationRules||[]).filter(item=>item.enabled)", "validationRules:(workspace.validationRules||[]).filter(item=>item.status==='approved')")
   .replace("validationRules:(workspace.validationRules||[]).filter(item=>item.status==='approved'),interviews:[]", "validationRules:(workspace.validationRules||[]).filter(item=>item.status==='approved'),proficiencyDefinitions:(workspace.proficiencyDefinitions||[]).filter(item=>item.status==='approved'),evidenceRecords:(workspace.evidenceRecords||[]).filter(item=>item.status==='approved'&&item.dataClassification==='public'&&(workspace.sources||[]).some(source=>source.id===item.sourceId&&source.status==='approved'&&source.sourceClassification!=='licensed'&&source.licenceStatus!=='licensed_restricted')),sources:(workspace.sources||[]).filter(item=>item.status==='approved'&&item.sourceClassification!=='licensed'&&item.licenceStatus!=='licensed_restricted'&&(workspace.evidenceRecords||[]).some(evidence=>evidence.status==='approved'&&evidence.dataClassification==='public'&&evidence.sourceId===item.id)),interviews:[]")
   .replace("evidenceRecords:(workspace.evidenceRecords||[]).filter(item=>item.status==='approved'&&item.dataClassification==='public'),sources:", "evidenceRecords:(workspace.evidenceRecords||[]).filter(item=>item.status==='approved'&&item.dataClassification==='public'&&(workspace.sources||[]).some(source=>source.id===item.sourceId&&source.status==='approved'&&source.sourceClassification!=='licensed'&&source.licenceStatus!=='licensed_restricted')),sources:")
-  .replace("const names=new Set();", "if((workspace.proficiencyDefinitions||[]).length!==4||new Set((workspace.proficiencyDefinitions||[]).map(item=>item.id)).size!==4||(workspace.proficiencyDefinitions||[]).some(item=>!Array.isArray(item.behavioralIndicators)||!item.behavioralIndicators.length))findings.push({ruleId:'PROFICIENCY-INTEGRITY-001',explanation:'Four governed proficiency definitions with behavioral indicators are required.',blocking:true});for(const evidence of (workspace.evidenceRecords||[]).filter(item=>!['archived','retired'].includes(item.status))){if(!(workspace.sources||[]).some(source=>source.id===evidence.sourceId&&!['archived','retired'].includes(source.status)))findings.push({ruleId:'EVIDENCE-SOURCE-001',entityId:evidence.id,explanation:'Evidence does not resolve to an active governed source.',blocking:true});}const names=new Set();")
   .replace("agentRuns:[],agentToolInvocations:[],objectVersions:[]", "agentRuns:[],objectVersions:[]");
+while (node.parameters.jsCode.includes(publisherValidationBlock + publisherValidationBlock)) node.parameters.jsCode = node.parameters.jsCode.replace(publisherValidationBlock + publisherValidationBlock, publisherValidationBlock);
+if (!node.parameters.jsCode.includes(publisherValidationBlock)) node.parameters.jsCode = node.parameters.jsCode.replace("const names=new Set();", publisherValidationBlock + "const names=new Set();");
 if (!node.parameters.jsCode.includes("const publicSkills=(workspace.skills||[]).filter")) throw new Error("Publisher sanitizer is neither the expected legacy nor approved-only implementation.");
 
 writeFileSync(publisherPath, `${JSON.stringify(workflow, null, 2)}\n`);
-console.log("n8n publisher v3 synchronized with the approved-only public release policy.");
+
+const orchestratorPath = join(root, "docs", "n8n-skill-designer-v3.workflow.json");
+const orchestrator = JSON.parse(readFileSync(orchestratorPath, "utf8"));
+const requestNode = orchestrator.nodes.find((candidate) => candidate.name === "Request Governor v3");
+const contextNode = orchestrator.nodes.find((candidate) => candidate.name === "Build Governed Agent Context");
+const executorNode = orchestrator.nodes.find((candidate) => candidate.name === "Deterministic Tool Policy Executor");
+const storeNode = orchestrator.nodes.find((candidate) => candidate.name === "Governance Gate and v3 Store");
+const agentNode = orchestrator.nodes.find((candidate) => candidate.name === "Governed Skill Design Agent");
+if (!requestNode || !contextNode || !executorNode || !storeNode || !agentNode) throw new Error("Orchestrator v3 policy nodes are incomplete.");
+
+function replaceRequired(source, before, after, marker) {
+  if (source.includes(marker)) return source;
+  if (!source.includes(before)) throw new Error(`Unable to install orchestrator policy marker: ${marker}`);
+  return source.replace(before, after);
+}
+
+requestNode.parameters.jsCode = replaceRequired(
+  requestNode.parameters.jsCode,
+  "const correlationId=`SKILL-${Date.now()}-${Math.random().toString(16).slice(2,10)}`;\nreturn[{json:{ok:true,mode,body,useAgent:",
+  "const operationClassification=String(body.dataClassification||'internal');if(!['public','internal','confidential'].includes(operationClassification))return[{json:{ok:false,statusCode:403,error:'Licensed or unsupported data classification is outside the agent boundary.'}}];\nconst correlationId=`SKILL-${Date.now()}-${Math.random().toString(16).slice(2,10)}`;\nreturn[{json:{ok:true,mode,body,operationClassification,useAgent:",
+  "operationClassification=String(body.dataClassification"
+);
+
+contextNode.parameters.jsCode = replaceRequired(
+  contextNode.parameters.jsCode,
+  "const registry=(workspace.agentTools||[]).filter(t=>t.lifecycleStatus==='active').map(t=>({id:t.id,version:t.version,permission:t.requiredPermission,allowedDataClassifications:t.allowedDataClassifications,inputSchema:t.inputSchema,outputSchema:t.outputSchema,timeoutMs:t.timeoutMs,retryPolicy:t.retryPolicy,rateLimit:t.rateLimit,errorContract:t.errorContract,auditRequirements:t.auditRequirements}));",
+  "const permissionsByMode={'skill.ingest':['skill.job.parse','skill.evidence.extract','skill.taxonomy.read','skill.validation.run','skill.review.draft','skill.review.prepare'],'skill.interview':['skill.evidence.extract','skill.taxonomy.read','skill.validation.run','skill.kfla.read_public','skill.review.draft','skill.review.prepare'],'skill.map_job':['skill.taxonomy.read','skill.kfla.read_public','skill.tools.read','skill.mapping.score','skill.review.draft','skill.review.prepare'],'skill.elicitation':['skill.evidence.extract','skill.taxonomy.read','skill.validation.run','skill.kfla.read_public','skill.tools.read','skill.review.draft','skill.review.prepare']};const grantedPermissions=permissionsByMode[$json.mode]||[];const registry=(workspace.agentTools||[]).filter(t=>t.lifecycleStatus==='active'&&grantedPermissions.includes(t.requiredPermission)).map(t=>({id:t.id,version:t.version,permission:t.requiredPermission,allowedDataClassifications:t.allowedDataClassifications,allowedAgentActions:t.allowedAgentActions,inputSchema:t.inputSchema,outputSchema:t.outputSchema,timeoutMs:t.timeoutMs,retryPolicy:t.retryPolicy,rateLimit:t.rateLimit,errorContract:t.errorContract,auditRequirements:t.auditRequirements}));",
+  "const permissionsByMode="
+);
+contextNode.parameters.jsCode = replaceRequired(
+  contextNode.parameters.jsCode,
+  "allowed_tools:registry.map(t=>t.id),rules:",
+  "allowed_tools:registry.map(t=>t.id),grantedPermissions,operationClassification:$json.operationClassification,rules:",
+  "grantedPermissions,operationClassification:$json.operationClassification"
+);
+agentNode.parameters.options.systemMessage = agentNode.parameters.options.systemMessage.replace(
+  '"tool_calls":[{"name":string,"reason":string,"inputRef":string}]',
+  '"tool_calls":[{"name":string,"reason":string,"inputRef":string,"action":"execute","dataClassification":"public|internal|confidential"}]'
+);
+contextNode.parameters.jsCode = replaceRequired(
+  contextNode.parameters.jsCode,
+  "return[{json:{...$json,workspaceCandidate:workspace,assistant_input,registry}}];",
+  "return[{json:{...$json,workspaceCandidate:workspace,assistant_input,registry,grantedPermissions}}];",
+  "assistant_input,registry,grantedPermissions"
+);
+
+const executorStart = "const registry=new Map((context.registry||[]).map(tool=>[tool.id,tool]));";
+const executorEnd = "const approved=new Set";
+if (!executorNode.parameters.jsCode.includes("policyDenied")) {
+  const start = executorNode.parameters.jsCode.indexOf(executorStart);
+  const end = executorNode.parameters.jsCode.indexOf(executorEnd);
+  if (start < 0 || end < 0 || end <= start) throw new Error("Unable to locate the v3 tool-policy executor block.");
+  const hardened = String.raw`const registry=new Map((context.registry||[]).map(tool=>[tool.id,tool]));const requested=Array.isArray(result.tool_calls)?result.tool_calls:[];const now=new Date().toISOString();const invocations=requested.map((call,index)=>{const tool=registry.get(String(call.name));const action=String(call.action||'execute');const dataClassification=String(call.dataClassification||context.operationClassification||'internal');const base={toolId:String(call.name||'unknown'),toolVersion:tool?.version||'unknown',inputRef:String(call.inputRef||('request:'+(index+1))),durationMs:0,retryCount:0,rulesVersion:context.workspaceCandidate.framework?.rulesVersion||'rules-3.1.0',frameworkVersion:context.workspaceCandidate.framework?.version||'3.1.0',actingUser:'authenticated-pilot-user',correlationId:context.correlationId};let errorCode;if(!tool)errorCode='TOOL_NOT_FOUND';else if(!(context.grantedPermissions||[]).includes(tool.permission))errorCode='PERMISSION_DENIED';else if(dataClassification==='licensed'||!(tool.allowedDataClassifications||[]).includes(dataClassification))errorCode='DATA_CLASSIFICATION_DENIED';else if(!(tool.allowedAgentActions||[]).includes(action))errorCode='ACTION_DENIED';return errorCode?{...base,result:'denied',errorCode}:{...base,outputRef:'agent-output:'+(index+1),result:'success'};});const denied=invocations.filter(item=>item.result==='denied');const policyDenied=denied.length>0;if(policyDenied){result.mapping_proposals=[];result.new_skill_proposals=[];result.profile_proposal=null;result.rewritten_session=null;}\n`;
+  executorNode.parameters.jsCode = `${executorNode.parameters.jsCode.slice(0, start)}${hardened}${executorNode.parameters.jsCode.slice(end)}`;
+}
+executorNode.parameters.jsCode = executorNode.parameters.jsCode
+  .replace("\\`request:\\${index+1}\\`", "'request:'+(index+1)")
+  .replace("\\`agent-output:\\${index+1}\\`", "'agent-output:'+(index+1)")
+  .replace(";}\\nconst approved=new Set", ";}\nconst approved=new Set");
+executorNode.parameters.jsCode = replaceRequired(
+  executorNode.parameters.jsCode,
+  "status:'needs_review',model:",
+  "status:policyDenied?'failed':'needs_review',model:",
+  "status:policyDenied?'failed'"
+);
+executorNode.parameters.jsCode = replaceRequired(
+  executorNode.parameters.jsCode,
+  "result:`${requested.length} allowlisted tool requests; ${rejected.length} denied.`",
+  "result:`${requested.length} requested; ${denied.length} denied by least-privilege policy.`",
+  "denied by least-privilege policy"
+);
+executorNode.parameters.jsCode = replaceRequired(
+  executorNode.parameters.jsCode,
+  "return[{json:{...context,agentResult:result,agentRun}}];",
+  "return[{json:{...context,agentResult:result,agentRun,policyDenied,policyError:policyDenied?'Agent tool request denied by the least-privilege registry.':undefined}}];",
+  "agentRun,policyDenied,policyError"
+);
+
+storeNode.parameters.jsCode = storeNode.parameters.jsCode
+  .replace("agentTools:[],validationRules:[],auditLog:[]", "agentTools:[],validationRules:[],proficiencyDefinitions:[],sources:[],evidenceRecords:[],auditLog:[]")
+  .replace("validationRules:Array.isArray(value?.validationRules)?value.validationRules:[],auditLog:", "validationRules:Array.isArray(value?.validationRules)?value.validationRules:[],proficiencyDefinitions:Array.isArray(value?.proficiencyDefinitions)?value.proficiencyDefinitions:[],sources:Array.isArray(value?.sources)?value.sources:[],evidenceRecords:Array.isArray(value?.evidenceRecords)?value.evidenceRecords:[],auditLog:");
+storeNode.parameters.jsCode = replaceRequired(
+  storeNode.parameters.jsCode,
+  "const rulesVersion=workspace.framework?.rulesVersion||'rules-3.1.0';\nif($json.mode==='skill.map_job')",
+  "const rulesVersion=workspace.framework?.rulesVersion||'rules-3.1.0';\nif($json.policyDenied){workspace.agentRuns=[...($json.agentRun?[$json.agentRun]:[]),...workspace.agentRuns].slice(0,100);workspace.auditLog=[...($json.agentRun?.invocations||[]).map((inv,index)=>({id:`AUD-${$json.correlationId}-${index}`,at:new Date().toISOString(),actor:'agent',action:'agent_tool.denied',entityType:'agent_tool',entityId:inv.toolId,summary:`${inv.errorCode}; retry ${inv.retryCount}`,correlationId:$json.correlationId,frameworkVersion})),...workspace.auditLog].slice(0,500);workspace.revision=Number(workspace.revision||0)+1;workspace.updatedAt=new Date().toISOString();store.workspace=workspace;return[{json:{ok:false,statusCode:403,error:$json.policyError,workspace,agentRun:$json.agentRun}}];}\nif($json.mode==='skill.map_job')",
+  "if($json.policyDenied){workspace.agentRuns="
+);
+
+if (!contextNode.parameters.jsCode.includes("permissionsByMode") || !executorNode.parameters.jsCode.includes("DATA_CLASSIFICATION_DENIED") || !storeNode.parameters.jsCode.includes("agent_tool.denied") || !agentNode.parameters.options.systemMessage.includes('"action":"execute"')) throw new Error("Orchestrator v3 least-privilege policy was not installed.");
+writeFileSync(orchestratorPath, `${JSON.stringify(orchestrator, null, 2)}\n`);
+console.log("n8n v3 workflows synchronized with approved-release and least-privilege agent policies.");

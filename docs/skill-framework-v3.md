@@ -54,6 +54,8 @@ Deterministic release findings contain rule ID, severity, object, field, explana
 
 Agent-tool execution is deny-by-default at runtime through `authorizeAgentToolCall`. A call is permitted only when the registry entry exists and is active, the acting identity holds the exact permission, the requested action is allowlisted, the data classification is allowed and non-licensed, and correlation/input references are present. Every decision produces an invocation-shaped audit record, including denied calls.
 
+The n8n orchestrator applies the same boundary server-side. Each operation receives a minimal permission set, only tools matching that set are disclosed to the model, and every returned tool request is rechecked for registry membership, permission, action and data classification. A denied request suppresses all proposals, persists a failed agent run and `agent_tool.denied` audit event, and returns HTTP 403. `npm run verify:agent-policy` executes an allowed call plus permission, action and licensed-classification denials against the actual workflow code.
+
 ## Review and approved-release transaction
 
 1. Save or resume working state through the orchestrator.

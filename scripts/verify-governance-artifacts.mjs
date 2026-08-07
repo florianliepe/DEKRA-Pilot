@@ -50,6 +50,7 @@ for (const [path, expectedWebhook] of workflows) {
     catch (reason) { throw new Error(`${path} node ${node.name} contains invalid JavaScript: ${reason.message}`); }
   }
   if (path.includes("publisher") && (!JSON.stringify(workflow).includes("PROFICIENCY-INTEGRITY-001") || !JSON.stringify(workflow).includes("evidenceRecords"))) throw new Error("Publisher v3 must validate and sanitize proficiency, source and evidence contracts.");
+  if (path.includes("designer") && (!JSON.stringify(workflow).includes("permissionsByMode") || !JSON.stringify(workflow).includes("DATA_CLASSIFICATION_DENIED") || !JSON.stringify(workflow).includes("agent_tool.denied"))) throw new Error("Orchestrator v3 must enforce and audit least-privilege tool calls.");
 }
 
 console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 2 n8n v3 workflows.`);

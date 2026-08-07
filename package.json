@@ -11,6 +11,7 @@
     "verify:public-bundle": "node scripts/verify-public-bundle.mjs",
     "verify:governance-artifacts": "node scripts/verify-governance-artifacts.mjs",
     "verify:mapping-evaluation": "node scripts/verify-mapping-evaluation.mjs",
+    "verify:agent-policy": "node scripts/verify-agent-policy.mjs",
     "sync:n8n-v3": "node scripts/sync-n8n-v3.mjs",
     "start": "next start",
     "lint": "eslint .",
