@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { Icons } from "./icons";
 import { bootstrapSkillWorkspace } from "@/lib/skill-fixtures";
 import { ingestSkillEvidence, loadSkillWorkspace, publishSkillWorkspace, runSkillInterview, saveSkillWorkspace } from "@/lib/skill-client";
-import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, skillQuality, workspaceFindings, type Lifecycle, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
+import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, workspaceFindings, type Lifecycle, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
 import { JobMappingWorkbench } from "./job-mapping-workbench";
 import { StrategicVectors } from "./strategic-vectors";
 import { AgentRunLog } from "./agent-run-log";
 import { TaxonomyStandardWorkbench } from "./taxonomy-standard-workbench";
 import { ElicitationWorkbench } from "./elicitation-workbench";
 import { GovernanceWorkbench } from "./governance-workbench";
+import { GovernedSkillLibrary } from "./governed-skill-library";
 import { decideReview, prepareRelease, recordGovernedVersion } from "@/lib/skill-governance";
 
 type Tab = "overview" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs" | "governance";
@@ -100,13 +101,6 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     setEditing(null); setMessage(`${record.name} ${id ? "updated" : "created"}.`);
   }
 
-  function deleteSkill(skill: Skill) {
-    if (workspace.profiles.some((profile) => profile.skills.some((item) => item.skillId === skill.id))) {
-      setError(`${skill.name} is linked to a role profile. Remove the mapping before deleting it.`); return;
-    }
-    mutate((current) => recordGovernedVersion({ ...current, skills: current.skills.map((item) => item.id === skill.id ? { ...item, status: "archived" } : item) }, "skill", skill.id, "skill.archived", "current-user", skill as unknown as Record<string, unknown>));
-  }
-
   return <div className="skill-designer">
     <section className="skill-command-bar">
       <div className="skill-tabs" role="tablist" aria-label="Skill Designer sections">{tabs.map((item) => <button key={item.id} role="tab" aria-selected={tab === item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}>{item.label}{item.id === "review" && pending > 0 && <em>{pending}</em>}</button>)}</div>
@@ -117,7 +111,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {tab === "overview" && <Overview workspace={workspace} approved={approved} pending={pending} evidence={evidence} onNavigate={setTab}/>}
     {tab === "intake" && <Intake workspace={workspace} secret={workspaceSecret} onWorkspace={setWorkspace} onMessage={setMessage} onError={setError}/>}
     {tab === "elicitation" && <ElicitationWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
-    {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} onDelete={deleteSkill}/>}
+    {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} mutate={mutate} onMessage={setMessage} onError={setError}/>}
     {tab === "taxonomy" && <TaxonomyStandardWorkbench workspace={workspace} mutate={mutate}/>}
     {tab === "jobs" && <JobMappingWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "profiles" && <Profiles workspace={workspace} mutate={mutate}/>}
@@ -154,9 +148,8 @@ function Intake({ workspace, secret, onWorkspace, onMessage, onError }: { worksp
 
 function AgentRail() { return <aside className="panel agent-rail"><span className="section-kicker">ORCHESTRATION</span><h3>Specialist agent chain</h3>{[["01", "Evidence auditor", "Removes administrative noise and preserves sources."], ["02", "Semantic extractor", "Finds action, object, outcome, context and method."], ["03", "Skill normalizer", "De-layers tasks into durable capabilities."], ["04", "Taxonomy matcher", "Detects aliases, overlap and hierarchy fit."], ["05", "Profile composer", "Proposes proficiency, weight and role relevance."], ["06", "Governance gate", "Routes uncertain or material changes to humans."]].map(([step, name, copy]) => <div key={step}><b>{step}</b><span><strong>{name}</strong><small>{copy}</small></span><i/></div>)}</aside>; }
 
-function Library({ workspace, query, onQuery, onEdit, onDelete }: { workspace: SkillWorkspace; query: string; onQuery: (value: string) => void; onEdit: (skill: Skill | "new") => void; onDelete: (skill: Skill) => void }) {
-  const filtered = workspace.skills.filter((skill) => `${skill.name} ${skill.description} ${skill.aliases.join(" ")}`.toLowerCase().includes(query.toLowerCase()));
-  return <div className="skill-stack"><section className="library-toolbar"><div className="search-box"><Icons.search/><input aria-label="Search skill library" value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search skills, aliases or descriptions…"/></div><span>{filtered.length} skills</span><button className="button primary" onClick={() => onEdit("new")}><Icons.plus/>Create skill</button></section><section className="skill-table panel"><header><span>Skill</span><span>Taxonomy</span><span>Dimension</span><span>Confidence</span><span>Quality</span><span>Status</span><span/></header>{filtered.map((skill) => { const group = workspace.groups.find((item) => item.id === skill.groupId); const domain = workspace.domains.find((item) => item.id === group?.domainId); const kfla = workspace.kfla.find((item) => item.id === skill.kflaCompetencyId); const quality = skillQuality(skill, workspace); return <div key={skill.id}><span><b>{skill.name}</b><small>{skill.description}</small>{skill.aliases.length > 0 && <em>Aliases: {skill.aliases.join(", ")}</em>}</span><span><b>{domain?.name}</b><small>{group?.name}</small></span><span><i className={`dimension-dot ${skill.dimension}`}/>{title(skill.dimension)}{kfla && <small>{kfla.number}. {kfla.name}</small>}</span><span><b>{skill.confidence}%</b><small>{skill.evidence.length} evidence links</small></span><span><b>{quality.score}%</b><small>{Object.values(quality.checks).filter(Boolean).length}/6 standards</small></span><span><em className={`lifecycle ${skill.status}`}>{title(skill.status)}</em></span><span className="record-actions"><button aria-label={`Edit ${skill.name}`} onClick={() => onEdit(skill)}><Icons.edit/></button><button aria-label={`Delete ${skill.name}`} onClick={() => onDelete(skill)}><Icons.trash/></button></span></div>; })}</section></div>;
+function Library({ workspace, query, onQuery, onEdit, mutate, onMessage, onError }: { workspace: SkillWorkspace; query: string; onQuery: (value: string) => void; onEdit: (skill: Skill | "new") => void; mutate: (update: (current: SkillWorkspace) => SkillWorkspace) => void; onMessage: (message: string) => void; onError: (message: string) => void }) {
+  return <GovernedSkillLibrary workspace={workspace} query={query} onQuery={onQuery} onEdit={onEdit} mutate={mutate} onMessage={onMessage} onError={onError}/>;
 }
 
 function Profiles({ workspace, mutate }: { workspace: SkillWorkspace; mutate: (update: (current: SkillWorkspace) => SkillWorkspace) => void }) {

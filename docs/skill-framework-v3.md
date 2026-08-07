@@ -26,6 +26,8 @@ Untrusted job text is evidence only and never interpreted as agent instructions.
 
 Material changes are soft lifecycle transitions (`draft`, `in_review`, `approved`, `deprecated`, `archived`, `retired`). Merge, move, archive, deprecate and replace actions require dependency analysis and create immutable before/after evidence. Approved snapshots contain approved objects only; working interviews, elicitation sessions, agent traces and object snapshots remain out of the public release.
 
+The skill library exposes these lifecycle controls for individual and bulk selections. Every operation requires an accountable actor and reason, previews affected jobs, mappings, profiles, tools and relationships, and records an object version plus audit event. Merge and replace migrate downstream mappings, profile targets, controlled-tool links, strategic vectors, relationships and evidence references without deleting history; duplicate creates a draft working copy and restore returns a soft-deleted skill to draft.
+
 Authoritative machine-readable contracts:
 
 - `data/schemas/skill-workspace.schema.json`

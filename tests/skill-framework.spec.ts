@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, sanitizeApprovedWorkspace } from "../src/lib/skill-governance";
+import { applySkillLifecycle, authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, sanitizeApprovedWorkspace } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -177,4 +177,30 @@ test("performs dependency analysis and routes rollback through review", () => {
   const rolledBack = requestRollback({ ...bootstrapSkillWorkspace, releaseHistory: [release] }, release, "Framework Owner");
   expect(rolledBack.reviewQueue[0].title).toBe("Rollback to revision 1");
   expect(rolledBack.reviewQueue[0].status).toBe("pending");
+});
+
+test("governs skill lifecycle changes and rewires merge dependencies", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  expect(() => applySkillLifecycle(workspace, { action: "archive", skillId: "SK-DV", actor: "", reason: "Obsolete" })).toThrow(/actor/i);
+  expect(() => applySkillLifecycle(workspace, { action: "archive", skillId: "SK-DV", actor: "Taxonomy Steward", reason: "" })).toThrow(/reason/i);
+
+  const moved = applySkillLifecycle(workspace, { action: "move", skillId: "SK-DV", targetGroupId: "GRP-SBO", actor: "Taxonomy Steward", reason: "Align with the governed architecture group." });
+  expect(moved.skills.find((skill) => skill.id === "SK-DV")?.groupId).toBe("GRP-SBO");
+  expect(moved.objectVersions[0]).toMatchObject({ entityType: "skill", entityId: "SK-DV", action: "skill.moved" });
+
+  const merged = applySkillLifecycle(workspace, { action: "merge", skillId: "SK-DV", targetSkillId: "SK-MC", actor: "Taxonomy Steward", reason: "Validated overlap; retain one canonical skill." });
+  expect(merged.skills.find((skill) => skill.id === "SK-DV")?.status).toBe("archived");
+  expect(merged.skills.find((skill) => skill.id === "SK-DV")?.governance?.replacedById).toBe("SK-MC");
+  expect(merged.skills.find((skill) => skill.id === "SK-MC")?.aliases).toContain("Data Visualization");
+  expect(merged.mappings.some((mapping) => mapping.skillId === "SK-DV")).toBe(false);
+  expect(merged.mappings.filter((mapping) => mapping.jobDescriptionId === "JD-DATA" && mapping.skillId === "SK-MC")).toHaveLength(1);
+  expect(merged.mappings.find((mapping) => mapping.jobDescriptionId === "JD-DATA" && mapping.skillId === "SK-MC")?.evidence).toHaveLength(2);
+  expect(merged.profiles.some((profile) => profile.skills.some((link) => link.skillId === "SK-DV"))).toBe(false);
+  expect(merged.profiles[0].skills.find((link) => link.skillId === "SK-MC")).toMatchObject({ targetLevel: 3, weight: 30, critical: true });
+  expect(merged.tools.some((tool) => tool.skillIds.includes("SK-DV"))).toBe(false);
+  expect(merged.strategicVectors.some((vector) => vector.skillIds.includes("SK-DV"))).toBe(false);
+  expect(merged.evidenceRecords.some((evidence) => evidence.supportedEntityIds.includes("SK-DV"))).toBe(false);
+  expect(merged.relationships.some((relationship) => relationship.sourceId === "SK-DV" && relationship.targetId === "SK-MC" && relationship.type === "synonym")).toBe(true);
+  expect(merged.objectVersions.filter((version) => ["SK-DV", "SK-MC"].includes(version.entityId))).toHaveLength(2);
+  expect(merged.auditLog.filter((event) => event.action.startsWith("skill.merge"))).toHaveLength(2);
 });

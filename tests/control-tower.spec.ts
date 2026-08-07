@@ -280,6 +280,30 @@ test("creates and edits a governed core skill", async ({ page }) => {
   await expect(page.locator(".skill-table > div").filter({ hasText: "Semantic Skill Extraction" }).getByText("Approved", { exact: true })).toBeVisible();
 });
 
+test("previews impact and records governed skill lifecycle and bulk operations", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Skill library" }).click();
+  await page.getByRole("button", { name: "Duplicate Data Visualization" }).click();
+  await expect(page.getByRole("heading", { name: "Duplicate 1 skill" })).toBeVisible();
+  await expect(page.getByText(/dependencies affected/)).toBeVisible();
+  await page.getByLabel("Accountable actor").fill("Taxonomy Steward");
+  await page.getByLabel("Governance reason").fill("Create a governed working copy for comparison.");
+  await page.getByRole("button", { name: "Apply governed operation" }).click();
+  await expect(page.getByText("Data Visualization copy", { exact: true })).toBeVisible();
+
+  await page.getByLabel("Select Data Visualization", { exact: true }).check();
+  await page.getByLabel("Select Data Visualization copy", { exact: true }).check();
+  await expect(page.getByText("2 selected", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Move 2 skills" })).toBeVisible();
+  await page.getByLabel("Target skill group").selectOption("GRP-SBO");
+  await page.getByLabel("Accountable actor").fill("Taxonomy Steward");
+  await page.getByLabel("Governance reason").fill("Align both working concepts with the governed skill architecture group.");
+  await page.getByRole("button", { name: "Apply governed operation" }).click();
+  await expect(page.getByText("2 skill lifecycle operation(s) recorded as governed working state.")).toBeVisible();
+  await expect(page.locator(".skill-table > div").filter({ hasText: "Data Visualization" }).first().getByText("Skill-based Organisation", { exact: true })).toBeVisible();
+});
+
 test("runs document intake through the separate Skill Designer workflow", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Intake & interview" }).click();

@@ -82,6 +82,101 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
   };
 }
 
+export type SkillLifecycleAction = "duplicate" | "move" | "archive" | "restore" | "deprecate" | "replace" | "merge";
+export type SkillLifecycleRequest = {
+  action: SkillLifecycleAction;
+  skillId: string;
+  actor: string;
+  reason: string;
+  targetSkillId?: string;
+  targetGroupId?: string;
+  newSkillId?: string;
+};
+
+function unique(values: string[]) {
+  return [...new Set(values)];
+}
+
+export function applySkillLifecycle(workspace: SkillWorkspace, request: SkillLifecycleRequest): SkillWorkspace {
+  const actor = request.actor.trim();
+  const reason = request.reason.trim();
+  if (!actor) throw new Error("An accountable actor is required.");
+  if (!reason) throw new Error("A governance reason is required.");
+  const source = workspace.skills.find((skill) => skill.id === request.skillId);
+  if (!source) throw new Error("Skill not found.");
+  const impact = impactAnalysis(workspace, source.id);
+
+  if (request.action === "duplicate") {
+    const id = request.newSkillId || `SK-${Date.now().toString().slice(-8)}`;
+    if (workspace.skills.some((skill) => skill.id === id)) throw new Error(`Skill ${id} already exists.`);
+    const duplicate = { ...source, id, name: `${source.name} copy`, status: "draft" as const, governance: undefined };
+    return recordGovernedVersion({ ...workspace, skills: [duplicate, ...workspace.skills] }, "skill", id, "skill.duplicated", actor, { ...duplicate, sourceSkillId: source.id, reason });
+  }
+
+  if (request.action === "move") {
+    const group = workspace.groups.find((candidate) => candidate.id === request.targetGroupId && !["archived", "retired"].includes(candidate.status));
+    if (!group) throw new Error("An active target group is required.");
+    const moved = { ...source, groupId: group.id, status: source.status === "approved" ? "in_review" as const : source.status };
+    return recordGovernedVersion({ ...workspace, skills: workspace.skills.map((skill) => skill.id === source.id ? moved : skill) }, "skill", source.id, "skill.moved", actor, { beforeGroupId: source.groupId, targetGroupId: group.id, reason, impact: impact.dependencyCount });
+  }
+
+  if (["archive", "restore", "deprecate"].includes(request.action)) {
+    const status = request.action === "archive" ? "archived" as const : request.action === "restore" ? "draft" as const : "deprecated" as const;
+    const updated = { ...source, status };
+    return recordGovernedVersion({ ...workspace, skills: workspace.skills.map((skill) => skill.id === source.id ? updated : skill) }, "skill", source.id, `skill.${request.action}d`, actor, { status, reason, impact: impact.dependencyCount });
+  }
+
+  const target = workspace.skills.find((skill) => skill.id === request.targetSkillId && skill.id !== source.id && !["archived", "retired"].includes(skill.status));
+  if (!target) throw new Error("An active target skill is required.");
+  const replaceId = (id: string) => id === source.id ? target.id : id;
+  const mappings = workspace.mappings.reduce<JobSkillMapping[]>((result, original) => {
+    const mapping = original.skillId === source.id ? { ...original, skillId: target.id, status: "proposed" as const } : original;
+    const duplicate = result.find((candidate) => candidate.jobDescriptionId === mapping.jobDescriptionId && candidate.skillId === mapping.skillId);
+    if (!duplicate) return [...result, mapping];
+    return result.map((candidate) => candidate.id === duplicate.id ? {
+      ...candidate,
+      targetLevel: Math.max(candidate.targetLevel, mapping.targetLevel) as JobSkillMapping["targetLevel"],
+      weight: Math.max(candidate.weight, mapping.weight),
+      critical: candidate.critical || mapping.critical,
+      rationale: unique([candidate.rationale, mapping.rationale]).join(" · "),
+      evidence: unique([...candidate.evidence, ...mapping.evidence]),
+      strategicVectorIds: unique([...candidate.strategicVectorIds, ...mapping.strategicVectorIds]),
+      toolIds: unique([...(candidate.toolIds || []), ...(mapping.toolIds || [])]),
+      status: "proposed" as const,
+    } : candidate);
+  }, []);
+  const profiles = workspace.profiles.map((profile) => {
+    const links = profile.skills.reduce<typeof profile.skills>((result, original) => {
+      const link = original.skillId === source.id ? { ...original, skillId: target.id } : original;
+      const duplicate = result.find((candidate) => candidate.skillId === link.skillId);
+      if (!duplicate) return [...result, link];
+      return result.map((candidate) => candidate.skillId === duplicate.skillId ? { ...candidate, targetLevel: Math.max(candidate.targetLevel, link.targetLevel) as typeof candidate.targetLevel, weight: Math.max(candidate.weight, link.weight), critical: candidate.critical || link.critical } : candidate);
+    }, []);
+    return { ...profile, skills: links, status: profile.skills.some((link) => link.skillId === source.id) ? "in_review" as const : profile.status };
+  });
+  const relationships = workspace.relationships
+    .map((relationship) => ({ ...relationship, sourceId: replaceId(relationship.sourceId), targetId: replaceId(relationship.targetId), status: relationship.sourceId === source.id || relationship.targetId === source.id ? "draft" as const : relationship.status }))
+    .filter((relationship) => relationship.sourceId !== relationship.targetId)
+    .filter((relationship, index, values) => values.findIndex((candidate) => candidate.sourceId === relationship.sourceId && candidate.targetId === relationship.targetId && candidate.type === relationship.type) === index);
+  const relationshipId = `REL-${request.action.toUpperCase()}-${source.id}-${target.id}`;
+  const migrated = {
+    ...workspace,
+    skills: workspace.skills.map((skill) => skill.id === source.id
+      ? { ...skill, status: request.action === "merge" ? "archived" as const : "retired" as const, governance: { version: (skill.governance?.version || 0) + 1, createdAt: skill.governance?.createdAt || workspace.updatedAt, updatedAt: new Date().toISOString(), createdBy: skill.governance?.createdBy || actor, updatedBy: actor, replacedById: target.id } }
+      : skill.id === target.id && request.action === "merge"
+        ? { ...skill, aliases: unique([...skill.aliases, source.name, ...source.aliases]), evidence: unique([...skill.evidence, ...source.evidence]), status: "in_review" as const }
+        : skill),
+    mappings,
+    profiles,
+    tools: workspace.tools.map((tool) => ({ ...tool, skillIds: unique(tool.skillIds.map(replaceId)), status: tool.skillIds.includes(source.id) ? "in_review" as const : tool.status })),
+    strategicVectors: workspace.strategicVectors.map((vector) => ({ ...vector, skillIds: unique(vector.skillIds.map(replaceId)), status: vector.skillIds.includes(source.id) ? "in_review" as const : vector.status })),
+    relationships: [{ id: relationshipId, sourceId: source.id, targetId: target.id, type: request.action === "merge" ? "synonym" as const : "replacement" as const, rationale: reason, status: "draft" as const }, ...relationships],
+    evidenceRecords: workspace.evidenceRecords.map((evidence) => ({ ...evidence, supportedEntityIds: unique(evidence.supportedEntityIds.map(replaceId)), status: evidence.supportedEntityIds.includes(source.id) ? "in_review" as const : evidence.status })),
+  };
+  const sourceVersion = recordGovernedVersion(migrated, "skill", source.id, `skill.${request.action}d`, actor, { targetSkillId: target.id, reason, impact: impact.dependencyCount });
+  return recordGovernedVersion(sourceVersion, "skill", target.id, `skill.${request.action}_target_updated`, actor, { sourceSkillId: source.id, reason, migratedDependencies: impact.dependencyCount });
+}
+
 function auditEvent(action: string, review: ReviewItem, actor: string, reason: string, at: string): AuditEvent {
   return {
     id: `AUD-${review.id}-${at}`,
