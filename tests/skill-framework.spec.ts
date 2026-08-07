@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -116,6 +116,45 @@ test("enforces agent-tool permissions, classifications, lifecycle and audit cont
   const inactiveWorkspace = structuredClone(bootstrapSkillWorkspace);
   inactiveWorkspace.agentTools = inactiveWorkspace.agentTools.map((tool) => tool.id === "mapping_scorer" ? { ...tool, lifecycleStatus: "disabled" as const } : tool);
   expect(authorizeAgentToolCall(inactiveWorkspace, "mapping_scorer", { ...base, permissions: ["skill.mapping.score"] })).toMatchObject({ allowed: false, code: "TOOL_INACTIVE" });
+});
+
+test("blocks release when a canonical agent-tool contract is missing or incomplete", () => {
+  const missing = structuredClone(bootstrapSkillWorkspace);
+  missing.agentTools = missing.agentTools.filter((tool) => tool.id !== "mapping_scorer");
+  expect(validateWorkspace(missing).some((finding) => finding.ruleId === "AGENT-REGISTRY-001" && finding.entityId === "AGENT-REGISTRY")).toBe(true);
+
+  const incomplete = structuredClone(bootstrapSkillWorkspace);
+  incomplete.agentTools[0].auditRequirements = [];
+  expect(validateWorkspace(incomplete).some((finding) => finding.ruleId === "AGENT-REGISTRY-001" && finding.entityId === incomplete.agentTools[0].id)).toBe(true);
+  expect(validateWorkspace(bootstrapSkillWorkspace).some((finding) => finding.ruleId === "AGENT-REGISTRY-001")).toBe(false);
+});
+
+test("routes agent-tool edits and restorations through review while preserving historical invocation identity", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  workspace.agentRuns[0].tools = ["mapping_scorer"];
+  workspace.agentRuns[0].invocations = [{ toolId: "mapping_scorer", toolVersion: "1.0.0", inputRef: "working://input/1", outputRef: "working://output/1", durationMs: 42, result: "success", retryCount: 0, rulesVersion: workspace.framework.rulesVersion, frameworkVersion: workspace.framework.version, actingUser: "mapping-agent", correlationId: "CORR-TOOL-1" }];
+  const edited = saveAgentToolDefinition(workspace, { ...workspace.agentTools.find((tool) => tool.id === "mapping_scorer")!, version: "1.1.0" }, "Agent Platform Owner", "Expand the governed scoring contract.");
+  expect(edited.agentTools.find((tool) => tool.id === "mapping_scorer")?.lifecycleStatus).toBe("draft");
+  const editReview = edited.reviewQueue.find((item) => item.entityId === "mapping_scorer" && item.status === "pending")!;
+  const approved = decideReview(edited, editReview.id, "accepted", "Framework Owner", "Contract and evidence approved.");
+  expect(approved.agentTools.find((tool) => tool.id === "mapping_scorer")?.lifecycleStatus).toBe("active");
+
+  const disabled = applyAgentToolLifecycle(approved, { action: "disable", toolId: "mapping_scorer", actor: "Agent Platform Owner", reason: "Suspend execution during contract review." });
+  expect(disabled.agentTools.find((tool) => tool.id === "mapping_scorer")?.lifecycleStatus).toBe("disabled");
+  expect(disabled.agentRuns[0].invocations?.[0]).toMatchObject({ toolId: "mapping_scorer", toolVersion: "1.0.0", correlationId: "CORR-TOOL-1" });
+  expect(impactAnalysis(disabled, "mapping_scorer")).toMatchObject({ agentToolRuns: [{ id: "RUN-001" }], agentToolInvocations: [{ correlationId: "CORR-TOOL-1" }] });
+
+  const restored = applyAgentToolLifecycle(disabled, { action: "restore", toolId: "mapping_scorer", actor: "Agent Platform Owner", reason: "Corrective controls verified." });
+  expect(restored.agentTools.find((tool) => tool.id === "mapping_scorer")?.lifecycleStatus).toBe("draft");
+  expect(restored.reviewQueue.some((item) => item.entityId === "mapping_scorer" && item.status === "pending")).toBe(true);
+});
+
+test("merges agent-tool policy contracts without rewriting recorded calls", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const merged = applyAgentToolLifecycle(workspace, { action: "merge", toolId: "skill_similarity_search", targetToolId: "taxonomy_search", actor: "Agent Platform Owner", reason: "Consolidate overlapping read-only search capabilities." });
+  expect(merged.agentTools.find((tool) => tool.id === "skill_similarity_search")).toMatchObject({ lifecycleStatus: "disabled", replacementToolId: "taxonomy_search" });
+  expect(merged.agentTools.find((tool) => tool.id === "taxonomy_search")).toMatchObject({ lifecycleStatus: "draft", supersedesToolIds: ["skill_similarity_search"] });
+  expect(merged.reviewQueue.some((item) => item.entityId === "taxonomy_search" && item.status === "pending")).toBe(true);
 });
 
 test("returns structured validation findings with release-gate metadata", () => {

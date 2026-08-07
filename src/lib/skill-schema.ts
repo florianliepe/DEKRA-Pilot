@@ -144,7 +144,15 @@ export type AgentToolDefinition = {
   lifecycleStatus: "draft" | "active" | "deprecated" | "disabled";
   owner: string;
   allowedAgentActions: string[];
+  replacementToolId?: string;
+  supersedesToolIds?: string[];
 };
+
+export const requiredAgentToolIds = [
+  "job_parser", "evidence_extractor", "taxonomy_search", "skill_similarity_search", "syntax_validator",
+  "granularity_validator", "kfla_lookup", "controlled_tool_lookup", "mapping_scorer",
+  "draft_suggestion_writer", "review_package_generator",
+] as const;
 
 export type AuditEvent = {
   id: string;
@@ -615,6 +623,32 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
   for (const tool of workspace.tools.filter((item) => !["archived", "retired"].includes(item.status))) {
     if (new Set(tool.skillIds).size !== tool.skillIds.length || tool.skillIds.some((id) => !workspace.skills.some((skill) => skill.id === id && !["archived", "retired"].includes(skill.status)))) add("CONTROLLED-TOOL-INTEGRITY-001", "controlled_tool", tool.id, "Controlled tool contains a duplicate or unavailable skill link.", "skillIds", "Retain unique links to active governed skills only.");
   }
+  const agentToolIds = new Set<string>();
+  for (const tool of workspace.agentTools) {
+    const completeSchema = (schema: JsonSchemaShape) => schema?.type === "object" && Boolean(schema.properties) && Object.keys(schema.properties).length > 0 && (schema.required || []).every((field) => Boolean(schema.properties[field]));
+    const contractComplete = completeSchema(tool.inputSchema)
+      && completeSchema(tool.outputSchema)
+      && /^skill\./.test(tool.requiredPermission)
+      && tool.allowedDataClassifications.length > 0
+      && !tool.allowedDataClassifications.includes("licensed")
+      && tool.timeoutMs > 0
+      && tool.retryPolicy.maxAttempts > 0
+      && tool.retryPolicy.backoffMs >= 0
+      && tool.retryPolicy.retryableErrors.length > 0
+      && tool.rateLimit.requests > 0
+      && tool.rateLimit.windowSeconds > 0
+      && tool.errorContract.codes.length > 0
+      && tool.errorContract.redactInputs
+      && ["correlationId", "actingUser", "durationMs", "result"].every((field) => tool.auditRequirements.includes(field))
+      && /^\d+\.\d+\.\d+$/.test(tool.version)
+      && Boolean(tool.owner.trim())
+      && tool.allowedAgentActions.length > 0;
+    if (agentToolIds.has(tool.id) || !contractComplete) add("AGENT-REGISTRY-001", "agent_tool", tool.id, "Agent-tool identity or callable contract is incomplete.", "contract", "Provide a unique stable ID, complete schemas, permission, data boundary, runtime policies, error contract, audit fields, semantic version, owner and allowed actions.");
+    if (tool.replacementToolId && !workspace.agentTools.some((candidate) => candidate.id === tool.replacementToolId && candidate.id !== tool.id)) add("AGENT-REGISTRY-001", "agent_tool", tool.id, "Replacement tool does not resolve to another registry entry.", "replacementToolId", "Select an existing successor tool or remove the replacement reference.");
+    agentToolIds.add(tool.id);
+  }
+  const missingRequiredTools = requiredAgentToolIds.filter((id) => !workspace.agentTools.some((tool) => tool.id === id && tool.lifecycleStatus === "active"));
+  if (missingRequiredTools.length) add("AGENT-REGISTRY-001", "workspace", "AGENT-REGISTRY", `Required active tools are missing: ${missingRequiredTools.join(", ")}.`, "agentTools", "Restore and approve all eleven canonical allowlisted tool implementations before release.");
   for (const mapping of workspace.mappings.filter((item) => item.status !== "rejected" && item.status !== "deferred")) {
     const toolIds = mapping.toolIds || [];
     if (new Set(toolIds).size !== toolIds.length || toolIds.some((id) => !workspace.tools.some((tool) => tool.id === id && !["archived", "retired"].includes(tool.status)))) add("MAPPING-TOOL-001", "mapping", mapping.id, "Mapping contains a duplicate or unavailable controlled-tool reference.", "toolIds", "Select unique active controlled tools or remove obsolete references.");

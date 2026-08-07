@@ -472,6 +472,26 @@ test("creates, edits and archives a governed multilingual label", async ({ page 
   await expect(page.getByRole("button", { name: "Restore localized label Skill-Taxonomie gestalten" })).toBeVisible();
 });
 
+test("governs agent-tool edits and lifecycle through accountable review", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  await page.getByRole("button", { name: "Agent tools" }).click();
+  await page.getByRole("button", { name: "Edit Mapping scorer" }).click();
+  await page.getByLabel("Version", { exact: true }).fill("1.1.0");
+  await page.getByLabel("Accountable actor").fill("Agent Platform Owner");
+  await page.getByLabel("Governance reason").fill("Validate the revised mapping score contract before activation.");
+  await page.getByRole("button", { name: "Save draft for review" }).click();
+  await expect(page.getByText("1.1.0 · draft", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Govern lifecycle Mapping scorer" }).click();
+  await expect(page.getByText(/recorded runs and .* invocations/)).toBeVisible();
+  await page.getByLabel("Lifecycle action").selectOption("disable");
+  await page.getByLabel("Accountable actor").fill("Agent Platform Owner");
+  await page.getByLabel("Governance reason").fill("Suspend execution while the revised contract awaits approval.");
+  await page.getByRole("button", { name: "Apply governed lifecycle action" }).click();
+  await expect(page.getByText("1.1.0 · disabled", { exact: true })).toBeVisible();
+});
+
 test("aligns mapping evidence and strategic vectors with the enriched job draft", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();

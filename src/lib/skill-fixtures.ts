@@ -155,6 +155,7 @@ export const validationRules: ValidationRule[] = [
   ["KFLA-METADATA-001", "KFLA governance metadata", "Every factor, cluster and competency must retain source, licence, owner, version and review metadata.", "error", "metadata", "Complete the governed provenance metadata before release.", true],
   ["PROFICIENCY-INTEGRITY-001", "Four-level proficiency integrity", "The framework must retain four unique governed proficiency definitions.", "error", "proficiencyDefinitions", "Restore levels one through four and their behavioral indicators.", true],
   ["EVIDENCE-SOURCE-001", "Evidence source integrity", "Every evidence record must resolve to a governed source.", "error", "sourceId", "Select an existing governed source or create one before attaching evidence.", true],
+  ["AGENT-REGISTRY-001", "Agent-tool registry integrity", "All eleven canonical agent tools must be uniquely identified, active and governed by complete callable contracts.", "error", "agentTools", "Restore complete schemas, permissions, data boundaries, runtime policies, error contracts, audit fields, versions and accountable owners.", true],
 ].map(([id, name, description, severity, affectedField, suggestedCorrection, blocking]) => ({ id, name, description, severity, affectedField, suggestedCorrection, blocking, frameworkVersion: "3.1.0", status: "approved" })) as ValidationRule[];
 
 const schema = (required: string[], properties: Record<string, { type: string; description?: string }>) => ({ type: "object" as const, required, properties });

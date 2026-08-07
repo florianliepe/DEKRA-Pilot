@@ -1,4 +1,4 @@
-import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type EvidenceRecord, type JobSkillMapping, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type SourceRecord, type TaxonomyRelationship, type ValidationRule } from "./skill-schema";
+import { validateWorkspace, type AgentToolDefinition, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type EvidenceRecord, type JobSkillMapping, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type SourceRecord, type TaxonomyRelationship, type ValidationRule } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
 
@@ -80,6 +80,9 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
   const selectedTool = workspace.tools.find((tool) => tool.id === entityId);
   const toolSkills = selectedTool ? workspace.skills.filter((skill) => selectedTool.skillIds.includes(skill.id)) : [];
   const toolMappings = selectedTool ? workspace.mappings.filter((mapping) => (mapping.toolIds || []).includes(selectedTool.id)) : [];
+  const selectedAgentTool = workspace.agentTools.find((tool) => tool.id === entityId);
+  const agentToolRuns = selectedAgentTool ? workspace.agentRuns.filter((run) => run.tools.includes(selectedAgentTool.id) || (run.invocations || []).some((invocation) => invocation.toolId === selectedAgentTool.id)) : [];
+  const agentToolInvocations = selectedAgentTool ? workspace.agentRuns.flatMap((run) => run.invocations || []).filter((invocation) => invocation.toolId === selectedAgentTool.id) : [];
   return {
     skills,
     mappings,
@@ -95,8 +98,96 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
     selectedTool,
     toolSkills,
     toolMappings,
-    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length + toolSkills.length + toolMappings.length,
+    selectedAgentTool,
+    agentToolRuns,
+    agentToolInvocations,
+    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length + toolSkills.length + toolMappings.length + agentToolRuns.length + agentToolInvocations.length,
   };
+}
+
+function agentToolReview(workspace: SkillWorkspace, tool: AgentToolDefinition, actor: string, reason: string): ReviewItem {
+  return {
+    id: `REV-AGENT-${tool.id}-${Date.now()}`,
+    title: `Approve agent tool: ${tool.name}`,
+    type: "taxonomy_change",
+    summary: `Review callable contract ${tool.id} v${tool.version} before activation.`,
+    confidence: 100,
+    evidence: reason,
+    explanation: `Submitted by ${actor}. Activation remains human-controlled.`,
+    frameworkVersion: workspace.framework.version,
+    rulesVersion: workspace.framework.rulesVersion,
+    status: "pending",
+    entityId: tool.id,
+    payload: { lifecycleStatus: tool.lifecycleStatus, requiredPermission: tool.requiredPermission, version: tool.version },
+  };
+}
+
+export function saveAgentToolDefinition(workspace: SkillWorkspace, tool: AgentToolDefinition, actor: string, reason: string): SkillWorkspace {
+  if (!actor.trim()) throw new Error("An accountable actor is required.");
+  if (!reason.trim()) throw new Error("A governance reason is required.");
+  const exists = workspace.agentTools.some((candidate) => candidate.id === tool.id);
+  const value = { ...tool, lifecycleStatus: "draft" as const };
+  const review = agentToolReview(workspace, value, actor.trim(), reason.trim());
+  const next = {
+    ...workspace,
+    agentTools: exists ? workspace.agentTools.map((candidate) => candidate.id === value.id ? value : candidate) : [value, ...workspace.agentTools],
+    reviewQueue: [review, ...workspace.reviewQueue],
+  };
+  return recordGovernedVersion(next, "agent_tool", value.id, exists ? "agent_tool.updated_for_review" : "agent_tool.registered_for_review", actor.trim(), { ...value, governanceReason: reason.trim(), reviewId: review.id } as unknown as Record<string, unknown>);
+}
+
+export type AgentToolLifecycleAction = "duplicate" | "disable" | "restore" | "deprecate" | "replace" | "merge";
+export type AgentToolLifecycleRequest = { action: AgentToolLifecycleAction; toolId: string; actor: string; reason: string; targetToolId?: string; newToolId?: string };
+
+export function applyAgentToolLifecycle(workspace: SkillWorkspace, request: AgentToolLifecycleRequest): SkillWorkspace {
+  const actor = request.actor.trim();
+  const reason = request.reason.trim();
+  if (!actor) throw new Error("An accountable actor is required.");
+  if (!reason) throw new Error("A governance reason is required.");
+  const source = workspace.agentTools.find((tool) => tool.id === request.toolId);
+  if (!source) throw new Error("Agent tool not found.");
+  const impact = impactAnalysis(workspace, source.id);
+
+  if (request.action === "duplicate") {
+    const id = request.newToolId?.trim() || `custom_tool_${Date.now()}`;
+    if (workspace.agentTools.some((tool) => tool.id === id)) throw new Error(`Agent tool ${id} already exists.`);
+    const duplicate: AgentToolDefinition = { ...source, id, name: `${source.name} copy`, lifecycleStatus: "draft", supersedesToolIds: [], replacementToolId: undefined };
+    return recordGovernedVersion({ ...workspace, agentTools: [duplicate, ...workspace.agentTools] }, "agent_tool", id, "agent_tool.duplicated", actor, { ...duplicate, sourceToolId: source.id, reason } as unknown as Record<string, unknown>);
+  }
+
+  if (["disable", "deprecate"].includes(request.action)) {
+    const lifecycleStatus = request.action === "disable" ? "disabled" as const : "deprecated" as const;
+    const value = { ...source, lifecycleStatus };
+    return recordGovernedVersion({ ...workspace, agentTools: workspace.agentTools.map((tool) => tool.id === source.id ? value : tool) }, "agent_tool", source.id, `agent_tool.${request.action}d`, actor, { ...value, reason, affectedRuns: impact.agentToolRuns.length, historicalInvocationsPreserved: impact.agentToolInvocations.length } as unknown as Record<string, unknown>);
+  }
+
+  if (request.action === "restore") {
+    const value = { ...source, lifecycleStatus: "draft" as const, replacementToolId: undefined };
+    const review = agentToolReview(workspace, value, actor, reason);
+    return recordGovernedVersion({ ...workspace, agentTools: workspace.agentTools.map((tool) => tool.id === source.id ? value : tool), reviewQueue: [review, ...workspace.reviewQueue] }, "agent_tool", source.id, "agent_tool.restored_for_review", actor, { ...value, reason, reviewId: review.id } as unknown as Record<string, unknown>);
+  }
+
+  const target = workspace.agentTools.find((tool) => tool.id === request.targetToolId && tool.id !== source.id && !["deprecated", "disabled"].includes(tool.lifecycleStatus));
+  if (!target) throw new Error("An active or draft target agent tool is required.");
+  const mergedTarget: AgentToolDefinition = request.action === "merge" ? {
+    ...target,
+    lifecycleStatus: "draft",
+    allowedDataClassifications: unique([...target.allowedDataClassifications, ...source.allowedDataClassifications]).filter((classification) => classification !== "licensed") as DataClassification[],
+    allowedAgentActions: unique([...target.allowedAgentActions, ...source.allowedAgentActions]),
+    auditRequirements: unique([...target.auditRequirements, ...source.auditRequirements]),
+    retryPolicy: { ...target.retryPolicy, retryableErrors: unique([...target.retryPolicy.retryableErrors, ...source.retryPolicy.retryableErrors]) },
+    errorContract: { ...target.errorContract, codes: unique([...target.errorContract.codes, ...source.errorContract.codes]), redactInputs: target.errorContract.redactInputs || source.errorContract.redactInputs },
+    supersedesToolIds: unique([...(target.supersedesToolIds || []), source.id, ...(source.supersedesToolIds || [])]),
+  } : { ...target, lifecycleStatus: "draft", supersedesToolIds: unique([...(target.supersedesToolIds || []), source.id]) };
+  const retiredSource = { ...source, lifecycleStatus: request.action === "merge" ? "disabled" as const : "deprecated" as const, replacementToolId: target.id };
+  const review = agentToolReview(workspace, mergedTarget, actor, reason);
+  const next = {
+    ...workspace,
+    agentTools: workspace.agentTools.map((tool) => tool.id === source.id ? retiredSource : tool.id === target.id ? mergedTarget : tool),
+    reviewQueue: [review, ...workspace.reviewQueue],
+  };
+  const sourceVersion = recordGovernedVersion(next, "agent_tool", source.id, `agent_tool.${request.action}d`, actor, { targetToolId: target.id, reason, affectedRuns: impact.agentToolRuns.length, historicalInvocationsPreserved: impact.agentToolInvocations.length });
+  return recordGovernedVersion(sourceVersion, "agent_tool", target.id, `agent_tool.${request.action}_target_for_review`, actor, { sourceToolId: source.id, reason, reviewId: review.id });
 }
 
 export type ControlledToolLifecycleAction = "duplicate" | "archive" | "restore" | "deprecate" | "replace" | "merge";
@@ -373,6 +464,10 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
     status: approved ? "approved" as const : decision === "rejected" ? "rejected" as const : decision === "deferred" ? "deferred" as const : mapping.status,
   } : mapping);
   const profiles = workspace.profiles.map((profile) => profile.id === review.entityId && approved ? { ...profile, status: "approved" as const } : profile);
+  const agentTools = workspace.agentTools.map((tool) => tool.id === review.entityId ? {
+    ...tool,
+    lifecycleStatus: approved ? "active" as const : decision === "rejected" ? "disabled" as const : tool.lifecycleStatus,
+  } : tool);
   const objectVersions: ObjectVersion[] = [{
     id: `VER-${reviewId}-${Date.now()}`,
     entityType: review.type,
@@ -383,7 +478,7 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
     action: `review.${decision}`,
     snapshot: { ...review, status: decision, mergeTargetId, decisionReason: reason.trim() },
   }, ...workspace.objectVersions];
-  return { ...workspace, reviewQueue, skills, mappings, profiles, objectVersions, auditLog: [auditEvent(`review.${decision}`, review, actor.trim(), reason.trim(), at), ...workspace.auditLog], updatedAt: at };
+  return { ...workspace, reviewQueue, skills, mappings, profiles, agentTools, objectVersions, auditLog: [auditEvent(`review.${decision}`, review, actor.trim(), reason.trim(), at), ...workspace.auditLog], updatedAt: at };
 }
 
 export function recordGovernedVersion(workspace: SkillWorkspace, entityType: string, entityId: string, action: string, actor: string, snapshot: Record<string, unknown>) {
