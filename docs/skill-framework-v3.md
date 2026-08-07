@@ -28,6 +28,8 @@ Every mapping uses the versioned thirteen-part score contract. Reviewers can rec
 
 Material changes are soft lifecycle transitions (`draft`, `in_review`, `approved`, `deprecated`, `archived`, `retired`). Merge, move, archive, deprecate and replace actions require dependency analysis and create immutable before/after evidence. Approved snapshots contain approved objects only; working interviews, elicitation sessions, agent traces and object snapshots remain out of the public release.
 
+Domain and group definitions are review payloads rather than direct edits to the active hierarchy. Create/edit requests retain the proposed name, boundary, parent, proposer and reason until approval. Duplicate creates a clearly marked draft copy. Move, merge, replace, archive, restore and deprecate requests preview groups, skills, mappings, profiles, tools, relationships and jobs, then remain non-mutating until an accountable reviewer accepts them. Approved moves and consolidations migrate child references atomically and retain replacement lineage.
+
 Taxonomy relationships are first-class governed objects. Create, update, duplicate, archive, restore and deprecate actions require an accountable actor and reason. Active graph edges must have distinct active endpoints, rationale and a unique source/type/target tuple; editing an approved edge routes it back to review.
 
 The skill library exposes these lifecycle controls for individual and bulk selections. Every operation requires an accountable actor and reason, previews affected jobs, mappings, profiles, tools and relationships, and records an object version plus audit event. Merge and replace migrate downstream mappings, profile targets, controlled-tool links, strategic vectors, relationships and evidence references without deleting history; duplicate creates a draft working copy and restore returns a soft-deleted skill to draft.
@@ -122,7 +124,7 @@ Both workflows were imported from commit `4de21ab`, retained the existing header
 3. Complete and resume an elicitation draft; run AI rewrite/validation and submit it for review.
 4. Create/edit/archive a skill and confirm a version/audit event appears.
 5. Open **Taxonomy standards** and verify 4 factors, 12 clusters and 38 deep dives.
-6. Exercise hierarchy and relationship CRUD. Submit a KFLA competency move and confirm no mutation occurs until the review is approved. In **Controlled tools**, duplicate and merge a test record; verify linked-skill and mapping impact plus replacement history.
+6. Exercise hierarchy and relationship CRUD. Submit a domain/group definition and group move; confirm neither changes the active hierarchy before approval. Submit a KFLA competency move with the same review-first behavior. In **Controlled tools**, duplicate and merge a test record; verify linked-skill and mapping impact plus replacement history.
 7. Open **Jobs & mapping**, inspect all thirteen score dimensions and confirm an override requires a reason.
 8. Open **Role profiles**; create or edit a profile, then duplicate and archive it with an accountable actor and reason. Confirm impact counts and immutable history.
 9. Open **Governance** to inspect data quality, tool contracts, versions, audit, configuration, graph and coverage insights. Edit an active agent-tool contract and confirm it becomes draft, shows run/invocation impact and requires a human approval to reactivate.

@@ -74,6 +74,16 @@ skills and allowed catalogue actions, add a `replacedById` chain, and return
 affected mappings plus the target tool to review. Validation blocks duplicate
 or unavailable skill links and obsolete mapping-to-tool references.
 
+## Domain and group lifecycle
+
+Domain and group create/edit candidates are stored in the review payload and
+do not change the active hierarchy before approval. Duplicate produces a draft
+working copy. Move, archive, restore, deprecate, replace and merge requests
+require an accountable proposer and reason, preview affected groups, skills,
+mappings, profiles, tools, relationships and jobs, and enter the human review
+queue. Approval applies child/reference migrations atomically and records
+replacement lineage; rejection or deferral remains non-mutating.
+
 ## KFLA structural lifecycle
 
 The fixed public reference layer retains four factors, twelve clusters and 38

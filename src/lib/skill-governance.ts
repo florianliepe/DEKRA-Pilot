@@ -95,6 +95,18 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
   const kflaMappings = workspace.mappings.filter((mapping) => kflaSkillIds.has(mapping.skillId));
   const kflaJobIds = new Set(kflaMappings.map((mapping) => mapping.jobDescriptionId));
   const kflaJobs = workspace.jobDescriptions.filter((job) => kflaJobIds.has(job.id));
+  const selectedDomain = workspace.domains.find((item) => item.id === entityId);
+  const selectedGroup = workspace.groups.find((item) => item.id === entityId);
+  const taxonomyGroups = selectedDomain ? workspace.groups.filter((item) => item.domainId === selectedDomain.id) : selectedGroup ? [selectedGroup] : [];
+  const taxonomyGroupIds = new Set(taxonomyGroups.map((item) => item.id));
+  const taxonomySkills = workspace.skills.filter((skill) => taxonomyGroupIds.has(skill.groupId));
+  const taxonomySkillIds = new Set(taxonomySkills.map((skill) => skill.id));
+  const taxonomyMappings = workspace.mappings.filter((mapping) => taxonomySkillIds.has(mapping.skillId));
+  const taxonomyProfiles = workspace.profiles.filter((profile) => profile.skills.some((link) => taxonomySkillIds.has(link.skillId)));
+  const taxonomyTools = workspace.tools.filter((tool) => tool.skillIds.some((id) => taxonomySkillIds.has(id)));
+  const taxonomyRelationships = workspace.relationships.filter((relationship) => taxonomySkillIds.has(relationship.sourceId) || taxonomySkillIds.has(relationship.targetId));
+  const taxonomyJobIds = new Set(taxonomyMappings.map((mapping) => mapping.jobDescriptionId));
+  const taxonomyJobs = workspace.jobDescriptions.filter((job) => taxonomyJobIds.has(job.id));
   return {
     skills,
     mappings,
@@ -121,8 +133,105 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
     kflaSkills,
     kflaMappings,
     kflaJobs,
-    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length + toolSkills.length + toolMappings.length + agentToolRuns.length + agentToolInvocations.length + kflaClusters.length + kflaCompetencies.length + kflaSkills.length + kflaMappings.length + kflaJobs.length,
+    selectedDomain,
+    selectedGroup,
+    taxonomyGroups,
+    taxonomySkills,
+    taxonomyMappings,
+    taxonomyProfiles,
+    taxonomyTools,
+    taxonomyRelationships,
+    taxonomyJobs,
+    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length + toolSkills.length + toolMappings.length + agentToolRuns.length + agentToolInvocations.length + kflaClusters.length + kflaCompetencies.length + kflaSkills.length + kflaMappings.length + kflaJobs.length + (selectedDomain ? taxonomyGroups.length + taxonomySkills.length + taxonomyMappings.length + taxonomyProfiles.length + taxonomyTools.length + taxonomyRelationships.length + taxonomyJobs.length : 0),
   };
+}
+
+export type TaxonomyNodeKind = "domain" | "group";
+export type TaxonomyNodeLifecycleAction = "duplicate" | "archive" | "restore" | "deprecate" | "replace" | "merge" | "move";
+export type TaxonomyNodeLifecycleRequest = { kind: TaxonomyNodeKind; action: TaxonomyNodeLifecycleAction; entityId: string; actor: string; reason: string; targetId?: string; parentId?: string; newId?: string };
+export type TaxonomyNodeDefinitionRequest = { kind: TaxonomyNodeKind; entityId?: string; name: string; description: string; domainId?: string; actor: string; reason: string };
+
+function executeTaxonomyNodeDefinition(workspace: SkillWorkspace, request: TaxonomyNodeDefinitionRequest, reviewer: string, decisionReason: string): SkillWorkspace {
+  const id = request.entityId!;
+  const exists = request.kind === "domain" ? workspace.domains.some((item) => item.id === id) : workspace.groups.some((item) => item.id === id);
+  const at = new Date().toISOString();
+  const current = request.kind === "domain" ? workspace.domains.find((item) => item.id === id) : workspace.groups.find((item) => item.id === id);
+  const governance = { version: (current?.governance?.version || 0) + 1, createdAt: current?.governance?.createdAt || at, updatedAt: at, createdBy: current?.governance?.createdBy || request.actor, updatedBy: reviewer };
+  const record = { id, name: request.name.trim(), description: request.description.trim(), status: "approved" as const, governance };
+  const next = request.kind === "domain"
+    ? { ...workspace, domains: exists ? workspace.domains.map((item) => item.id === id ? record : item) : [...workspace.domains, record] }
+    : { ...workspace, groups: exists ? workspace.groups.map((item) => item.id === id ? { ...record, domainId: request.domainId! } : item) : [...workspace.groups, { ...record, domainId: request.domainId! }] };
+  return recordGovernedVersion(next, request.kind, id, exists ? "taxonomy.definition_updated.approved" : "taxonomy.created.approved", reviewer, { requestedBy: request.actor, requestReason: request.reason, decisionReason, name: record.name, description: record.description, domainId: request.domainId });
+}
+
+export function requestTaxonomyNodeDefinition(workspace: SkillWorkspace, request: TaxonomyNodeDefinitionRequest): SkillWorkspace {
+  if (!request.actor.trim()) throw new Error("An accountable actor is required.");
+  if (!request.reason.trim()) throw new Error("A governance reason is required.");
+  if (!request.name.trim() || !request.description.trim()) throw new Error("Canonical name and definition are required.");
+  if (request.kind === "group" && !workspace.domains.some((item) => item.id === request.domainId && !["archived", "retired"].includes(item.status))) throw new Error("An active parent domain is required.");
+  const id = request.entityId || `${request.kind === "domain" ? "DOM" : "GRP"}-${Date.now()}`;
+  if (!request.entityId && [...workspace.domains, ...workspace.groups].some((item) => item.id === id)) throw new Error(`Taxonomy node ${id} already exists.`);
+  const normalized = { ...request, entityId: id };
+  const review: ReviewItem = { id: `REV-TAXONOMY-DEFINITION-${id}-${Date.now()}`, title: `${request.entityId ? "Update" : "Create"} taxonomy ${request.kind}: ${request.name.trim()}`, type: "taxonomy_change", summary: `${request.entityId ? "Definition change" : "New canonical node"} requires accountable approval before it enters the active hierarchy.`, confidence: 100, evidence: request.reason.trim(), explanation: "The candidate definition is stored in the review payload; the active taxonomy is unchanged until approval.", frameworkVersion: workspace.framework.version, rulesVersion: workspace.framework.rulesVersion, status: "pending", entityId: id, payload: { operation: "taxonomy_node_definition", ...normalized } };
+  return recordGovernedVersion({ ...workspace, reviewQueue: [review, ...workspace.reviewQueue] }, request.kind, id, "taxonomy.definition_requested", request.actor.trim(), { ...review.payload, reviewId: review.id });
+}
+
+function assertTaxonomyNodeLifecycle(workspace: SkillWorkspace, request: TaxonomyNodeLifecycleRequest) {
+  if (!request.actor.trim()) throw new Error("An accountable actor is required.");
+  if (!request.reason.trim()) throw new Error("A governance reason is required.");
+  const exists = request.kind === "domain" ? workspace.domains.some((item) => item.id === request.entityId) : workspace.groups.some((item) => item.id === request.entityId);
+  if (!exists) throw new Error("Taxonomy node not found.");
+  if (request.action === "move" && request.kind === "domain") throw new Error("A domain has no movable parent.");
+  if (["replace", "merge"].includes(request.action) && (!request.targetId || request.targetId === request.entityId)) throw new Error("A distinct governed target is required.");
+  if (request.action === "move" && !request.parentId) throw new Error("A destination domain is required.");
+}
+
+function executeTaxonomyNodeLifecycle(workspace: SkillWorkspace, request: TaxonomyNodeLifecycleRequest, reviewer: string, decisionReason: string): SkillWorkspace {
+  const at = new Date().toISOString();
+  const governance = (current: { governance?: { version: number; createdAt: string; updatedAt: string; createdBy: string; updatedBy: string; replacedById?: string } }, replacementId?: string) => ({ version: (current.governance?.version || 0) + 1, createdAt: current.governance?.createdAt || workspace.updatedAt, updatedAt: at, createdBy: current.governance?.createdBy || request.actor, updatedBy: reviewer, replacedById: replacementId });
+  let next = workspace;
+  if (request.kind === "domain") {
+    const source = workspace.domains.find((item) => item.id === request.entityId)!;
+    if (["replace", "merge"].includes(request.action)) {
+      const target = workspace.domains.find((item) => item.id === request.targetId && item.id !== source.id && !["archived", "retired"].includes(item.status));
+      if (!target) throw new Error("Target domain not found.");
+      next = { ...workspace, domains: workspace.domains.map((item) => item.id === source.id ? { ...item, status: request.action === "merge" ? "archived" : "retired", governance: governance(item, target.id) } : item.id === target.id ? { ...item, status: "approved" } : item), groups: workspace.groups.map((item) => item.domainId === source.id ? { ...item, domainId: target.id } : item) };
+    } else {
+      const status = request.action === "archive" ? "archived" as const : request.action === "deprecate" ? "deprecated" as const : "approved" as const;
+      next = { ...workspace, domains: workspace.domains.map((item) => item.id === source.id ? { ...item, status, governance: governance(item) } : item) };
+    }
+  } else {
+    const source = workspace.groups.find((item) => item.id === request.entityId)!;
+    if (request.action === "move") {
+      const parent = workspace.domains.find((item) => item.id === request.parentId && !["archived", "retired"].includes(item.status));
+      if (!parent) throw new Error("Destination domain not found.");
+      next = { ...workspace, groups: workspace.groups.map((item) => item.id === source.id ? { ...item, domainId: parent.id, status: "approved", governance: governance(item) } : item) };
+    } else if (["replace", "merge"].includes(request.action)) {
+      const target = workspace.groups.find((item) => item.id === request.targetId && item.id !== source.id && !["archived", "retired"].includes(item.status));
+      if (!target) throw new Error("Target group not found.");
+      next = { ...workspace, groups: workspace.groups.map((item) => item.id === source.id ? { ...item, status: request.action === "merge" ? "archived" : "retired", governance: governance(item, target.id) } : item.id === target.id ? { ...item, status: "approved" } : item), skills: workspace.skills.map((skill) => skill.groupId === source.id ? { ...skill, groupId: target.id } : skill) };
+    } else {
+      const status = request.action === "archive" ? "archived" as const : request.action === "deprecate" ? "deprecated" as const : "approved" as const;
+      next = { ...workspace, groups: workspace.groups.map((item) => item.id === source.id ? { ...item, status, governance: governance(item) } : item) };
+    }
+  }
+  const impact = impactAnalysis(workspace, request.entityId);
+  return recordGovernedVersion(next, request.kind, request.entityId, `taxonomy.${request.action}.approved`, reviewer, { requestedBy: request.actor, requestReason: request.reason, decisionReason, targetId: request.targetId, parentId: request.parentId, affectedGroups: impact.taxonomyGroups.length, affectedSkills: impact.taxonomySkills.length, affectedMappings: impact.taxonomyMappings.length, affectedProfiles: impact.taxonomyProfiles.length, affectedTools: impact.taxonomyTools.length, affectedRelationships: impact.taxonomyRelationships.length, affectedJobs: impact.taxonomyJobs.length });
+}
+
+export function requestTaxonomyNodeLifecycle(workspace: SkillWorkspace, request: TaxonomyNodeLifecycleRequest): SkillWorkspace {
+  assertTaxonomyNodeLifecycle(workspace, request);
+  const source = request.kind === "domain" ? workspace.domains.find((item) => item.id === request.entityId)! : workspace.groups.find((item) => item.id === request.entityId)!;
+  const impact = impactAnalysis(workspace, request.entityId);
+  if (request.action === "duplicate") {
+    const id = request.newId?.trim() || `${request.kind === "domain" ? "DOM" : "GRP"}-${Date.now()}`;
+    if ([...workspace.domains, ...workspace.groups].some((item) => item.id === id)) throw new Error(`Taxonomy node ${id} already exists.`);
+    const duplicate = { ...source, id, name: `${source.name} copy`, status: "draft" as const, governance: undefined };
+    const next = request.kind === "domain" ? { ...workspace, domains: [...workspace.domains, duplicate] } : { ...workspace, groups: [...workspace.groups, duplicate as typeof workspace.groups[number]] };
+    return recordGovernedVersion(next, request.kind, id, "taxonomy.duplicated", request.actor.trim(), { ...duplicate, sourceId: source.id, reason: request.reason.trim(), affectedSkills: impact.taxonomySkills.length } as unknown as Record<string, unknown>);
+  }
+  const review: ReviewItem = { id: `REV-TAXONOMY-${request.kind}-${request.entityId}-${Date.now()}`, title: `${request.action} taxonomy ${request.kind} ${source.name}`, type: "taxonomy_change", summary: `${impact.taxonomyGroups.length} groups, ${impact.taxonomySkills.length} skills, ${impact.taxonomyMappings.length} mappings, ${impact.taxonomyProfiles.length} profiles, ${impact.taxonomyTools.length} tools, ${impact.taxonomyRelationships.length} relationships and ${impact.taxonomyJobs.length} jobs are in scope.`, confidence: 100, evidence: request.reason.trim(), explanation: "The structural mutation is not applied until an accountable reviewer approves this request.", frameworkVersion: workspace.framework.version, rulesVersion: workspace.framework.rulesVersion, status: "pending", entityId: request.entityId, payload: { operation: "taxonomy_node_lifecycle", ...request } };
+  return recordGovernedVersion({ ...workspace, reviewQueue: [review, ...workspace.reviewQueue] }, request.kind, request.entityId, "taxonomy.lifecycle_requested", request.actor.trim(), { ...review.payload, reviewId: review.id, impact: review.summary });
 }
 
 export type KflaLifecycleKind = "factor" | "cluster" | "competency";
@@ -569,6 +678,8 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
     snapshot: { ...review, status: decision, mergeTargetId, decisionReason: reason.trim() },
   };
   let next: SkillWorkspace = { ...workspace, reviewQueue, skills, mappings, profiles, agentTools, updatedAt: at };
+  if (approved && review.payload?.operation === "taxonomy_node_definition") next = executeTaxonomyNodeDefinition(next, review.payload as unknown as TaxonomyNodeDefinitionRequest, actor.trim(), reason.trim());
+  if (approved && review.payload?.operation === "taxonomy_node_lifecycle") next = executeTaxonomyNodeLifecycle(next, review.payload as unknown as TaxonomyNodeLifecycleRequest, actor.trim(), reason.trim());
   if (approved && review.payload?.operation === "kfla_lifecycle") next = executeKflaLifecycle(next, review.payload as unknown as KflaLifecycleRequest, actor.trim(), reason.trim());
   return { ...next, objectVersions: [reviewVersion, ...next.objectVersions], auditLog: [auditEvent(`review.${decision}`, review, actor.trim(), reason.trim(), at), ...next.auditLog], updatedAt: at };
 }

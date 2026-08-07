@@ -507,6 +507,37 @@ test("submits KFLA structural lifecycle changes for human approval before mutati
   await expect(page.getByText("move KFLA competency KFLA-08", { exact: true })).toBeVisible();
 });
 
+test("submits taxonomy group moves with dependency impact and accountable review", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await page.getByRole("button", { name: "Hierarchy CRUD" }).click();
+  await page.getByRole("button", { name: "Move Data & Analytics" }).click();
+  await expect(page.getByText("Dependency impact before change")).toBeVisible();
+  await page.getByLabel("Destination domain").selectOption("DOM-PC");
+  await page.getByLabel("Accountable proposer").fill("Taxonomy Steward");
+  await page.getByLabel("Governance reason").fill("Align the governed group to its accountable domain owner.");
+  await page.getByRole("button", { name: "Submit taxonomy change for review" }).click();
+  await page.getByRole("tab", { name: "Review" }).click();
+  const structuralReview = page.locator("article").filter({ hasText: "move taxonomy group Data & Analytics" });
+  await expect(structuralReview).toBeVisible();
+  await expect(structuralReview.getByRole("button", { name: "Merge", exact: true })).toHaveCount(0);
+});
+
+test("submits taxonomy definitions as non-mutating review candidates", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await page.getByRole("button", { name: "Hierarchy CRUD" }).click();
+  await page.getByRole("button", { name: "Add group" }).click();
+  await page.getByLabel("Canonical name").fill("Safety Analytics");
+  await page.getByLabel("Definition and boundary").fill("Governed capabilities for safety-data interpretation and decision support.");
+  await page.getByLabel("Accountable proposer").fill("Taxonomy Steward");
+  await page.getByLabel("Governance reason").fill("Add an evidence-backed capability group for the pilot.");
+  await page.getByRole("button", { name: "Submit definition for review" }).click();
+  await expect(page.getByText("Safety Analytics", { exact: true })).not.toBeVisible();
+  await page.getByRole("tab", { name: "Review" }).click();
+  await expect(page.getByText("Create taxonomy group: Safety Analytics", { exact: true })).toBeVisible();
+});
+
 test("aligns mapping evidence and strategic vectors with the enriched job draft", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();

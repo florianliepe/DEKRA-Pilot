@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareRelease, proposeKflaLifecycle, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareRelease, proposeKflaLifecycle, recordMappingFeedback, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -37,6 +37,37 @@ test("keeps a rejected KFLA lifecycle proposal non-mutating", () => {
   const review = proposed.reviewQueue.find((item) => item.payload?.operation === "kfla_lifecycle")!;
   const rejected = decideReview(proposed, review.id, "rejected", "Framework Owner", "The canonical cluster must remain active.");
   expect(rejected.kflaClusters.find((item) => item.id === "KFLA-CL-T1")?.status).toBe("approved");
+});
+
+test("governs taxonomy group moves through impact review before migration", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const proposed = requestTaxonomyNodeLifecycle(workspace, { kind: "group", action: "move", entityId: "GRP-DA", parentId: "DOM-PC", actor: "Taxonomy Steward", reason: "Align the governed group with its accountable domain owner." });
+  expect(proposed.groups.find((item) => item.id === "GRP-DA")?.domainId).toBe("DOM-DT");
+  const review = proposed.reviewQueue.find((item) => item.payload?.operation === "taxonomy_node_lifecycle")!;
+  expect(review.summary).toMatch(/skills.*mappings.*profiles.*tools.*relationships.*jobs/);
+  const approved = decideReview(proposed, review.id, "accepted", "Framework Owner", "Dependencies and target ownership are approved.");
+  expect(approved.groups.find((item) => item.id === "GRP-DA")).toMatchObject({ domainId: "DOM-PC", status: "approved" });
+  expect(approved.objectVersions.some((item) => item.entityId === "GRP-DA" && item.action === "taxonomy.move.approved")).toBe(true);
+});
+
+test("duplicates taxonomy nodes as drafts and keeps rejected structural requests non-mutating", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const duplicated = requestTaxonomyNodeLifecycle(workspace, { kind: "domain", action: "duplicate", entityId: "DOM-DT", newId: "DOM-DT-COPY", actor: "Taxonomy Steward", reason: "Create a governed comparison draft." });
+  expect(duplicated.domains.find((item) => item.id === "DOM-DT-COPY")).toMatchObject({ name: "Digital & Technology copy", status: "draft" });
+  const proposed = requestTaxonomyNodeLifecycle(workspace, { kind: "domain", action: "merge", entityId: "DOM-DT", targetId: "DOM-PC", actor: "Taxonomy Steward", reason: "Test a structural consolidation proposal." });
+  const review = proposed.reviewQueue.find((item) => item.payload?.operation === "taxonomy_node_lifecycle")!;
+  const rejected = decideReview(proposed, review.id, "rejected", "Framework Owner", "The domain boundaries remain materially distinct.");
+  expect(rejected.domains.find((item) => item.id === "DOM-DT")?.status).toBe("approved");
+  expect(rejected.groups.find((item) => item.id === "GRP-DA")?.domainId).toBe("DOM-DT");
+});
+
+test("keeps taxonomy definition candidates out of the active hierarchy until approval", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const proposed = requestTaxonomyNodeDefinition(workspace, { kind: "group", name: "Safety Analytics", description: "Governed capabilities for safety-data interpretation and decision support.", domainId: "DOM-DT", actor: "Taxonomy Steward", reason: "Add an evidence-backed capability group for the pilot." });
+  expect(proposed.groups.some((item) => item.name === "Safety Analytics")).toBe(false);
+  const review = proposed.reviewQueue.find((item) => item.payload?.operation === "taxonomy_node_definition")!;
+  const approved = decideReview(proposed, review.id, "accepted", "Framework Owner", "The proposed scope and parent assignment are approved.");
+  expect(approved.groups.find((item) => item.name === "Safety Analytics")).toMatchObject({ domainId: "DOM-DT", status: "approved" });
 });
 
 test("migrates legacy KFLA factors and clusters with complete governance metadata", () => {
