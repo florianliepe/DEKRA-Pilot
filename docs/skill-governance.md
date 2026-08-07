@@ -6,6 +6,8 @@ The active n8n workflow is the source of truth for mutable working state. GitHub
 
 Mapping feedback is immutable, versioned and auditable. A reviewer and evidence-based reason are mandatory; adjusted confidence must remain between 0 and 100. Reviewer feedback is retained in protected working state and excluded from public approved JSON to avoid publishing internal identities or rationales.
 
+Sources, evidence records and validation rules use soft lifecycle operations. Duplicate, archive, restore, deprecate, replace and merge require an accountable actor and reason. Source replacement migrates evidence references; evidence merge consolidates supported entities and confidence; validation-rule replacement preserves historical rule IDs while routing the target contract back to review.
+
 ## Agent boundary
 
 Allowed actions:

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyControlledToolLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -255,6 +255,21 @@ test("governs relationship CRUD, lifecycle and graph integrity", () => {
   expect(restored.relationships.find((item) => item.id === "REL-DV-MC")?.status).toBe("draft");
   const invalid = { ...workspace, relationships: [...workspace.relationships, { ...workspace.relationships[0], id: "REL-DUPLICATE" }] };
   expect(validateWorkspace(invalid).some((finding) => finding.ruleId === "RELATIONSHIP-INTEGRITY-001")).toBe(true);
+});
+
+test("governs source, evidence and validation-rule lifecycle with reference migration", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  expect(() => applyReferenceLifecycle(workspace, { kind: "source", id: "SRC-JD-DATA", action: "archive", actor: "", reason: "Test" })).toThrow(/actor/i);
+  const duplicated = applyReferenceLifecycle(workspace, { kind: "source", id: "SRC-JD-DATA", action: "duplicate", actor: "Evidence Steward", reason: "Create a governed working copy.", newId: "SRC-JD-DATA-COPY" });
+  expect(duplicated.sources.find((source) => source.id === "SRC-JD-DATA-COPY")?.status).toBe("draft");
+  const merged = applyReferenceLifecycle(duplicated, { kind: "source", id: "SRC-JD-DATA", targetId: "SRC-JD-DATA-COPY", action: "merge", actor: "Evidence Steward", reason: "Consolidate provenance under the reviewed source record." });
+  expect(merged.sources.find((source) => source.id === "SRC-JD-DATA")?.status).toBe("archived");
+  expect(merged.evidenceRecords.find((evidence) => evidence.id === "EVD-DV-001")).toMatchObject({ sourceId: "SRC-JD-DATA-COPY", status: "in_review" });
+  const evidenceDuplicate = applyReferenceLifecycle(workspace, { kind: "evidence", id: "EVD-DV-001", action: "duplicate", actor: "Evidence Steward", reason: "Create calibration evidence.", newId: "EVD-DV-COPY" });
+  const evidenceMerged = applyReferenceLifecycle(evidenceDuplicate, { kind: "evidence", id: "EVD-DV-001", targetId: "EVD-DV-COPY", action: "merge", actor: "Evidence Steward", reason: "Consolidate supported entity references." });
+  expect(evidenceMerged.evidenceRecords.find((evidence) => evidence.id === "EVD-DV-COPY")?.supportedEntityIds).toContain("MAP-DV");
+  const ruleDeprecated = applyReferenceLifecycle(workspace, { kind: "validation_rule", id: "MAPPING-EVIDENCE-001", action: "deprecate", actor: "Framework Owner", reason: "Prepare a versioned replacement contract." });
+  expect(ruleDeprecated.validationRules.find((rule) => rule.id === "MAPPING-EVIDENCE-001")?.status).toBe("deprecated");
 });
 
 test("governs role-profile lifecycle with dependency evidence and immutable history", () => {

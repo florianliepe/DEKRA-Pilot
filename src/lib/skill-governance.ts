@@ -1,4 +1,4 @@
-import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type TaxonomyRelationship } from "./skill-schema";
+import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type EvidenceRecord, type JobSkillMapping, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type SourceRecord, type TaxonomyRelationship, type ValidationRule } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
 
@@ -425,6 +425,43 @@ export function applyRelationshipLifecycle(workspace: SkillWorkspace, relationsh
   const status = action === "restore" ? "draft" as const : action === "archive" ? "archived" as const : "deprecated" as const;
   const updated = { ...source, status };
   return recordGovernedVersion({ ...workspace, relationships: workspace.relationships.map((candidate) => candidate.id === relationshipId ? updated : candidate) }, "relationship", relationshipId, `relationship.${action}`, actor.trim(), { ...updated, changeReason: reason.trim() } as unknown as Record<string, unknown>);
+}
+
+export type ReferenceLifecycleAction = "duplicate" | "archive" | "restore" | "deprecate" | "replace" | "merge";
+export type ReferenceLifecycleRequest = { kind: "source" | "evidence" | "validation_rule"; id: string; action: ReferenceLifecycleAction; actor: string; reason: string; targetId?: string; newId?: string };
+
+export function applyReferenceLifecycle(workspace: SkillWorkspace, request: ReferenceLifecycleRequest): SkillWorkspace {
+  const actor = request.actor.trim(); const reason = request.reason.trim();
+  if (!actor || !reason) throw new Error("An accountable actor and reason are required.");
+  const collection = request.kind === "source" ? workspace.sources : request.kind === "evidence" ? workspace.evidenceRecords : workspace.validationRules;
+  const source = collection.find((candidate) => candidate.id === request.id);
+  if (!source) throw new Error("The governed reference object does not exist.");
+  if (request.action === "duplicate") {
+    const id = request.newId?.trim() || `${request.kind === "source" ? "SRC" : request.kind === "evidence" ? "EVD" : "RULE"}-${Date.now()}`;
+    if (collection.some((candidate) => candidate.id === id)) throw new Error("The duplicate ID already exists.");
+    const duplicate = { ...source, id, status: "draft" as const };
+    const next = request.kind === "source" ? { ...workspace, sources: [duplicate as SourceRecord, ...workspace.sources] } : request.kind === "evidence" ? { ...workspace, evidenceRecords: [duplicate as EvidenceRecord, ...workspace.evidenceRecords] } : { ...workspace, validationRules: [duplicate as ValidationRule, ...workspace.validationRules] };
+    return recordGovernedVersion(next, request.kind, id, `${request.kind}.duplicated`, actor, { ...duplicate, sourceId: source.id, reason } as unknown as Record<string, unknown>);
+  }
+  if (["archive", "restore", "deprecate"].includes(request.action)) {
+    const status = request.action === "archive" ? "archived" as const : request.action === "restore" ? "draft" as const : "deprecated" as const;
+    const next = request.kind === "source" ? { ...workspace, sources: workspace.sources.map((item) => item.id === source.id ? { ...item, status } : item) } : request.kind === "evidence" ? { ...workspace, evidenceRecords: workspace.evidenceRecords.map((item) => item.id === source.id ? { ...item, status } : item) } : { ...workspace, validationRules: workspace.validationRules.map((item) => item.id === source.id ? { ...item, status } : item) };
+    return recordGovernedVersion(next, request.kind, source.id, `${request.kind}.${request.action}`, actor, { ...source, status, reason } as unknown as Record<string, unknown>);
+  }
+  const target = collection.find((candidate) => candidate.id === request.targetId && candidate.id !== source.id && !["archived", "retired"].includes(candidate.status));
+  if (!target) throw new Error("A distinct active target is required for replace or merge.");
+  const sourceStatus = request.action === "merge" ? "archived" as const : "retired" as const;
+  let next: SkillWorkspace;
+  if (request.kind === "source") {
+    next = { ...workspace, sources: workspace.sources.map((item) => item.id === source.id ? { ...item, status: sourceStatus, governance: { ...(item.governance || { version: 0, createdAt: workspace.updatedAt, createdBy: actor }), version: (item.governance?.version || 0) + 1, updatedAt: new Date().toISOString(), updatedBy: actor, replacedById: target.id } } : item.id === target.id ? { ...item, status: "in_review" as const } : item), evidenceRecords: workspace.evidenceRecords.map((item) => item.sourceId === source.id ? { ...item, sourceId: target.id, status: "in_review" as const } : item) };
+  } else if (request.kind === "evidence") {
+    const sourceEvidence = source as EvidenceRecord; const targetEvidence = target as EvidenceRecord;
+    next = { ...workspace, evidenceRecords: workspace.evidenceRecords.map((item) => item.id === source.id ? { ...item, status: sourceStatus } : item.id === target.id ? { ...targetEvidence, supportedEntityIds: [...new Set([...targetEvidence.supportedEntityIds, ...sourceEvidence.supportedEntityIds])], confidence: Math.max(targetEvidence.confidence, sourceEvidence.confidence), status: "in_review" as const } : item) };
+  } else {
+    next = { ...workspace, validationRules: workspace.validationRules.map((item) => item.id === source.id ? { ...item, status: sourceStatus } : item.id === target.id ? { ...item, status: "in_review" as const } : item) };
+  }
+  const first = recordGovernedVersion(next, request.kind, source.id, `${request.kind}.${request.action}_source`, actor, { ...source, status: sourceStatus, targetId: target.id, reason } as unknown as Record<string, unknown>);
+  return recordGovernedVersion(first, request.kind, target.id, `${request.kind}.${request.action}_target`, actor, { ...target, status: "in_review", sourceId: source.id, reason } as unknown as Record<string, unknown>);
 }
 
 export function calculateEvidenceCompleteness(mapping: JobSkillMapping, workspace: SkillWorkspace) {

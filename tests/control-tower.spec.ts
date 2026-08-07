@@ -415,6 +415,9 @@ test("creates and archives a governed validation rule", async ({ page }) => {
   await page.getByRole("button", { name: "Save governed rule" }).click();
   await expect(page.getByText("Outcome traceability", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Archive Outcome traceability" }).click();
+  await page.getByLabel("Accountable actor").fill("Framework Owner");
+  await page.getByLabel("Evidence-based reason").fill("Archive the pilot rule while preserving its governed history.");
+  await page.getByRole("button", { name: "Apply governed action" }).click();
   await expect(page.getByRole("button", { name: "Restore Outcome traceability" })).toBeVisible();
 });
 
@@ -428,6 +431,9 @@ test("governs source, evidence and proficiency records", async ({ page }) => {
   await page.getByRole("button", { name: "Save governed source" }).click();
   await expect(page.getByText("Synthetic safety role workshop", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Archive source Synthetic safety role workshop" }).click();
+  await page.getByLabel("Accountable actor").fill("Evidence Steward");
+  await page.getByLabel("Evidence-based reason").fill("Archive the synthetic source after the lifecycle verification.");
+  await page.getByRole("button", { name: "Apply governed action" }).click();
   await expect(page.getByRole("button", { name: "Restore source Synthetic safety role workshop" })).toBeVisible();
 
   await page.getByRole("button", { name: "Add evidence" }).click();
