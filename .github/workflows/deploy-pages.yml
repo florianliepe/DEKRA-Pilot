@@ -1,6 +1,9 @@
 name: Deploy frontend to GitHub Pages
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -10,14 +13,16 @@ permissions:
   contents: read
 
 concurrency:
+  # Keep only the newest Pages build. A merge otherwise leaves the PR and
+  # main builds competing for hosted-runner capacity.
   group: pages-deploy
   cancel-in-progress: true
 
 jobs:
   build:
-    # Temporary, security-scoped fallback while GitHub-hosted runners are
-    # unavailable. Only this repository and the unique runner label can match.
-    runs-on: dekra-pages-temp
+    # GitHub's Ubuntu pool repeatedly failed before checkout. The application
+    # is already verified on Windows/Node 22, so use the separate runner pool.
+    runs-on: windows-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -45,21 +50,15 @@ jobs:
           NEXT_PUBLIC_N8N_PMO_WEBHOOK_URL: ${{ vars.NEXT_PUBLIC_N8N_PMO_WEBHOOK_URL }}
         run: npm run build
 
-      - name: Package GitHub Pages artifact
-        shell: powershell
-        run: tar -cvf "$env:RUNNER_TEMP\artifact.tar" -C out .
-
       - name: Upload GitHub Pages artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-pages-artifact@v4
         with:
-          name: github-pages
-          path: ${{ runner.temp }}/artifact.tar
-          retention-days: 1
-          if-no-files-found: error
+          path: out
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
-    runs-on: dekra-pages-temp
+    runs-on: windows-latest
     permissions:
       contents: read
       pages: write
