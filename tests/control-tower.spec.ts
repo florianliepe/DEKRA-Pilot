@@ -54,6 +54,10 @@ test.beforeEach(async ({ page }) => {
   const errors: string[] = [];
   pageErrors.set(page, errors);
   page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("https://api.github.com/repos/florianliepe/DEKRA-Pilot/contents/data/skill-workspace.approved.json**", async (route) => {
+    const approved = { ...bootstrapSkillWorkspace, revision: 0, publication: { ...bootstrapSkillWorkspace.publication, revision: 0, state: "approved_release" as const } };
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ encoding: "base64", sha: "approved-blob-sha", content: Buffer.from(JSON.stringify(approved), "utf8").toString("base64") }) });
+  });
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
     const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }> };
@@ -277,7 +281,9 @@ test("creates and edits a governed core skill", async ({ page }) => {
   await page.getByRole("button", { name: "Edit Semantic Skill Extraction" }).click();
   await page.getByLabel("Lifecycle").selectOption("approved");
   await page.getByRole("button", { name: "Apply changes" }).click();
-  await expect(page.locator(".skill-table > div").filter({ hasText: "Semantic Skill Extraction" }).getByText("Approved", { exact: true })).toBeVisible();
+  await expect(page.locator(".skill-table > div").filter({ hasText: "Semantic Skill Extraction" }).getByText("In Review", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: /Review queue/ }).click();
+  await expect(page.getByRole("heading", { name: "Review Semantic Skill Extraction" })).toBeVisible();
 });
 
 test("previews impact and records governed skill lifecycle and bulk operations", async ({ page }) => {

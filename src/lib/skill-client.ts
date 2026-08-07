@@ -8,11 +8,27 @@ export type SkillWorkflowResponse = {
   ok?: boolean;
   error?: string;
   workspace?: SkillWorkspace;
+  manifest?: ReleaseManifest;
+  commit?: string;
+  findings?: Array<{ ruleId?: string; explanation?: string; blocking?: boolean }>;
+  recovery?: { idempotencyKey?: string; expectedPreviousRevision?: number };
   proposals?: SkillWorkspace["reviewQueue"];
   interview?: SkillWorkspace["interviews"][number];
   message?: string;
   agentRun?: SkillWorkspace["agentRuns"][number];
 };
+
+export class SkillWorkflowError extends Error {
+  status: number;
+  payload: SkillWorkflowResponse;
+
+  constructor(message: string, status: number, payload: SkillWorkflowResponse) {
+    super(message);
+    this.name = "SkillWorkflowError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
 
 function url() {
   return process.env.NEXT_PUBLIC_N8N_SKILL_WEBHOOK_URL?.trim() || DEFAULT_SKILL_WEBHOOK_URL;
@@ -40,13 +56,26 @@ async function call(secret: string, body: unknown, endpoint = url()) {
   });
   const raw = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : await response.text();
   const payload = unwrap(raw);
-  if (!response.ok || payload.ok === false) throw new Error(payload.error || `Skill workflow returned HTTP ${response.status}.`);
+  if (!response.ok || payload.ok === false) throw new SkillWorkflowError(payload.error || `Skill workflow returned HTTP ${response.status}.`, response.status, payload);
   return payload;
+}
+
+const APPROVED_WORKSPACE_URL = "https://api.github.com/repos/florianliepe/DEKRA-Pilot/contents/data/skill-workspace.approved.json?ref=main";
+
+export async function loadApprovedSkillWorkspace(): Promise<SkillWorkspace> {
+  const response = await fetch(`${APPROVED_WORKSPACE_URL}&t=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Approved GitHub snapshot returned HTTP ${response.status}.`);
+  const envelope = await response.json() as { content?: string; encoding?: string; sha?: string };
+  if (envelope.encoding !== "base64" || !envelope.content || !envelope.sha) throw new Error("Approved GitHub snapshot did not include a verifiable blob SHA.");
+  const decoded = atob(envelope.content.replace(/\s/g, ""));
+  const bytes = Uint8Array.from(decoded, (character) => character.charCodeAt(0));
+  const workspace = JSON.parse(new TextDecoder().decode(bytes)) as SkillWorkspace;
+  return { ...workspace, publication: { ...workspace.publication, expectedGitHubSha: envelope.sha } };
 }
 
 export const loadSkillWorkspace = (secret: string) => call(secret, { mode: "skill.read" });
 export const saveSkillWorkspace = (secret: string, workspace: SkillWorkspace) => call(secret, { mode: "skill.save", workspace: { ...workspace, schemaVersion: 3 } });
-export const publishSkillWorkspace = (secret: string, workspace: SkillWorkspace, approvedBy: string, manifest?: ReleaseManifest) => call(secret, { mode: "skill.publish", workspace, approvedBy, manifest, expectedPreviousRevision: workspace.publication.revision, expectedGitHubSha: workspace.publication.githubCommitSha || workspace.publication.expectedGitHubSha }, publishUrl());
+export const publishSkillWorkspace = (secret: string, workspace: SkillWorkspace, approvedBy: string, manifest?: ReleaseManifest) => call(secret, { mode: "skill.publish", workspace, approvedBy, manifest, expectedPreviousRevision: workspace.publication.revision, expectedGitHubSha: manifest?.expectedGitHubSha || workspace.publication.expectedGitHubSha }, publishUrl());
 
 export async function ingestSkillEvidence(secret: string, files: File[], brief: string, roleTitle: string) {
   const extracted = await extractEvidence(files);

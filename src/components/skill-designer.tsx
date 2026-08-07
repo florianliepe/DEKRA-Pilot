@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { Icons } from "./icons";
 import { bootstrapSkillWorkspace } from "@/lib/skill-fixtures";
-import { ingestSkillEvidence, loadSkillWorkspace, publishSkillWorkspace, runSkillInterview, saveSkillWorkspace } from "@/lib/skill-client";
-import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, workspaceFindings, type Lifecycle, type RoleProfile, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
+import { ingestSkillEvidence, loadApprovedSkillWorkspace, loadSkillWorkspace, publishSkillWorkspace, runSkillInterview, saveSkillWorkspace, SkillWorkflowError } from "@/lib/skill-client";
+import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, workspaceFindings, type Lifecycle, type ReleaseManifest, type RoleProfile, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
 import { JobMappingWorkbench } from "./job-mapping-workbench";
 import { StrategicVectors } from "./strategic-vectors";
 import { AgentRunLog } from "./agent-run-log";
@@ -35,6 +35,9 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Skill | "new" | null>(null);
+  const [approvedWorkspace, setApprovedWorkspace] = useState<SkillWorkspace | null>(null);
+  const [releaseAttempt, setReleaseAttempt] = useState<{ manifest: ReleaseManifest; approvedBy: string; workspaceRevision: number; workspaceUpdatedAt: string } | null>(null);
+  const [releaseFailure, setReleaseFailure] = useState<{ message: string; status?: number; findings: string[] } | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -56,6 +59,17 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     }).catch((reason) => { if (current) { setSync("blueprint"); setError(reason instanceof Error ? reason.message : "Unable to connect to the governed n8n workspace."); } });
     return () => { current = false; };
   }, [workspaceSecret]);
+
+  async function refreshApprovedWorkspace() {
+    try { setApprovedWorkspace(migrateSkillWorkspace(await loadApprovedSkillWorkspace(), bootstrapSkillWorkspace)); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load the approved GitHub snapshot."); }
+  }
+
+  useEffect(() => {
+    let current = true;
+    void loadApprovedSkillWorkspace().then((approved) => { if (current) setApprovedWorkspace(migrateSkillWorkspace(approved, bootstrapSkillWorkspace)); }).catch((reason) => { if (current) setError(reason instanceof Error ? reason.message : "Unable to load the approved GitHub snapshot."); });
+    return () => { current = false; };
+  }, []);
 
   const pending = workspace.reviewQueue.filter((item) => item.status === "pending").length;
   const approved = workspace.skills.filter((skill) => skill.status === "approved").length;
@@ -83,22 +97,53 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     if (!approvedBy?.trim()) return;
     setSync("saving"); setError("");
     try {
-      const prepared = prepareRelease(workspace, approvedBy.trim(), workspace.publication.revision, workspace.publication.githubCommitSha || workspace.publication.expectedGitHubSha);
-      const payload = await publishSkillWorkspace(workspaceSecret, workspace, approvedBy.trim(), prepared.manifest);
-      setWorkspace(payload.workspace || workspace); setSync("live"); setMessage(payload.message || "Approved JSON release committed to GitHub main.");
-    } catch (reason) { setSync("blueprint"); setError(reason instanceof Error ? reason.message : "Unable to publish the approved release."); }
+      const prepared = prepareRelease(workspace, approvedBy.trim(), workspace.publication.revision, approvedWorkspace?.publication.expectedGitHubSha || workspace.publication.expectedGitHubSha);
+      const attempt = { manifest: prepared.manifest, approvedBy: approvedBy.trim(), workspaceRevision: workspace.revision, workspaceUpdatedAt: workspace.updatedAt };
+      setReleaseAttempt(attempt); setReleaseFailure(null);
+      await executeRelease(attempt);
+    } catch (reason) { handleReleaseFailure(reason); }
+  }
+
+  function handleReleaseFailure(reason: unknown) {
+    const message = reason instanceof Error ? reason.message : "Unable to publish the approved release.";
+    const workflowError = reason instanceof SkillWorkflowError ? reason : null;
+    setSync("blueprint"); setError(message);
+    setReleaseFailure({ message, status: workflowError?.status, findings: workflowError?.payload.findings?.map((finding) => `${finding.ruleId || "RELEASE"}: ${finding.explanation || "Release check failed."}`) || [] });
+  }
+
+  async function executeRelease(attempt: NonNullable<typeof releaseAttempt>) {
+    if (workspace.revision !== attempt.workspaceRevision || workspace.updatedAt !== attempt.workspaceUpdatedAt) {
+      setReleaseFailure({ message: "Working state changed after the release was prepared. Prepare a new release instead of retrying the stale transaction.", findings: [] });
+      setSync("blueprint"); return;
+    }
+    setSync("saving"); setError("");
+    try {
+      const payload = await publishSkillWorkspace(workspaceSecret, workspace, attempt.approvedBy, attempt.manifest);
+      const published = payload.workspace ? migrateSkillWorkspace(payload.workspace, workspace) : workspace;
+      setWorkspace(published); setApprovedWorkspace(published); setReleaseFailure(null); setReleaseAttempt(null); setSync("live");
+      setMessage(payload.message || `Approved JSON release committed to GitHub main${payload.commit ? ` at ${payload.commit.slice(0, 8)}` : ""}.`);
+    } catch (reason) { handleReleaseFailure(reason); }
   }
 
   function saveSkill(values: SkillDraft, id?: string) {
+    const prior = id ? workspace.skills.find((item) => item.id === id) : undefined;
+    const requestedApproval = values.status === "approved";
+    const materialApprovedEdit = prior?.status === "approved";
+    const governedStatus: Lifecycle = requestedApproval || materialApprovedEdit ? "in_review" : values.status;
     const record: Skill = {
       id: id || `SK-${Date.now().toString().slice(-6)}`, name: values.name.trim(), description: values.description.trim(), groupId: values.groupId,
       dimension: values.dimension, kflaCompetencyId: values.dimension === "competency" ? values.kflaCompetencyId || undefined : undefined,
       aliases: values.aliases.split(",").map((item) => item.trim()).filter(Boolean), evidence: id ? workspace.skills.find((item) => item.id === id)?.evidence || [] : ["Manual design entry"],
-      confidence: id ? workspace.skills.find((item) => item.id === id)?.confidence || 70 : 70, observability: values.observability.trim(), futureRelevance: values.futureRelevance, status: values.status,
+      confidence: id ? workspace.skills.find((item) => item.id === id)?.confidence || 70 : 70, observability: values.observability.trim(), futureRelevance: values.futureRelevance, status: governedStatus,
       syntax: { action: values.action.trim(), object: values.object.trim(), outcome: values.outcome.trim() || undefined },
     };
-    mutate((current) => recordGovernedVersion({ ...current, skills: id ? current.skills.map((item) => item.id === id ? record : item) : [record, ...current.skills] }, "skill", record.id, id ? "skill.updated" : "skill.created", "current-user", record as unknown as Record<string, unknown>));
-    setEditing(null); setMessage(`${record.name} ${id ? "updated" : "created"}.`);
+    mutate((current) => {
+      const needsReview = requestedApproval || materialApprovedEdit;
+      const reviewId = `REV-${record.id}-${Date.now()}`;
+      const next = { ...current, skills: id ? current.skills.map((item) => item.id === id ? record : item) : [record, ...current.skills], reviewQueue: needsReview ? [{ id: reviewId, entityId: record.id, title: `Review ${record.name}`, type: "taxonomy_change" as const, summary: materialApprovedEdit ? "Material edit to an approved skill requires accountable re-approval." : "Approval request created from the governed skill editor.", confidence: record.confidence, evidence: record.evidence.join(" · ") || "Manual governed edit", status: "pending" as const, frameworkVersion: current.framework.version, rulesVersion: current.framework.rulesVersion }, ...current.reviewQueue] : current.reviewQueue };
+      return recordGovernedVersion(next, "skill", record.id, id ? "skill.updated" : "skill.created", "current-user", record as unknown as Record<string, unknown>);
+    });
+    setEditing(null); setMessage(`${record.name} ${id ? "updated" : "created"}${governedStatus === "in_review" ? " and routed for accountable review" : ""}.`);
   }
 
   return <div className="skill-designer">
@@ -118,7 +163,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {tab === "vectors" && <StrategicVectors workspace={workspace} mutate={mutate}/>}
     {tab === "review" && <Review workspace={workspace} mutate={mutate}/>}
     {tab === "runs" && <AgentRunLog workspace={workspace}/>}
-    {tab === "governance" && <GovernanceWorkbench workspace={workspace} mutate={mutate} onMessage={setMessage} onError={setError}/>}
+    {tab === "governance" && <GovernanceWorkbench workspace={workspace} approvedWorkspace={approvedWorkspace} releaseFailure={releaseFailure} canRetryRelease={Boolean(releaseAttempt)} mutate={mutate} onMessage={setMessage} onError={setError} onRefreshApproved={() => void refreshApprovedWorkspace()} onRetryRelease={() => releaseAttempt && void executeRelease(releaseAttempt)}/>}
     {editing && <SkillEditor workspace={workspace} skill={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} onSave={saveSkill}/>}
     {tab === "library" && <button className="skill-fab button primary" onClick={() => setEditing("new")}><Icons.plus/>Create skill</button>}
   </div>;

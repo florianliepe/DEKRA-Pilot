@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -179,6 +179,17 @@ test("blocks publication until reviews resolve and protects optimistic concurren
   expect(prepared.manifest.objectCounts.skills).toBe(2);
   expect(prepared.manifest.objectCounts.mappings).toBe(1);
   expect(prepared.workspace.publication.state).toBe("publishing");
+});
+
+test("reports collection-level drift against the GitHub-approved snapshot", () => {
+  const working = structuredClone(bootstrapSkillWorkspace);
+  const approved = sanitizeApprovedWorkspace(working);
+  approved.revision = 0;
+  const drift = detectReleaseDrift(working, approved);
+  expect(drift.drifted).toBe(true);
+  expect(drift.revisionDelta).toBe(1);
+  expect(drift.changedCollections).toEqual(expect.arrayContaining(["skills", "mappings", "evidenceRecords"]));
+  expect(drift.workingCounts.skills).toBeGreaterThan(drift.approvedCounts.skills);
 });
 
 test("removes licensed definitions from public approved snapshots", () => {
