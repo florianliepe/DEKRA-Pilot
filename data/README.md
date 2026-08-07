@@ -8,6 +8,7 @@
 - n8n commits the complete approved workspace to `main` at `data/skill-workspace.approved.json`.
 - Public KFLA entries contain original internal navigation summaries only. Licensed definitions, anchors and development content must be supplied and access-controlled separately.
 - Approved releases contain approved objects only. Draft skills, non-approved mappings, working elicitation sessions, agent traces and object-version snapshots remain in protected n8n working state.
+- Approved `localizedLabels` reference stable canonical concept IDs and contain public or organization-authored terminology only; licensed translations remain backend-only.
 - `agent-tool-registry.json` is a deny-by-default, fully expanded contract for the eleven callable agent tools; it is separate from controlled business tools.
 - `framework-version.json`, `prompt-versions.json` and `mapping-model-versions.json` pin the exact governed framework, prompt and score contracts used by a release.
 - `evaluation/mapping-golden-baseline.json` is a versioned, organization-authored regression baseline for deterministic thirteen-dimensional scoring. It uses synthetic public-safe evidence and does not substitute for a representative human-labelled empirical dataset.

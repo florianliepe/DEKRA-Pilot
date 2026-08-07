@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applySkillLifecycle, authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, sanitizeApprovedWorkspace } from "../src/lib/skill-governance";
+import { applySkillLifecycle, authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -35,11 +35,33 @@ test("migrates first-class proficiency, source and evidence collections", () => 
   delete legacy.proficiencyDefinitions;
   delete legacy.sources;
   delete legacy.evidenceRecords;
+  delete legacy.localizedLabels;
   const migrated = migrateSkillWorkspace(legacy, bootstrapSkillWorkspace);
   expect(migrated.proficiencyDefinitions).toHaveLength(4);
   expect(migrated.sources.length).toBeGreaterThan(0);
   expect(migrated.evidenceRecords.every((evidence) => migrated.sources.some((source) => source.id === evidence.sourceId))).toBe(true);
+  expect(migrated.localizedLabels.length).toBeGreaterThan(0);
   expect(validateWorkspace(migrated).some((finding) => ["PROFICIENCY-INTEGRITY-001", "EVIDENCE-SOURCE-001"].includes(finding.ruleId))).toBe(false);
+});
+
+test("governs multilingual labels without duplicating canonical concepts", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const canonicalCount = workspace.skills.length;
+  const saved = saveLocalizedConceptLabel(workspace, { id: "LBL-SK-ST-DE", entityType: "skill", entityId: "SK-ST", language: "de", label: "Skill-Taxonomie gestalten", description: "Gestaltet eine konsistente und kontrollierte Skill-Taxonomie.", sourceClassification: "organization_authored", licenceStatus: "internal_explanation", status: "draft" }, "Taxonomy Steward", "Add a reviewed German label for pilot navigation.");
+  expect(saved.skills).toHaveLength(canonicalCount);
+  expect(resolveLocalizedConcept(saved, "skill", "SK-ST", "de")).toMatchObject({ entityId: "SK-ST", label: "Skill-Taxonomie gestalten", fallback: false });
+  expect(resolveLocalizedConcept(saved, "skill", "SK-ST", "fr")).toMatchObject({ entityId: "SK-ST", label: "Skill Taxonomy Design", fallback: true });
+  expect(saved.objectVersions[0]).toMatchObject({ entityType: "localized_label", entityId: "LBL-SK-ST-DE", action: "localized_label.created" });
+  const archived = setLocalizedConceptLabelStatus(saved, "LBL-SK-ST-DE", "archived", "Taxonomy Steward", "Translation is being replaced.");
+  expect(resolveLocalizedConcept(archived, "skill", "SK-ST", "de")).toMatchObject({ label: "Skill Taxonomy Design", fallback: true });
+});
+
+test("rejects duplicate, unsupported and orphaned localized labels", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  expect(() => saveLocalizedConceptLabel(workspace, { ...workspace.localizedLabels[0], id: "LBL-DUPLICATE" }, "Taxonomy Steward", "Duplicate test.")).toThrow(/already has an active label/);
+  expect(() => saveLocalizedConceptLabel(workspace, { ...workspace.localizedLabels[0], id: "LBL-FR", language: "fr" }, "Taxonomy Steward", "Unsupported language test.")).toThrow(/not enabled/);
+  const invalid = { ...workspace, localizedLabels: [{ ...workspace.localizedLabels[0], id: "LBL-ORPHAN", entityId: "SK-MISSING" }] };
+  expect(validateWorkspace(invalid).some((finding) => finding.ruleId === "MULTILINGUAL-REFERENCE-001")).toBe(true);
 });
 
 test("defines eleven permissioned and auditable agent tools", () => {
@@ -165,6 +187,8 @@ test("removes licensed definitions from public approved snapshots", () => {
   expect(sanitized.evidenceRecords.every((evidence) => evidence.dataClassification === "public")).toBe(true);
   expect(sanitized.evidenceRecords.some((evidence) => evidence.id === "EVD-ST-001")).toBe(false);
   expect(sanitized.sources.every((source) => sanitized.evidenceRecords.some((evidence) => evidence.sourceId === source.id))).toBe(true);
+  expect(sanitized.localizedLabels.every((label) => label.status === "approved" && ["public", "organization_authored"].includes(label.sourceClassification))).toBe(true);
+  expect(sanitized.localizedLabels.some((label) => label.id === "LBL-SK-DV-DE")).toBe(true);
 });
 
 test("performs dependency analysis and routes rollback through review", () => {

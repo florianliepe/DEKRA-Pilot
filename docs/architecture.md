@@ -22,6 +22,7 @@ People -> GitHub Pages workbench -> n8n PMO API -> DEKRA-Pilot-Data (private)
 - `src/lib/pmo-schema.ts`: canonical runtime contract.
 - `src/lib/n8n-client.ts`: browser-safe workflow client and evidence extraction.
 - `.github/workflows/deploy-pages.yml`: Node.js 22 validation and Pages release.
+- `src/components/multilingual-label-workbench.tsx`: governed localized-label CRUD linked to canonical concept IDs.
 - n8n: authentication, schema enforcement, revision control and GitHub writes.
 - `florianliepe/DEKRA-Pilot-Data`: private canonical PMO and work-package data.
 

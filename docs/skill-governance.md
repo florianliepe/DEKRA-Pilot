@@ -36,4 +36,10 @@ The workflow uses both the approved revision and current GitHub blob SHA for opt
 
 The application uses the 38 public competency names as research/navigation metadata. The four-factor and twelve-cluster navigation layer, summaries and examples in the public app are explicitly classified as organisation-authored pending licensed verification. Korn Ferry definitions, rating anchors, skilled/less-skilled indicators and development guidance remain outside the repository and public bundle. When licensed material is supplied, only a protected backend reference is stored in working state; the release sanitizer removes both the reference and the content.
 
+## Multilingual terminology
+
+`localizedLabels` is a governed collection of language-specific labels and optional descriptions. Every record references one canonical concept by `entityType` and `entityId`; translations never create a second skill, taxonomy node, KFLA competency or controlled tool. The framework canonical language remains on the source concept and the resolver falls back to that label when no active translation exists.
+
+Create, edit, archive and restore operations require an accountable actor and governance reason and produce an immutable object version plus audit event. Validation rejects orphaned references, unsupported languages, blank labels and duplicate active concept/language pairs. The public release contains approved public or organisation-authored translations only. Licensed wording is not accepted by this public collection and must remain in the protected licensed-content backend.
+
 See [skill-framework-v3.md](skill-framework-v3.md) for contracts, operational recovery, test evidence and user validation.

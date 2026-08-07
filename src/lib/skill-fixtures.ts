@@ -264,6 +264,10 @@ export const bootstrapSkillWorkspace: SkillWorkspace = {
     { id: "EVD-ST-001", sourceId: "SRC-SBO-WS", summary: "Defines reusable taxonomy concepts and resolves overlap.", location: "workshop synthesis", dataClassification: "internal", supportedEntityIds: ["SK-ST", "REV-001"], confidence: 88, status: "in_review" },
     { id: "EVD-MC-001", sourceId: "SRC-PROGRAMME-INT", summary: "Frames contradictory evidence and recommends a viable action.", location: "critical incident 2", dataClassification: "internal", supportedEntityIds: ["SK-MC", "MAP-MC"], confidence: 83, status: "approved" },
   ],
+  localizedLabels: [
+    { id: "LBL-SK-DV-DE", entityType: "skill", entityId: "SK-DV", language: "de", label: "Datenvisualisierung", description: "Stellt Geschäftsdaten verständlich dar, um Entscheidungen zu unterstützen.", sourceClassification: "organization_authored", licenceStatus: "internal_explanation", status: "approved" },
+    { id: "LBL-KFLA-08-DE", entityType: "kfla_competency", entityId: "KFLA-08", language: "de", label: "Komplexität bewältigen", description: "Intern erstellte Navigationsbezeichnung; keine lizenzierte Korn-Ferry-Definition.", sourceClassification: "organization_authored", licenceStatus: "internal_explanation", status: "approved" },
+  ],
   auditLog: [{ id: "AUD-001", at: "2026-08-06T10:00:00.000Z", actor: "agent", action: "mapping.proposed", entityType: "job_mapping", entityId: "MAP-MC", summary: "Evidence-grounded mapping routed to human review." }],
   objectVersions: [],
   releaseHistory: [],

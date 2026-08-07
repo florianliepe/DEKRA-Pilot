@@ -400,6 +400,23 @@ test("governs source, evidence and proficiency records", async ({ page }) => {
   await expect(page.getByText("Explains the resulting outcome.", { exact: false })).toBeVisible();
 });
 
+test("creates, edits and archives a governed multilingual label", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  await page.getByRole("button", { name: "Languages" }).click();
+  await page.getByRole("button", { name: "Add localized label" }).click();
+  await page.getByLabel("Concept type").selectOption("skill");
+  await page.getByLabel("Canonical concept").selectOption("SK-ST");
+  await page.getByLabel("Translation language").selectOption("de");
+  await page.getByRole("textbox", { name: "Localized label", exact: true }).fill("Skill-Taxonomie gestalten");
+  await page.getByLabel("Localized description").fill("Gestaltet eine konsistente und kontrollierte Skill-Taxonomie.");
+  await page.getByLabel("Governance reason").fill("Add a reviewed German pilot label.");
+  await page.getByRole("button", { name: "Save governed label" }).click();
+  await expect(page.getByText("Skill-Taxonomie gestalten", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Archive localized label Skill-Taxonomie gestalten" }).click();
+  await expect(page.getByRole("button", { name: "Restore localized label Skill-Taxonomie gestalten" })).toBeVisible();
+});
+
 test("aligns mapping evidence and strategic vectors with the enriched job draft", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();

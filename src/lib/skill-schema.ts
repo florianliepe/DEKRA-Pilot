@@ -20,6 +20,19 @@ export type ReviewStatus = "pending" | "accepted" | "rejected" | "deferred" | "m
 export type DataClassification = "public" | "internal" | "confidential" | "licensed";
 export type SourceClassification = "public" | "organization_authored" | "licensed";
 
+export type LocalizedConceptLabel = {
+  id: string;
+  entityType: "domain" | "group" | "skill" | "kfla_factor" | "kfla_cluster" | "kfla_competency" | "controlled_tool";
+  entityId: string;
+  language: string;
+  label: string;
+  description?: string;
+  sourceClassification: Exclude<SourceClassification, "licensed">;
+  licenceStatus: "public_metadata" | "internal_explanation";
+  status: Lifecycle;
+  governance?: GovernanceMeta;
+};
+
 export type GovernanceMeta = {
   version: number;
   createdAt: string;
@@ -443,6 +456,7 @@ export type SkillWorkspace = {
   proficiencyDefinitions: ProficiencyDefinition[];
   sources: SourceRecord[];
   evidenceRecords: EvidenceRecord[];
+  localizedLabels: LocalizedConceptLabel[];
   auditLog: AuditEvent[];
   objectVersions: ObjectVersion[];
   releaseHistory: ReleaseManifest[];
@@ -486,6 +500,7 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
     proficiencyDefinitions: arrayOr(source.proficiencyDefinitions, fallback.proficiencyDefinitions),
     sources: arrayOr(source.sources, fallback.sources),
     evidenceRecords: arrayOr(source.evidenceRecords, fallback.evidenceRecords),
+    localizedLabels: arrayOr(source.localizedLabels, fallback.localizedLabels),
     auditLog: arrayOr(source.auditLog, fallback.auditLog),
     objectVersions: arrayOr(source.objectVersions, fallback.objectVersions),
     releaseHistory: arrayOr(source.releaseHistory, fallback.releaseHistory),
@@ -572,6 +587,24 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
   if (workspace.proficiencyDefinitions.length !== 4 || new Set(workspace.proficiencyDefinitions.map((item) => item.id)).size !== 4 || workspace.proficiencyDefinitions.some((item) => !item.behavioralIndicators.length)) add("PROFICIENCY-INTEGRITY-001", "workspace", "PROFICIENCY", "The governed four-level proficiency model is incomplete.", "proficiencyDefinitions", "Restore levels one through four with observable behavioral indicators.");
   for (const evidence of workspace.evidenceRecords.filter((item) => !["archived", "retired"].includes(item.status))) {
     if (!workspace.sources.some((source) => source.id === evidence.sourceId && !["archived", "retired"].includes(source.status))) add("EVIDENCE-SOURCE-001", "evidence", evidence.id, "Evidence does not resolve to an active governed source.", "sourceId", "Select an active governed source or restore the referenced source.", true, evidence.location);
+  }
+  const localizedKeys = new Set<string>();
+  const conceptExists = (entityType: LocalizedConceptLabel["entityType"], entityId: string) => {
+    if (entityType === "domain") return workspace.domains.some((item) => item.id === entityId);
+    if (entityType === "group") return workspace.groups.some((item) => item.id === entityId);
+    if (entityType === "skill") return workspace.skills.some((item) => item.id === entityId);
+    if (entityType === "kfla_factor") return workspace.kflaFactors.some((item) => item.id === entityId);
+    if (entityType === "kfla_cluster") return workspace.kflaClusters.some((item) => item.id === entityId);
+    if (entityType === "kfla_competency") return workspace.kfla.some((item) => item.id === entityId);
+    return workspace.tools.some((item) => item.id === entityId);
+  };
+  for (const localized of workspace.localizedLabels.filter((item) => !["archived", "retired"].includes(item.status))) {
+    const key = `${localized.entityType}:${localized.entityId}:${localized.language.toLowerCase()}`;
+    if (!conceptExists(localized.entityType, localized.entityId)) add("MULTILINGUAL-REFERENCE-001", "localized_label", localized.id, "Localized label does not resolve to a canonical concept.", "entityId", "Select an existing canonical concept or archive this label.");
+    if (!workspace.framework.supportedLanguages.includes(localized.language)) add("MULTILINGUAL-LANGUAGE-001", "localized_label", localized.id, `Language ${localized.language} is not enabled by the framework.`, "language", "Enable the language in framework configuration or choose a supported language.");
+    if (localizedKeys.has(key)) add("MULTILINGUAL-UNIQUE-001", "localized_label", localized.id, "A concept may have only one active label per language.", "language", "Merge the localized records or archive the duplicate.");
+    if (!localized.label.trim()) add("MULTILINGUAL-LABEL-001", "localized_label", localized.id, "Localized label is empty.", "label", "Provide a concise label in the selected language.");
+    localizedKeys.add(key);
   }
   return findings;
 }

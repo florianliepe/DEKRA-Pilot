@@ -1,4 +1,4 @@
-import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type DataClassification, type JobSkillMapping, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type SkillWorkspace } from "./skill-schema";
+import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type SkillWorkspace } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
 
@@ -80,6 +80,47 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
     sources,
     dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length,
   };
+}
+
+export function canonicalConceptOptions(workspace: SkillWorkspace, entityType?: LocalizedConceptLabel["entityType"]) {
+  const options: Array<{ entityType: LocalizedConceptLabel["entityType"]; entityId: string; canonicalLabel: string }> = [
+    ...workspace.domains.map((item) => ({ entityType: "domain" as const, entityId: item.id, canonicalLabel: item.name })),
+    ...workspace.groups.map((item) => ({ entityType: "group" as const, entityId: item.id, canonicalLabel: item.name })),
+    ...workspace.skills.map((item) => ({ entityType: "skill" as const, entityId: item.id, canonicalLabel: item.name })),
+    ...workspace.kflaFactors.map((item) => ({ entityType: "kfla_factor" as const, entityId: item.id, canonicalLabel: item.name })),
+    ...workspace.kflaClusters.map((item) => ({ entityType: "kfla_cluster" as const, entityId: item.id, canonicalLabel: item.name })),
+    ...workspace.kfla.map((item) => ({ entityType: "kfla_competency" as const, entityId: item.id, canonicalLabel: item.name })),
+    ...workspace.tools.map((item) => ({ entityType: "controlled_tool" as const, entityId: item.id, canonicalLabel: item.name })),
+  ];
+  return entityType ? options.filter((item) => item.entityType === entityType) : options;
+}
+
+export function resolveLocalizedConcept(workspace: SkillWorkspace, entityType: LocalizedConceptLabel["entityType"], entityId: string, language: string) {
+  const canonical = canonicalConceptOptions(workspace, entityType).find((item) => item.entityId === entityId);
+  if (!canonical) return undefined;
+  const localized = workspace.localizedLabels.find((item) => item.entityType === entityType && item.entityId === entityId && item.language === language && !["archived", "retired"].includes(item.status));
+  return { ...canonical, language: localized ? language : workspace.framework.canonicalLanguage, label: localized?.label || canonical.canonicalLabel, description: localized?.description, fallback: !localized };
+}
+
+export function saveLocalizedConceptLabel(workspace: SkillWorkspace, value: LocalizedConceptLabel, actor: string, reason: string) {
+  if (!actor.trim()) throw new Error("An accountable actor is required.");
+  if (!reason.trim()) throw new Error("A governance reason is required.");
+  if (!value.label.trim()) throw new Error("A localized label is required.");
+  if (value.language === workspace.framework.canonicalLanguage) throw new Error("The canonical language is governed on the concept itself; choose a translation language.");
+  if (!workspace.framework.supportedLanguages.includes(value.language)) throw new Error(`Language ${value.language} is not enabled by the framework.`);
+  if (!canonicalConceptOptions(workspace, value.entityType).some((item) => item.entityId === value.entityId)) throw new Error("The canonical concept does not exist.");
+  if (workspace.localizedLabels.some((item) => item.id !== value.id && item.entityType === value.entityType && item.entityId === value.entityId && item.language === value.language && !["archived", "retired"].includes(item.status))) throw new Error("This concept already has an active label for the selected language.");
+  const exists = workspace.localizedLabels.some((item) => item.id === value.id);
+  const next = { ...workspace, localizedLabels: exists ? workspace.localizedLabels.map((item) => item.id === value.id ? value : item) : [value, ...workspace.localizedLabels] };
+  return recordGovernedVersion(next, "localized_label", value.id, exists ? "localized_label.updated" : "localized_label.created", actor.trim(), { ...value, reason } as unknown as Record<string, unknown>);
+}
+
+export function setLocalizedConceptLabelStatus(workspace: SkillWorkspace, id: string, status: LocalizedConceptLabel["status"], actor: string, reason: string) {
+  if (!actor.trim() || !reason.trim()) throw new Error("An accountable actor and governance reason are required.");
+  const current = workspace.localizedLabels.find((item) => item.id === id);
+  if (!current) throw new Error("Localized label not found.");
+  const next = { ...workspace, localizedLabels: workspace.localizedLabels.map((item) => item.id === id ? { ...item, status } : item) };
+  return recordGovernedVersion(next, "localized_label", id, `localized_label.${status}`, actor.trim(), { ...current, status, reason });
 }
 
 export type SkillLifecycleAction = "duplicate" | "move" | "archive" | "restore" | "deprecate" | "replace" | "merge";
@@ -258,6 +299,7 @@ export function releaseObjectCounts(workspace: SkillWorkspace): Record<string, n
     kflaCompetencies: workspace.kfla.length,
     jobDescriptions: workspace.jobDescriptions.length,
     mappings: workspace.mappings.length,
+    localizedLabels: workspace.localizedLabels.length,
     controlledTools: workspace.tools.length,
     agentTools: workspace.agentTools.length,
     validationRules: workspace.validationRules.length,
@@ -284,6 +326,16 @@ export function sanitizeApprovedWorkspace(workspace: SkillWorkspace): SkillWorks
   const publicEligibleSourceIds = new Set(workspace.sources.filter((source) => source.status === "approved" && source.sourceClassification !== "licensed" && source.licenceStatus !== "licensed_restricted").map((source) => source.id));
   const approvedEvidence = workspace.evidenceRecords.filter((evidence) => evidence.status === "approved" && evidence.dataClassification === "public" && publicEligibleSourceIds.has(evidence.sourceId));
   const approvedSourceIds = new Set(approvedEvidence.map((evidence) => evidence.sourceId));
+  const approvedLocalizedLabels = workspace.localizedLabels.filter((label) => {
+    if (label.status !== "approved" || label.sourceClassification === ("licensed" as typeof label.sourceClassification) || label.licenceStatus === ("licensed_restricted" as typeof label.licenceStatus)) return false;
+    if (label.entityType === "domain") return approvedDomainIds.has(label.entityId);
+    if (label.entityType === "group") return approvedGroupIds.has(label.entityId);
+    if (label.entityType === "skill") return approvedSkillIds.has(label.entityId);
+    if (label.entityType === "controlled_tool") return workspace.tools.some((tool) => tool.id === label.entityId && tool.status === "approved");
+    if (label.entityType === "kfla_factor") return workspace.kflaFactors.some((item) => item.id === label.entityId);
+    if (label.entityType === "kfla_cluster") return workspace.kflaClusters.some((item) => item.id === label.entityId);
+    return workspace.kfla.some((item) => item.id === label.entityId);
+  });
   return {
     ...workspace,
     domains: workspace.domains.filter((domain) => domain.status === "approved" && approvedDomainIds.has(domain.id)),
@@ -300,6 +352,7 @@ export function sanitizeApprovedWorkspace(workspace: SkillWorkspace): SkillWorks
     proficiencyDefinitions: workspace.proficiencyDefinitions.filter((level) => level.status === "approved"),
     sources: workspace.sources.filter((source) => approvedSourceIds.has(source.id) && source.status === "approved" && source.sourceClassification !== "licensed" && source.licenceStatus !== "licensed_restricted"),
     evidenceRecords: approvedEvidence,
+    localizedLabels: approvedLocalizedLabels,
     interviews: [],
     elicitationSessions: [],
     agentRuns: [],
