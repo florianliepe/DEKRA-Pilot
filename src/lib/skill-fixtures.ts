@@ -8,10 +8,10 @@ const factors: Record<KflaCompetency["factor"], number[]> = {
 };
 
 export const kflaFactors: KflaFactor[] = [
-  { id: "KFLA-FACTOR-THOUGHT", name: "Thought", description: "How work is understood, framed and shaped into sound choices.", sourceClassification: "organization_authored" },
-  { id: "KFLA-FACTOR-RESULTS", name: "Results", description: "How intent becomes accountable, reliable delivery.", sourceClassification: "organization_authored" },
-  { id: "KFLA-FACTOR-PEOPLE", name: "People", description: "How relationships, talent and shared purpose enable performance.", sourceClassification: "organization_authored" },
-  { id: "KFLA-FACTOR-SELF", name: "Self", description: "How personal awareness, learning and adaptability sustain effectiveness.", sourceClassification: "organization_authored" },
+  { id: "KFLA-FACTOR-THOUGHT", name: "Thought", description: "How work is understood, framed and shaped into sound choices.", sourceClassification: "organization_authored", licenceStatus: "internal_explanation", sourceVersion: "public-metadata-2026-08", reviewDate: "2026-08-07", contentOwner: "DEKRA Skill Governance", status: "approved" },
+  { id: "KFLA-FACTOR-RESULTS", name: "Results", description: "How intent becomes accountable, reliable delivery.", sourceClassification: "organization_authored", licenceStatus: "internal_explanation", sourceVersion: "public-metadata-2026-08", reviewDate: "2026-08-07", contentOwner: "DEKRA Skill Governance", status: "approved" },
+  { id: "KFLA-FACTOR-PEOPLE", name: "People", description: "How relationships, talent and shared purpose enable performance.", sourceClassification: "organization_authored", licenceStatus: "internal_explanation", sourceVersion: "public-metadata-2026-08", reviewDate: "2026-08-07", contentOwner: "DEKRA Skill Governance", status: "approved" },
+  { id: "KFLA-FACTOR-SELF", name: "Self", description: "How personal awareness, learning and adaptability sustain effectiveness.", sourceClassification: "organization_authored", licenceStatus: "internal_explanation", sourceVersion: "public-metadata-2026-08", reviewDate: "2026-08-07", contentOwner: "DEKRA Skill Governance", status: "approved" },
 ];
 
 const clusterNumbers: Array<[string, KflaFactor["name"], string, string, number[]]> = [
@@ -35,6 +35,10 @@ export const kflaClusters: KflaCluster[] = clusterNumbers.map(([id, factor, name
   name,
   description,
   sourceClassification: "organization_authored",
+  licenceStatus: "internal_explanation",
+  sourceVersion: "public-metadata-2026-08",
+  reviewDate: "2026-08-07",
+  contentOwner: "DEKRA Skill Governance",
   assignmentBasis: "organization_authored_navigation",
   status: "approved",
 }));
@@ -142,6 +146,7 @@ export const validationRules: ValidationRule[] = [
   ["KFLA-HIERARCHY-001", "Four-factor integrity", "The public metadata layer must contain four factors.", "error", "kflaFactors", "Restore four factors.", true],
   ["KFLA-HIERARCHY-002", "Twelve-cluster integrity", "The navigation layer must contain twelve clusters.", "error", "kflaClusters", "Restore twelve clusters.", true],
   ["KFLA-HIERARCHY-003", "Competency assignment integrity", "All 38 competencies must resolve to a cluster.", "error", "kfla", "Assign every competency to a governed cluster.", true],
+  ["KFLA-METADATA-001", "KFLA governance metadata", "Every factor, cluster and competency must retain source, licence, owner, version and review metadata.", "error", "metadata", "Complete the governed provenance metadata before release.", true],
 ].map(([id, name, description, severity, affectedField, suggestedCorrection, blocking]) => ({ id, name, description, severity, affectedField, suggestedCorrection, blocking, frameworkVersion: "3.1.0", status: "approved" })) as ValidationRule[];
 
 const schema = (required: string[], properties: Record<string, { type: string; description?: string }>) => ({ type: "object" as const, required, properties });

@@ -12,6 +12,7 @@
     { "id": "MAPPING-OVERRIDE-001", "severity": "error", "affectedField": "overrideReason", "blocking": true, "explanation": "A manual score override requires an accountable reason.", "suggestedCorrection": "Record the evidence-based override rationale." },
     { "id": "KFLA-HIERARCHY-001", "severity": "error", "affectedField": "kflaFactors", "blocking": true, "explanation": "The public metadata layer must contain four factors.", "suggestedCorrection": "Restore four factors." },
     { "id": "KFLA-HIERARCHY-002", "severity": "error", "affectedField": "kflaClusters", "blocking": true, "explanation": "The navigation layer must contain twelve governed clusters.", "suggestedCorrection": "Restore twelve clusters." },
-    { "id": "KFLA-HIERARCHY-003", "severity": "error", "affectedField": "kfla", "blocking": true, "explanation": "All 38 competencies must resolve to a cluster.", "suggestedCorrection": "Assign every competency to a governed cluster." }
+    { "id": "KFLA-HIERARCHY-003", "severity": "error", "affectedField": "kfla", "blocking": true, "explanation": "All 38 competencies must resolve to a cluster.", "suggestedCorrection": "Assign every competency to a governed cluster." },
+    { "id": "KFLA-METADATA-001", "severity": "error", "affectedField": "metadata", "blocking": true, "explanation": "Every factor, cluster and competency must retain source, licence, owner, version and review metadata.", "suggestedCorrection": "Complete the governed provenance metadata before release." }
   ]
 }

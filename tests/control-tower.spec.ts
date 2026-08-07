@@ -335,6 +335,22 @@ test("creates, edits and removes a job-description record", async ({ page }) => 
   await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toHaveCount(0);
 });
 
+test("creates and archives a governed validation rule", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  await page.getByRole("button", { name: "Configuration" }).click();
+  await page.getByRole("button", { name: "Add rule" }).click();
+  await page.getByLabel("Name").fill("Outcome traceability");
+  await page.getByLabel("Affected field").fill("outcomes");
+  await page.getByLabel("Description").fill("Every approved skill must retain an observable outcome.");
+  await page.getByLabel("Suggested correction").fill("Add an outcome and supporting evidence reference.");
+  await page.getByLabel("Blocks approved release").check();
+  await page.getByRole("button", { name: "Save governed rule" }).click();
+  await expect(page.getByText("Outcome traceability", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Archive Outcome traceability" }).click();
+  await expect(page.getByRole("button", { name: "Restore Outcome traceability" })).toBeVisible();
+});
+
 test("aligns mapping evidence and strategic vectors with the enriched job draft", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();

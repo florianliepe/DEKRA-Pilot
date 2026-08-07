@@ -36,6 +36,12 @@ export type KflaFactor = {
   name: "Thought" | "Results" | "People" | "Self";
   description: string;
   sourceClassification: SourceClassification;
+  licenceStatus: "public_metadata" | "internal_explanation" | "licensed_verified";
+  sourceVersion: string;
+  reviewDate: string;
+  contentOwner: string;
+  status: Lifecycle;
+  governance?: GovernanceMeta;
 };
 
 export type KflaCluster = {
@@ -44,8 +50,13 @@ export type KflaCluster = {
   name: string;
   description: string;
   sourceClassification: SourceClassification;
+  licenceStatus: "public_metadata" | "internal_explanation" | "licensed_verified";
+  sourceVersion: string;
+  reviewDate: string;
+  contentOwner: string;
   assignmentBasis: "organization_authored_navigation" | "licensed_verified";
   status: Lifecycle;
+  governance?: GovernanceMeta;
 };
 
 export type KflaCompetency = {
@@ -420,8 +431,8 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
     interviews: arrayOr(source.interviews, fallback.interviews),
     elicitationSessions: arrayOr(source.elicitationSessions, fallback.elicitationSessions),
     reviewQueue: arrayOr(source.reviewQueue, fallback.reviewQueue),
-    kflaFactors: arrayOr(source.kflaFactors, fallback.kflaFactors),
-    kflaClusters: arrayOr(source.kflaClusters, fallback.kflaClusters),
+    kflaFactors: arrayOr(source.kflaFactors, fallback.kflaFactors).map((item) => ({ ...fallback.kflaFactors.find((candidate) => candidate.id === item.id), ...item } as KflaFactor)),
+    kflaClusters: arrayOr(source.kflaClusters, fallback.kflaClusters).map((item) => ({ ...fallback.kflaClusters.find((candidate) => candidate.id === item.id), ...item } as KflaCluster)),
     jobDescriptions: arrayOr(source.jobDescriptions, fallback.jobDescriptions),
     mappings: arrayOr(source.mappings, fallback.mappings).map((mapping) => ({
       ...mapping,
@@ -515,6 +526,8 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
   if (workspace.kflaFactors.length !== 4) add("KFLA-HIERARCHY-001", "workspace", "KFLA", "KFLA must contain exactly four factors.", "kflaFactors", "Restore the canonical four-factor public metadata layer.");
   if (workspace.kflaClusters.length !== 12) add("KFLA-HIERARCHY-002", "workspace", "KFLA", "KFLA must contain exactly twelve clusters.", "kflaClusters", "Provide twelve governed navigation clusters.");
   if (workspace.kfla.length !== 38 || workspace.kfla.some((item) => !workspace.kflaClusters.some((cluster) => cluster.id === item.clusterId))) add("KFLA-HIERARCHY-003", "workspace", "KFLA", "All 38 competencies must resolve to a governed cluster.", "kfla", "Restore missing competencies or cluster relationships.");
+  const kflaMetadata = [...workspace.kflaFactors, ...workspace.kflaClusters, ...workspace.kfla];
+  if (kflaMetadata.some((item) => !item.sourceClassification || !("licenceStatus" in item) || !item.licenceStatus || !("sourceVersion" in item) || !item.sourceVersion || !("reviewDate" in item) || !item.reviewDate || !("contentOwner" in item) || !item.contentOwner)) add("KFLA-METADATA-001", "workspace", "KFLA", "KFLA governance metadata is incomplete.", "metadata", "Complete source classification, licence status, source version, review date and content owner.");
   return findings;
 }
 

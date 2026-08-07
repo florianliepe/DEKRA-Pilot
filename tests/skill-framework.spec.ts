@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
 import { authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, sanitizeApprovedWorkspace } from "../src/lib/skill-governance";
-import { validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
+import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
   const workspace = structuredClone(bootstrapSkillWorkspace);
@@ -13,6 +13,21 @@ test("models four factors, twelve clusters and all 38 assigned competencies", ()
   expect(new Set(workspace.kfla.map((item) => item.id)).size).toBe(38);
   expect(workspace.kfla.every((item) => workspace.kflaClusters.some((cluster) => cluster.id === item.clusterId && cluster.factorId === item.factorId))).toBe(true);
   expect(workspace.kfla.every((item) => item.sourceClassification && item.licenceStatus && item.sourceVersion && item.reviewDate && item.contentOwner)).toBe(true);
+  expect([...workspace.kflaFactors, ...workspace.kflaClusters].every((item) => item.sourceClassification && item.licenceStatus && item.sourceVersion && item.reviewDate && item.contentOwner && item.status)).toBe(true);
+});
+
+test("migrates legacy KFLA factors and clusters with complete governance metadata", () => {
+  const legacy = structuredClone(bootstrapSkillWorkspace) as unknown as Record<string, unknown> & { kflaFactors: Array<Record<string, unknown>>; kflaClusters: Array<Record<string, unknown>> };
+  for (const item of [...legacy.kflaFactors, ...legacy.kflaClusters]) {
+    delete item.licenceStatus;
+    delete item.sourceVersion;
+    delete item.reviewDate;
+    delete item.contentOwner;
+    delete item.status;
+  }
+  const migrated = migrateSkillWorkspace(legacy, bootstrapSkillWorkspace);
+  expect([...migrated.kflaFactors, ...migrated.kflaClusters].every((item) => item.licenceStatus && item.sourceVersion && item.reviewDate && item.contentOwner && item.status)).toBe(true);
+  expect(validateWorkspace(migrated).some((finding) => finding.ruleId === "KFLA-METADATA-001")).toBe(false);
 });
 
 test("defines eleven permissioned and auditable agent tools", () => {
