@@ -492,6 +492,21 @@ test("governs agent-tool edits and lifecycle through accountable review", async 
   await expect(page.getByText("1.1.0 · disabled", { exact: true })).toBeVisible();
 });
 
+test("submits KFLA structural lifecycle changes for human approval before mutation", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await page.getByLabel("Select KFLA metadata record").selectOption("KFLA-08");
+  await page.getByRole("button", { name: "Govern lifecycle" }).click();
+  await expect(page.getByText("No structural mutation occurs now.")).toBeVisible();
+  await page.getByLabel("KFLA lifecycle action").selectOption("move");
+  await page.getByLabel("Destination KFLA cluster").selectOption("KFLA-CL-S3");
+  await page.getByLabel("Accountable proposer").fill("KFLA Steward");
+  await page.getByLabel("Evidence-based reason").fill("Correct the navigation assignment after reviewed competency evidence.");
+  await page.getByRole("button", { name: "Submit KFLA change for review" }).click();
+  await page.getByRole("tab", { name: "Review" }).click();
+  await expect(page.getByText("move KFLA competency KFLA-08", { exact: true })).toBeVisible();
+});
+
 test("aligns mapping evidence and strategic vectors with the enriched job draft", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();

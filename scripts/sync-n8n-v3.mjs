@@ -17,6 +17,7 @@ const agentRegistryValidationBlock = "const requiredAgentToolIds=['job_parser','
 
 if (node.parameters.jsCode.includes(legacySanitizer)) node.parameters.jsCode = node.parameters.jsCode.replace(legacySanitizer, approvedSanitizer);
 node.parameters.jsCode = node.parameters.jsCode
+  .replace("(workspace.kflaFactors||[]).length!==4||(workspace.kflaClusters||[]).length!==12||(workspace.kfla||[]).length!==38||(workspace.kfla||[]).some(item=>!(workspace.kflaClusters||[]).some(cluster=>cluster.id===item.clusterId))", "(workspace.kflaFactors||[]).length!==4||(workspace.kflaFactors||[]).some(item=>item.status!=='approved')||(workspace.kflaClusters||[]).length!==12||(workspace.kflaClusters||[]).some(cluster=>cluster.status!=='approved'||!(workspace.kflaFactors||[]).some(factor=>factor.id===cluster.factorId&&factor.status==='approved'))||(workspace.kfla||[]).length!==38||(workspace.kfla||[]).some(item=>item.enabled!==true||!(workspace.kflaClusters||[]).some(cluster=>cluster.id===item.clusterId&&cluster.factorId===item.factorId&&cluster.status==='approved'))")
   .replace("const approvedSkills=(workspace.skills||[]).filter(item=>item.status==='approved');const approvedSkillIds=new Set(approvedSkills.map", "const publicSkills=(workspace.skills||[]).filter(item=>item.status==='approved');const approvedSkillIds=new Set(publicSkills.map")
   .replace("skills:approvedSkills.filter(item=>approvedGroupIds.has(item.groupId))", "skills:publicSkills.filter(item=>approvedGroupIds.has(item.groupId))")
   .replace("validationRules:(workspace.validationRules||[]).filter(item=>item.enabled)", "validationRules:(workspace.validationRules||[]).filter(item=>item.status==='approved')")
@@ -36,6 +37,7 @@ if (!node.parameters.jsCode.includes(relationshipValidationBlock)) node.paramete
 while (node.parameters.jsCode.includes(agentRegistryValidationBlock + agentRegistryValidationBlock)) node.parameters.jsCode = node.parameters.jsCode.replace(agentRegistryValidationBlock + agentRegistryValidationBlock, agentRegistryValidationBlock);
 if (!node.parameters.jsCode.includes(agentRegistryValidationBlock)) node.parameters.jsCode = node.parameters.jsCode.replace("const names=new Set();", agentRegistryValidationBlock + "const names=new Set();");
 if (!node.parameters.jsCode.includes("const publicSkills=(workspace.skills||[]).filter")) throw new Error("Publisher sanitizer is neither the expected legacy nor approved-only implementation.");
+if (!node.parameters.jsCode.includes("item.enabled!==true")) throw new Error("Publisher KFLA lifecycle gate was not installed.");
 
 writeFileSync(publisherPath, `${JSON.stringify(workflow, null, 2)}\n`);
 

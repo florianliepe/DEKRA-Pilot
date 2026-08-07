@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareRelease, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareRelease, proposeKflaLifecycle, recordMappingFeedback, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -14,6 +14,29 @@ test("models four factors, twelve clusters and all 38 assigned competencies", ()
   expect(workspace.kfla.every((item) => workspace.kflaClusters.some((cluster) => cluster.id === item.clusterId && cluster.factorId === item.factorId))).toBe(true);
   expect(workspace.kfla.every((item) => item.sourceClassification && item.licenceStatus && item.sourceVersion && item.reviewDate && item.contentOwner)).toBe(true);
   expect([...workspace.kflaFactors, ...workspace.kflaClusters].every((item) => item.sourceClassification && item.licenceStatus && item.sourceVersion && item.reviewDate && item.contentOwner && item.status)).toBe(true);
+});
+
+test("previews KFLA structural impact and applies lifecycle changes only after human approval", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const original = workspace.kfla.find((item) => item.id === "KFLA-08")!;
+  const destination = workspace.kflaClusters.find((item) => item.id !== original.clusterId && item.factorId !== original.factorId)!;
+  const proposed = proposeKflaLifecycle(workspace, { kind: "competency", action: "move", entityId: original.id, parentId: destination.id, actor: "KFLA Steward", reason: "Correct the governed navigation assignment using reviewed evidence." });
+  expect(proposed.kfla.find((item) => item.id === original.id)?.clusterId).toBe(original.clusterId);
+  const review = proposed.reviewQueue.find((item) => item.payload?.operation === "kfla_lifecycle")!;
+  expect(review.summary).toMatch(/competencies.*skills.*mappings.*jobs/);
+
+  const approved = decideReview(proposed, review.id, "accepted", "Framework Owner", "The proposed assignment and impact evidence are approved.");
+  expect(approved.kfla.find((item) => item.id === original.id)).toMatchObject({ clusterId: destination.id, factorId: destination.factorId, reviewStatus: "internal_review" });
+  expect(approved.objectVersions.some((item) => item.entityId === original.id && item.action === "kfla.move.approved")).toBe(true);
+  expect(validateWorkspace(approved).some((finding) => finding.ruleId.startsWith("KFLA-HIERARCHY"))).toBe(false);
+});
+
+test("keeps a rejected KFLA lifecycle proposal non-mutating", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const proposed = proposeKflaLifecycle(workspace, { kind: "cluster", action: "archive", entityId: "KFLA-CL-T1", actor: "KFLA Steward", reason: "Test an archival proposal without applying it." });
+  const review = proposed.reviewQueue.find((item) => item.payload?.operation === "kfla_lifecycle")!;
+  const rejected = decideReview(proposed, review.id, "rejected", "Framework Owner", "The canonical cluster must remain active.");
+  expect(rejected.kflaClusters.find((item) => item.id === "KFLA-CL-T1")?.status).toBe("approved");
 });
 
 test("migrates legacy KFLA factors and clusters with complete governance metadata", () => {

@@ -32,6 +32,8 @@ Taxonomy relationships are first-class governed objects. Create, update, duplica
 
 The skill library exposes these lifecycle controls for individual and bulk selections. Every operation requires an accountable actor and reason, previews affected jobs, mappings, profiles, tools and relationships, and records an object version plus audit event. Merge and replace migrate downstream mappings, profile targets, controlled-tool links, strategic vectors, relationships and evidence references without deleting history; duplicate creates a draft working copy and restore returns a soft-deleted skill to draft.
 
+KFLA structural lifecycle requests are also review-first. Factor, cluster and competency archive, restore, deprecate, replace and move requests preview affected clusters, competencies, skills, mappings and jobs, then enter the human review queue without mutating the hierarchy. An accepted decision applies the migration and records the proposer, reviewer, reasons, impact and replacement lineage. A rejected or deferred request leaves the canonical 4/12/38 structure unchanged. The release gate requires four approved factors, twelve approved and factor-aligned clusters, and 38 enabled competencies with matching cluster/factor assignments.
+
 Authoritative machine-readable contracts:
 
 - `data/schemas/skill-workspace.schema.json`
@@ -49,6 +51,8 @@ Licensed definitions, anchors and development content require a licensed-content
 ## Agent-tool contract
 
 The eleven allowlisted tools are job parser, evidence extractor, taxonomy search, skill-similarity search, syntax validator, granularity validator, KFLA lookup, controlled-tool lookup, mapping scorer, draft-suggestion writer and review-package generator. Each has input/output JSON schemas, permission, allowed data classifications, timeout/retry/rate limits, error contract, audit fields, version, owner, lifecycle and allowed actions.
+
+Agent-tool create/edit, restore, replace and merge operations return the successor contract to draft and create a pending human-review item. Disable and deprecate remain recoverable soft transitions. Impact analysis lists recorded runs and invocations, while historical tool IDs, versions and correlation IDs are never rewritten. Release validation requires every canonical implementation to be unique, active and contract-complete.
 
 The agent has no unrestricted network, filesystem, credential, workflow-administration or publication permission. Every invocation records correlation ID, acting user, input/output references, duration, outcome, errors/retries, tool version, rules and framework version.
 
@@ -118,10 +122,10 @@ Both workflows were imported from commit `4de21ab`, retained the existing header
 3. Complete and resume an elicitation draft; run AI rewrite/validation and submit it for review.
 4. Create/edit/archive a skill and confirm a version/audit event appears.
 5. Open **Taxonomy standards** and verify 4 factors, 12 clusters and 38 deep dives.
-6. Exercise hierarchy and relationship CRUD. In **Controlled tools**, duplicate and merge a test record; verify linked-skill and mapping impact plus replacement history.
+6. Exercise hierarchy and relationship CRUD. Submit a KFLA competency move and confirm no mutation occurs until the review is approved. In **Controlled tools**, duplicate and merge a test record; verify linked-skill and mapping impact plus replacement history.
 7. Open **Jobs & mapping**, inspect all thirteen score dimensions and confirm an override requires a reason.
 8. Open **Role profiles**; create or edit a profile, then duplicate and archive it with an accountable actor and reason. Confirm impact counts and immutable history.
-9. Open **Governance** to inspect data quality, tool contracts, versions, audit, configuration, graph and coverage insights.
+9. Open **Governance** to inspect data quality, tool contracts, versions, audit, configuration, graph and coverage insights. Edit an active agent-tool contract and confirm it becomes draft, shows run/invocation impact and requires a human approval to reactivate.
 10. Record decisions for every pending review item with reviewer and reason.
 11. Use **Release approved JSON** and confirm revision, commit receipt and manifest.
 12. Retry the same release to verify idempotency; simulate a stale revision to verify conflict handling.

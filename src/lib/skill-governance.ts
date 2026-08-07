@@ -83,6 +83,18 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
   const selectedAgentTool = workspace.agentTools.find((tool) => tool.id === entityId);
   const agentToolRuns = selectedAgentTool ? workspace.agentRuns.filter((run) => run.tools.includes(selectedAgentTool.id) || (run.invocations || []).some((invocation) => invocation.toolId === selectedAgentTool.id)) : [];
   const agentToolInvocations = selectedAgentTool ? workspace.agentRuns.flatMap((run) => run.invocations || []).filter((invocation) => invocation.toolId === selectedAgentTool.id) : [];
+  const selectedKflaFactor = workspace.kflaFactors.find((item) => item.id === entityId);
+  const selectedKflaCluster = workspace.kflaClusters.find((item) => item.id === entityId);
+  const selectedKflaCompetency = workspace.kfla.find((item) => item.id === entityId);
+  const kflaClusters = selectedKflaFactor ? workspace.kflaClusters.filter((item) => item.factorId === selectedKflaFactor.id) : selectedKflaCluster ? [selectedKflaCluster] : [];
+  const clusterIds = new Set(kflaClusters.map((item) => item.id));
+  const kflaCompetencies = selectedKflaCompetency ? [selectedKflaCompetency] : workspace.kfla.filter((item) => clusterIds.has(item.clusterId));
+  const kflaCompetencyIds = new Set(kflaCompetencies.map((item) => item.id));
+  const kflaSkills = workspace.skills.filter((skill) => Boolean(skill.kflaCompetencyId && kflaCompetencyIds.has(skill.kflaCompetencyId)));
+  const kflaSkillIds = new Set(kflaSkills.map((skill) => skill.id));
+  const kflaMappings = workspace.mappings.filter((mapping) => kflaSkillIds.has(mapping.skillId));
+  const kflaJobIds = new Set(kflaMappings.map((mapping) => mapping.jobDescriptionId));
+  const kflaJobs = workspace.jobDescriptions.filter((job) => kflaJobIds.has(job.id));
   return {
     skills,
     mappings,
@@ -101,8 +113,86 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
     selectedAgentTool,
     agentToolRuns,
     agentToolInvocations,
-    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length + toolSkills.length + toolMappings.length + agentToolRuns.length + agentToolInvocations.length,
+    selectedKflaFactor,
+    selectedKflaCluster,
+    selectedKflaCompetency,
+    kflaClusters,
+    kflaCompetencies,
+    kflaSkills,
+    kflaMappings,
+    kflaJobs,
+    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length + toolSkills.length + toolMappings.length + agentToolRuns.length + agentToolInvocations.length + kflaClusters.length + kflaCompetencies.length + kflaSkills.length + kflaMappings.length + kflaJobs.length,
   };
+}
+
+export type KflaLifecycleKind = "factor" | "cluster" | "competency";
+export type KflaLifecycleAction = "archive" | "restore" | "deprecate" | "replace" | "move";
+export type KflaLifecycleRequest = { kind: KflaLifecycleKind; action: KflaLifecycleAction; entityId: string; actor: string; reason: string; targetId?: string; parentId?: string };
+
+function assertKflaLifecycle(workspace: SkillWorkspace, request: KflaLifecycleRequest) {
+  if (!request.actor.trim()) throw new Error("An accountable actor is required.");
+  if (!request.reason.trim()) throw new Error("A governance reason is required.");
+  const exists = request.kind === "factor" ? workspace.kflaFactors.some((item) => item.id === request.entityId) : request.kind === "cluster" ? workspace.kflaClusters.some((item) => item.id === request.entityId) : workspace.kfla.some((item) => item.id === request.entityId);
+  if (!exists) throw new Error("KFLA record not found.");
+  if (request.action === "move" && request.kind === "factor") throw new Error("A canonical KFLA factor has no movable parent.");
+  if (request.action === "replace" && (!request.targetId || request.targetId === request.entityId)) throw new Error("A distinct replacement is required.");
+  if (request.action === "move" && !request.parentId) throw new Error("A governed destination is required.");
+}
+
+function executeKflaLifecycle(workspace: SkillWorkspace, request: KflaLifecycleRequest, reviewer: string, decisionReason: string): SkillWorkspace {
+  const at = new Date().toISOString();
+  const governance = (current: { governance?: { version: number; createdAt: string; updatedAt: string; createdBy: string; updatedBy: string; replacedById?: string } }, replacementId?: string) => ({ version: (current.governance?.version || 0) + 1, createdAt: current.governance?.createdAt || workspace.updatedAt, updatedAt: at, createdBy: current.governance?.createdBy || request.actor, updatedBy: reviewer, replacedById: replacementId });
+  let next = workspace;
+  if (request.kind === "factor") {
+    const source = workspace.kflaFactors.find((item) => item.id === request.entityId)!;
+    if (request.action === "replace") {
+      const target = workspace.kflaFactors.find((item) => item.id === request.targetId);
+      if (!target) throw new Error("Replacement factor not found.");
+      next = { ...workspace, kflaFactors: workspace.kflaFactors.map((item) => item.id === source.id ? { ...item, status: "approved", governance: governance(item, target.id) } : item.id === target.id ? { ...item, status: "approved" } : item), kflaClusters: workspace.kflaClusters.map((item) => item.factorId === source.id ? { ...item, factorId: target.id, status: "approved" } : item), kfla: workspace.kfla.map((item) => item.factorId === source.id ? { ...item, factorId: target.id, factor: target.name, reviewStatus: "internal_review" } : item) };
+    } else {
+      const status = request.action === "archive" ? "archived" as const : request.action === "deprecate" ? "deprecated" as const : "approved" as const;
+      next = { ...workspace, kflaFactors: workspace.kflaFactors.map((item) => item.id === source.id ? { ...item, status, governance: governance(item) } : item) };
+    }
+  } else if (request.kind === "cluster") {
+    const source = workspace.kflaClusters.find((item) => item.id === request.entityId)!;
+    if (request.action === "move") {
+      const targetFactor = workspace.kflaFactors.find((item) => item.id === request.parentId && !["archived", "retired"].includes(item.status));
+      if (!targetFactor) throw new Error("Destination factor not found.");
+      next = { ...workspace, kflaClusters: workspace.kflaClusters.map((item) => item.id === source.id ? { ...item, factorId: targetFactor.id, status: "approved", governance: governance(item) } : item), kfla: workspace.kfla.map((item) => item.clusterId === source.id ? { ...item, factorId: targetFactor.id, factor: targetFactor.name, reviewStatus: "internal_review" } : item) };
+    } else if (request.action === "replace") {
+      const target = workspace.kflaClusters.find((item) => item.id === request.targetId);
+      const targetFactor = workspace.kflaFactors.find((item) => item.id === target?.factorId);
+      if (!target || !targetFactor) throw new Error("Replacement cluster not found.");
+      next = { ...workspace, kflaClusters: workspace.kflaClusters.map((item) => item.id === source.id ? { ...item, status: "approved", governance: governance(item, target.id) } : item.id === target.id ? { ...item, status: "approved" } : item), kfla: workspace.kfla.map((item) => item.clusterId === source.id ? { ...item, clusterId: target.id, factorId: targetFactor.id, factor: targetFactor.name, reviewStatus: "internal_review" } : item) };
+    } else {
+      const status = request.action === "archive" ? "archived" as const : request.action === "deprecate" ? "deprecated" as const : "approved" as const;
+      next = { ...workspace, kflaClusters: workspace.kflaClusters.map((item) => item.id === source.id ? { ...item, status, governance: governance(item) } : item) };
+    }
+  } else {
+    const source = workspace.kfla.find((item) => item.id === request.entityId)!;
+    if (request.action === "move") {
+      const targetCluster = workspace.kflaClusters.find((item) => item.id === request.parentId && !["archived", "retired"].includes(item.status));
+      const targetFactor = workspace.kflaFactors.find((item) => item.id === targetCluster?.factorId);
+      if (!targetCluster || !targetFactor) throw new Error("Destination cluster not found.");
+      next = { ...workspace, kfla: workspace.kfla.map((item) => item.id === source.id ? { ...item, clusterId: targetCluster.id, factorId: targetFactor.id, factor: targetFactor.name, reviewStatus: "internal_review", governance: governance(item) } : item) };
+    } else if (request.action === "replace") {
+      const target = workspace.kfla.find((item) => item.id === request.targetId);
+      if (!target) throw new Error("Replacement competency not found.");
+      next = { ...workspace, kfla: workspace.kfla.map((item) => item.id === source.id ? { ...item, enabled: true, reviewStatus: "internal_review", governance: governance(item, target.id) } : item.id === target.id ? { ...item, enabled: true, reviewStatus: "internal_review", relatedCompetencyIds: unique([...item.relatedCompetencyIds, source.id]) } : item), skills: workspace.skills.map((skill) => skill.kflaCompetencyId === source.id ? { ...skill, kflaCompetencyId: target.id, status: "in_review" } : skill) };
+    } else {
+      const enabled = request.action === "restore";
+      next = { ...workspace, kfla: workspace.kfla.map((item) => item.id === source.id ? { ...item, enabled, reviewStatus: "internal_review", governance: governance(item) } : item) };
+    }
+  }
+  const impact = impactAnalysis(workspace, request.entityId);
+  return recordGovernedVersion(next, `kfla_${request.kind}`, request.entityId, `kfla.${request.action}.approved`, reviewer, { requestedBy: request.actor, requestReason: request.reason, decisionReason, targetId: request.targetId, parentId: request.parentId, affectedClusters: impact.kflaClusters.length, affectedCompetencies: impact.kflaCompetencies.length, affectedSkills: impact.kflaSkills.length, affectedMappings: impact.kflaMappings.length, affectedJobs: impact.kflaJobs.length });
+}
+
+export function proposeKflaLifecycle(workspace: SkillWorkspace, request: KflaLifecycleRequest): SkillWorkspace {
+  assertKflaLifecycle(workspace, request);
+  const impact = impactAnalysis(workspace, request.entityId);
+  const review: ReviewItem = { id: `REV-KFLA-${request.kind}-${request.entityId}-${Date.now()}`, title: `${request.action} KFLA ${request.kind} ${request.entityId}`, type: "taxonomy_change", summary: `${impact.kflaClusters.length} clusters, ${impact.kflaCompetencies.length} competencies, ${impact.kflaSkills.length} skills, ${impact.kflaMappings.length} mappings and ${impact.kflaJobs.length} jobs are in scope.`, confidence: 100, evidence: request.reason.trim(), explanation: "The structural mutation is not applied until an accountable reviewer approves this request.", frameworkVersion: workspace.framework.version, rulesVersion: workspace.framework.rulesVersion, status: "pending", entityId: request.entityId, payload: { operation: "kfla_lifecycle", ...request } };
+  return recordGovernedVersion({ ...workspace, reviewQueue: [review, ...workspace.reviewQueue] }, `kfla_${request.kind}`, request.entityId, "kfla.lifecycle_requested", request.actor.trim(), { ...review.payload, reviewId: review.id, impact: review.summary });
 }
 
 function agentToolReview(workspace: SkillWorkspace, tool: AgentToolDefinition, actor: string, reason: string): ReviewItem {
@@ -468,7 +558,7 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
     ...tool,
     lifecycleStatus: approved ? "active" as const : decision === "rejected" ? "disabled" as const : tool.lifecycleStatus,
   } : tool);
-  const objectVersions: ObjectVersion[] = [{
+  const reviewVersion: ObjectVersion = {
     id: `VER-${reviewId}-${Date.now()}`,
     entityType: review.type,
     entityId: review.entityId || review.id,
@@ -477,8 +567,10 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
     recordedBy: actor.trim(),
     action: `review.${decision}`,
     snapshot: { ...review, status: decision, mergeTargetId, decisionReason: reason.trim() },
-  }, ...workspace.objectVersions];
-  return { ...workspace, reviewQueue, skills, mappings, profiles, agentTools, objectVersions, auditLog: [auditEvent(`review.${decision}`, review, actor.trim(), reason.trim(), at), ...workspace.auditLog], updatedAt: at };
+  };
+  let next: SkillWorkspace = { ...workspace, reviewQueue, skills, mappings, profiles, agentTools, updatedAt: at };
+  if (approved && review.payload?.operation === "kfla_lifecycle") next = executeKflaLifecycle(next, review.payload as unknown as KflaLifecycleRequest, actor.trim(), reason.trim());
+  return { ...next, objectVersions: [reviewVersion, ...next.objectVersions], auditLog: [auditEvent(`review.${decision}`, review, actor.trim(), reason.trim(), at), ...next.auditLog], updatedAt: at };
 }
 
 export function recordGovernedVersion(workspace: SkillWorkspace, entityType: string, entityId: string, action: string, actor: string, snapshot: Record<string, unknown>) {

@@ -73,3 +73,24 @@ Replace and merge rewrite governed mapping `toolIds`, deduplicate aliases,
 skills and allowed catalogue actions, add a `replacedById` chain, and return
 affected mappings plus the target tool to review. Validation blocks duplicate
 or unavailable skill links and obsolete mapping-to-tool references.
+
+## KFLA structural lifecycle
+
+The fixed public reference layer retains four factors, twelve clusters and 38
+competencies. Archive, restore, deprecate, replace and move requests are
+proposals: they require an accountable proposer and evidence-based reason,
+show child and downstream impact, and enter the human review queue before any
+hierarchy mutation occurs. Approval applies factor/cluster propagation, skill
+reference migration and replacement lineage atomically; rejection or deferral
+leaves the structure unchanged. Release validation requires the complete,
+enabled and internally aligned 4/12/38 model.
+
+## Callable agent-tool lifecycle
+
+The callable registry is governed separately from business tools. Contract
+edits and new registrations are always draft and produce a pending review.
+Duplicate, disable, restore, deprecate, replace and merge operations preserve
+immutable versions and show recorded run/invocation impact. Restore, replace
+and merge require approval before activation. Historical invocation tool IDs,
+versions and correlation IDs are never rewritten, and the release gate blocks
+missing, inactive, duplicated or incomplete canonical tool contracts.
