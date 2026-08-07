@@ -382,6 +382,26 @@ test("governs role-profile editing, duplication and archival with accountable im
   await expect(page.getByRole("button", { name: "Restore Global Reporting Analyst copy profile" })).toBeVisible();
 });
 
+test("governs controlled-tool duplication and merge with dependency migration", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await page.getByRole("button", { name: "Controlled tools" }).click();
+  await page.getByRole("button", { name: "Duplicate Power BI" }).click();
+  await expect(page.getByRole("heading", { name: "Duplicate Power BI" })).toBeVisible();
+  await expect(page.getByText(/linked skills and .* job mappings/)).toBeVisible();
+  await page.getByLabel("Accountable actor").fill("Tool Steward");
+  await page.getByLabel("Governance reason").fill("Create a governed comparison tool record.");
+  await page.getByRole("button", { name: "Apply governed tool action" }).click();
+  await expect(page.getByText("Power BI copy", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Merge Power BI", exact: true }).click();
+  await page.getByLabel("Target controlled tool").selectOption({ label: "Power BI copy" });
+  await page.getByLabel("Accountable actor").fill("Tool Steward");
+  await page.getByLabel("Governance reason").fill("Consolidate mapping references into the governed successor.");
+  await page.getByRole("button", { name: "Apply governed tool action" }).click();
+  await expect(page.getByText("Replaced by Power BI copy", { exact: true })).toBeVisible();
+});
+
 test("creates and archives a governed validation rule", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Governance" }).click();

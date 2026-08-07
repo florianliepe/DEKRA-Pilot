@@ -145,6 +145,8 @@ export const validationRules: ValidationRule[] = [
   ["MAPPING-OVERRIDE-001", "Override accountability", "A manual score override must retain a reason.", "error", "overrideReason", "Record an evidence-based reason.", true],
   ["PROFILE-INTEGRITY-001", "Role-profile skill integrity", "Active role profiles may only contain unique links to active governed skills.", "error", "skills", "Remove duplicate links and select active governed skills only.", true],
   ["PROFILE-SOURCE-001", "Role-profile source grounding", "Every approved role profile must resolve to an active governed job description.", "error", "jobDescriptionId", "Link the profile to its governed source job description.", true],
+  ["CONTROLLED-TOOL-INTEGRITY-001", "Controlled-tool skill integrity", "Active controlled tools may only contain unique links to active governed skills.", "error", "skillIds", "Retain unique links to active governed skills only.", true],
+  ["MAPPING-TOOL-001", "Mapping tool integrity", "Active mappings may only reference unique active controlled tools.", "error", "toolIds", "Select unique active controlled tools or remove obsolete references.", true],
   ["KFLA-HIERARCHY-001", "Four-factor integrity", "The public metadata layer must contain four factors.", "error", "kflaFactors", "Restore four factors.", true],
   ["KFLA-HIERARCHY-002", "Twelve-cluster integrity", "The navigation layer must contain twelve clusters.", "error", "kflaClusters", "Restore twelve clusters.", true],
   ["KFLA-HIERARCHY-003", "Competency assignment integrity", "All 38 competencies must resolve to a cluster.", "error", "kfla", "Assign every competency to a governed cluster.", true],

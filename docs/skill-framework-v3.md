@@ -114,7 +114,7 @@ Both workflows were imported from commit `4de21ab`, retained the existing header
 3. Complete and resume an elicitation draft; run AI rewrite/validation and submit it for review.
 4. Create/edit/archive a skill and confirm a version/audit event appears.
 5. Open **Taxonomy standards** and verify 4 factors, 12 clusters and 38 deep dives.
-6. Exercise hierarchy, relationship and controlled-tool CRUD; review impact before structural changes.
+6. Exercise hierarchy and relationship CRUD. In **Controlled tools**, duplicate and merge a test record; verify linked-skill and mapping impact plus replacement history.
 7. Open **Jobs & mapping**, inspect all thirteen score dimensions and confirm an override requires a reason.
 8. Open **Role profiles**; create or edit a profile, then duplicate and archive it with an accountable actor and reason. Confirm impact counts and immutable history.
 9. Open **Governance** to inspect data quality, tool contracts, versions, audit, configuration, graph and coverage insights.

@@ -1,4 +1,4 @@
-import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace } from "./skill-schema";
+import { validateWorkspace, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type JobSkillMapping, type LocalizedConceptLabel, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
 
@@ -77,6 +77,9 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
   const profileMappings = selectedProfile
     ? workspace.mappings.filter((mapping) => mapping.jobDescriptionId === selectedProfile.jobDescriptionId || profileSkillIds.has(mapping.skillId))
     : [];
+  const selectedTool = workspace.tools.find((tool) => tool.id === entityId);
+  const toolSkills = selectedTool ? workspace.skills.filter((skill) => selectedTool.skillIds.includes(skill.id)) : [];
+  const toolMappings = selectedTool ? workspace.mappings.filter((mapping) => (mapping.toolIds || []).includes(selectedTool.id)) : [];
   return {
     skills,
     mappings,
@@ -89,8 +92,60 @@ export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
     selectedProfile,
     profileJobs,
     profileMappings,
-    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length,
+    selectedTool,
+    toolSkills,
+    toolMappings,
+    dependencyCount: skills.length + mappings.length + profiles.length + tools.length + relationships.length + jobs.length + evidenceRecords.length + sources.length + profileJobs.length + profileMappings.length + toolSkills.length + toolMappings.length,
   };
+}
+
+export type ControlledToolLifecycleAction = "duplicate" | "archive" | "restore" | "deprecate" | "replace" | "merge";
+export type ControlledToolLifecycleRequest = {
+  action: ControlledToolLifecycleAction;
+  toolId: string;
+  actor: string;
+  reason: string;
+  targetToolId?: string;
+  newToolId?: string;
+};
+
+export function applyControlledToolLifecycle(workspace: SkillWorkspace, request: ControlledToolLifecycleRequest): SkillWorkspace {
+  const actor = request.actor.trim();
+  const reason = request.reason.trim();
+  if (!actor) throw new Error("An accountable actor is required.");
+  if (!reason) throw new Error("A governance reason is required.");
+  const source = workspace.tools.find((tool) => tool.id === request.toolId);
+  if (!source) throw new Error("Controlled tool not found.");
+  const impact = impactAnalysis(workspace, source.id);
+
+  if (request.action === "duplicate") {
+    const id = request.newToolId || `TOOL-${Date.now().toString().slice(-8)}`;
+    if (workspace.tools.some((tool) => tool.id === id)) throw new Error(`Controlled tool ${id} already exists.`);
+    const duplicate: ControlledTool = { ...source, id, name: `${source.name} copy`, aliases: [...source.aliases], skillIds: [...source.skillIds], status: "draft", governance: undefined };
+    return recordGovernedVersion({ ...workspace, tools: [duplicate, ...workspace.tools] }, "controlled_tool", id, "tool.duplicated", actor, { ...duplicate, sourceToolId: source.id, reason } as unknown as Record<string, unknown>);
+  }
+
+  if (["archive", "restore", "deprecate"].includes(request.action)) {
+    const status = request.action === "archive" ? "archived" as const : request.action === "restore" ? "draft" as const : "deprecated" as const;
+    const next = { ...source, status };
+    return recordGovernedVersion({ ...workspace, tools: workspace.tools.map((tool) => tool.id === source.id ? next : tool) }, "controlled_tool", source.id, `tool.${request.action}d`, actor, { ...next, reason, affectedMappings: impact.toolMappings.length } as unknown as Record<string, unknown>);
+  }
+
+  const target = workspace.tools.find((tool) => tool.id === request.targetToolId && tool.id !== source.id && !["archived", "retired"].includes(tool.status));
+  if (!target) throw new Error("An active target controlled tool is required.");
+  const replaceId = (id: string) => id === source.id ? target.id : id;
+  const at = new Date().toISOString();
+  const migrated = {
+    ...workspace,
+    tools: workspace.tools.map((tool) => tool.id === source.id
+      ? { ...tool, status: request.action === "merge" ? "archived" as const : "retired" as const, governance: { version: (tool.governance?.version || 0) + 1, createdAt: tool.governance?.createdAt || workspace.updatedAt, updatedAt: at, createdBy: tool.governance?.createdBy || actor, updatedBy: actor, replacedById: target.id } }
+      : tool.id === target.id
+        ? { ...tool, aliases: unique([...tool.aliases, source.name, ...source.aliases]), skillIds: unique([...tool.skillIds, ...source.skillIds]), allowedAgentActions: unique([...tool.allowedAgentActions, ...source.allowedAgentActions]) as ControlledTool["allowedAgentActions"], status: "in_review" as const }
+        : tool),
+    mappings: workspace.mappings.map((mapping) => ({ ...mapping, toolIds: unique((mapping.toolIds || []).map(replaceId)), status: (mapping.toolIds || []).includes(source.id) ? "proposed" as const : mapping.status })),
+  };
+  const sourceVersion = recordGovernedVersion(migrated, "controlled_tool", source.id, `tool.${request.action}d`, actor, { targetToolId: target.id, reason, affectedMappings: impact.toolMappings.length });
+  return recordGovernedVersion(sourceVersion, "controlled_tool", target.id, `tool.${request.action}_target_updated`, actor, { sourceToolId: source.id, reason, migratedSkillLinks: source.skillIds.length });
 }
 
 export type RoleProfileLifecycleAction = "duplicate" | "archive" | "restore" | "deprecate" | "replace" | "merge";

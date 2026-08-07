@@ -57,3 +57,15 @@ object version and audit event. Replace and merge show related mappings and the
 source job before execution, require an accountable actor and reason, mark the
 source with `replacedById`, migrate unique skill links to the target, and route
 the target back to `in_review`.
+
+## Controlled business-tool lifecycle
+
+Controlled tools and methods are governed business vocabulary, not executable
+agent functions. Create, edit, duplicate, archive, restore, deprecate, replace
+and merge operations show linked skills and job mappings before execution and
+require an accountable actor and reason.
+
+Replace and merge rewrite governed mapping `toolIds`, deduplicate aliases,
+skills and allowed catalogue actions, add a `replacedById` chain, and return
+affected mappings plus the target tool to review. Validation blocks duplicate
+or unavailable skill links and obsolete mapping-to-tool references.

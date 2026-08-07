@@ -584,6 +584,13 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     if (new Set(skillIds).size !== skillIds.length || profile.skills.some((link) => !workspace.skills.some((skill) => skill.id === link.skillId && !["archived", "retired"].includes(skill.status)))) add("PROFILE-INTEGRITY-001", "role_profile", profile.id, "Role profile contains a duplicate or unavailable skill link.", "skills", "Remove duplicate links and select active governed skills only.");
     if (profile.status === "approved" && (!profile.jobDescriptionId || !workspace.jobDescriptions.some((job) => job.id === profile.jobDescriptionId && job.status !== "archived"))) add("PROFILE-SOURCE-001", "role_profile", profile.id, "Approved role profile is not grounded in an active job description.", "jobDescriptionId", "Link the profile to its governed source job description before release.");
   }
+  for (const tool of workspace.tools.filter((item) => !["archived", "retired"].includes(item.status))) {
+    if (new Set(tool.skillIds).size !== tool.skillIds.length || tool.skillIds.some((id) => !workspace.skills.some((skill) => skill.id === id && !["archived", "retired"].includes(skill.status)))) add("CONTROLLED-TOOL-INTEGRITY-001", "controlled_tool", tool.id, "Controlled tool contains a duplicate or unavailable skill link.", "skillIds", "Retain unique links to active governed skills only.");
+  }
+  for (const mapping of workspace.mappings.filter((item) => item.status !== "rejected" && item.status !== "deferred")) {
+    const toolIds = mapping.toolIds || [];
+    if (new Set(toolIds).size !== toolIds.length || toolIds.some((id) => !workspace.tools.some((tool) => tool.id === id && !["archived", "retired"].includes(tool.status)))) add("MAPPING-TOOL-001", "mapping", mapping.id, "Mapping contains a duplicate or unavailable controlled-tool reference.", "toolIds", "Select unique active controlled tools or remove obsolete references.");
+  }
   if (workspace.kflaFactors.length !== 4) add("KFLA-HIERARCHY-001", "workspace", "KFLA", "KFLA must contain exactly four factors.", "kflaFactors", "Restore the canonical four-factor public metadata layer.");
   if (workspace.kflaClusters.length !== 12) add("KFLA-HIERARCHY-002", "workspace", "KFLA", "KFLA must contain exactly twelve clusters.", "kflaClusters", "Provide twelve governed navigation clusters.");
   if (workspace.kfla.length !== 38 || workspace.kfla.some((item) => !workspace.kflaClusters.some((cluster) => cluster.id === item.clusterId))) add("KFLA-HIERARCHY-003", "workspace", "KFLA", "All 38 competencies must resolve to a governed cluster.", "kfla", "Restore missing competencies or cluster relationships.");

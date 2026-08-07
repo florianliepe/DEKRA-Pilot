@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyControlledToolLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateMappingScore, decideReview, impactAnalysis, prepareRelease, requestRollback, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveLocalizedConceptLabel, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -249,4 +249,23 @@ test("governs role-profile lifecycle with dependency evidence and immutable hist
   expect(merged.profiles.find((profile) => profile.id === "ROLE-DATA-NEXT")?.skills).toHaveLength(workspace.profiles[0].skills.length);
   expect(merged.objectVersions.filter((version) => ["ROLE-DATA", "ROLE-DATA-NEXT"].includes(version.entityId)).length).toBeGreaterThanOrEqual(3);
   expect(merged.auditLog.filter((event) => event.action.startsWith("profile.merge"))).toHaveLength(2);
+});
+
+test("governs controlled-tool lifecycle and migrates job-mapping references", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const impact = impactAnalysis(workspace, "TOOL-POWERBI");
+  expect(impact.toolSkills.map((skill) => skill.id)).toContain("SK-DV");
+  expect(impact.toolMappings.map((mapping) => mapping.id)).toContain("MAP-DV");
+  expect(() => applyControlledToolLifecycle(workspace, { action: "archive", toolId: "TOOL-POWERBI", actor: "", reason: "Superseded" })).toThrow(/actor/i);
+
+  const duplicated = applyControlledToolLifecycle(workspace, { action: "duplicate", toolId: "TOOL-POWERBI", newToolId: "TOOL-POWERBI-NEXT", actor: "Tool Steward", reason: "Create a governed comparison record." });
+  expect(duplicated.tools.find((tool) => tool.id === "TOOL-POWERBI-NEXT")).toMatchObject({ name: "Power BI copy", status: "draft" });
+
+  const merged = applyControlledToolLifecycle(duplicated, { action: "merge", toolId: "TOOL-POWERBI", targetToolId: "TOOL-POWERBI-NEXT", actor: "Tool Steward", reason: "Consolidate aliases and governed mapping references." });
+  expect(merged.tools.find((tool) => tool.id === "TOOL-POWERBI")?.status).toBe("archived");
+  expect(merged.tools.find((tool) => tool.id === "TOOL-POWERBI")?.governance?.replacedById).toBe("TOOL-POWERBI-NEXT");
+  expect(merged.tools.find((tool) => tool.id === "TOOL-POWERBI-NEXT")?.aliases).toContain("Power BI");
+  expect(merged.mappings.find((mapping) => mapping.id === "MAP-DV")?.toolIds).toEqual(["TOOL-POWERBI-NEXT"]);
+  expect(merged.mappings.find((mapping) => mapping.id === "MAP-DV")?.status).toBe("proposed");
+  expect(merged.objectVersions.filter((version) => ["TOOL-POWERBI", "TOOL-POWERBI-NEXT"].includes(version.entityId)).length).toBeGreaterThanOrEqual(3);
 });
