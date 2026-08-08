@@ -42,6 +42,8 @@ Skill and role-profile editors require a named owner and reason for every create
 
 The workflow uses both the approved revision and current GitHub blob SHA for optimistic concurrency. An idempotency key makes retries safe. The version 3 publisher creates the approved snapshot, release manifest and release index in one Git tree and fast-forwards `main` without force. A failed run remains recoverable by retrying the same prepared release; a rollback is a new reviewed release and never rewrites history.
 
+After GitHub accepts the atomic commit, the frontend reloads the approved snapshot to obtain its new blob SHA and records a publication receipt in the full n8n working workspace. This advances the approved base revision without replacing draft, deferred or in-review objects with the sanitized public snapshot. Receipt persistence is idempotent; retrying a completed publication cannot duplicate its release history or audit version.
+
 ## KFLA content policy
 
 The application uses the 38 public competency names as research/navigation metadata. The four-factor and twelve-cluster navigation layer, summaries and examples in the public app are explicitly classified as organisation-authored pending licensed verification. Korn Ferry definitions, rating anchors, skilled/less-skilled indicators and development guidance remain outside the repository and public bundle. When licensed material is supplied, only a protected backend reference is stored in working state; the release sanitizer removes both the reference and the content.

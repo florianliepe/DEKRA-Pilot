@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -303,6 +303,22 @@ test("blocks publication until reviews resolve and protects optimistic concurren
   expect(prepared.manifest.objectCounts.skills).toBe(2);
   expect(prepared.manifest.objectCounts.mappings).toBe(1);
   expect(prepared.workspace.publication.state).toBe("publishing");
+});
+
+test("records a published receipt in the full n8n working state without losing drafts", () => {
+  const working = structuredClone(bootstrapSkillWorkspace);
+  const approved = sanitizeApprovedWorkspace(working);
+  approved.revision = 1;
+  approved.publication = { ...approved.publication, revision: 1, state: "approved_release", approvedAt: "2026-08-08T10:00:00.000Z", approvedBy: "Framework Owner", expectedGitHubSha: "approved-blob-sha" };
+  const manifest: ReleaseManifest = { id: "REL-0001", revision: 1, schemaVersion: 3, frameworkVersion: working.framework.version, rulesVersion: working.framework.rulesVersion, promptVersion: working.framework.promptVersion, mappingScoreVersion: working.framework.mappingScoreVersion, state: "published", approvedAt: "2026-08-08T10:00:00.000Z", approvedBy: "Framework Owner", expectedPreviousRevision: 0, expectedGitHubSha: "bootstrap-blob-sha", githubPath: "data/skill-workspace.approved.json", idempotencyKey: "release-1-receipt", objectCounts: {}, validationSummary: { blocking: 0, warnings: 0 } };
+  const received = applyReleaseReceiptToWorkingWorkspace(working, approved, manifest, "commit-sha-1");
+  expect(received.skills).toHaveLength(working.skills.length);
+  expect(received.skills.some((skill) => skill.status === "draft")).toBe(true);
+  expect(received.publication).toMatchObject({ revision: 1, state: "working", githubCommitSha: "commit-sha-1", expectedGitHubSha: "approved-blob-sha" });
+  expect(received.releaseHistory[0]).toMatchObject({ revision: 1, state: "published", githubCommitSha: "commit-sha-1" });
+  expect(received.objectVersions[0]).toMatchObject({ entityType: "release", entityId: "REL-0001", action: "release.receipt_recorded" });
+  const retried = applyReleaseReceiptToWorkingWorkspace(received, approved, manifest, "commit-sha-1");
+  expect(retried.objectVersions.filter((item) => item.action === "release.receipt_recorded")).toHaveLength(1);
 });
 
 test("reports collection-level drift against the GitHub-approved snapshot", () => {

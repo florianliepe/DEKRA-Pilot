@@ -12,7 +12,7 @@ import { TaxonomyStandardWorkbench } from "./taxonomy-standard-workbench";
 import { ElicitationWorkbench } from "./elicitation-workbench";
 import { GovernanceWorkbench } from "./governance-workbench";
 import { GovernedSkillLibrary } from "./governed-skill-library";
-import { applyRoleProfileLifecycle, decideReview, impactAnalysis, prepareRelease, recordGovernedVersion, type RoleProfileLifecycleAction } from "@/lib/skill-governance";
+import { applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, decideReview, impactAnalysis, prepareRelease, recordGovernedVersion, type RoleProfileLifecycleAction } from "@/lib/skill-governance";
 
 type Tab = "overview" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs" | "governance";
 type SkillDraft = Pick<Skill, "name" | "description" | "groupId" | "dimension" | "kflaCompetencyId" | "observability" | "futureRelevance" | "status"> & { aliases: string; action: string; object: string; outcome: string };
@@ -119,8 +119,12 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     setSync("saving"); setError("");
     try {
       const payload = await publishSkillWorkspace(workspaceSecret, workspace, attempt.approvedBy, attempt.manifest);
-      const published = payload.workspace ? migrateSkillWorkspace(payload.workspace, workspace) : workspace;
-      setWorkspace(published); setApprovedWorkspace(published); setReleaseFailure(null); setReleaseAttempt(null); setSync("live");
+      if (!payload.commit || !payload.manifest) throw new Error("Publisher completed without a verifiable commit and release manifest receipt.");
+      const published = migrateSkillWorkspace(await loadApprovedSkillWorkspace(), payload.workspace ? migrateSkillWorkspace(payload.workspace, workspace) : workspace);
+      const receiptWorking = applyReleaseReceiptToWorkingWorkspace(workspace, published, payload.manifest, payload.commit);
+      const receiptPayload = await saveSkillWorkspace(workspaceSecret, receiptWorking);
+      const persistedWorking = receiptPayload.workspace ? migrateSkillWorkspace(receiptPayload.workspace, receiptWorking) : receiptWorking;
+      setWorkspace(persistedWorking); setApprovedWorkspace(published); setReleaseFailure(null); setReleaseAttempt(null); setSync("live");
       setMessage(payload.message || `Approved JSON release committed to GitHub main${payload.commit ? ` at ${payload.commit.slice(0, 8)}` : ""}.`);
     } catch (reason) { handleReleaseFailure(reason); }
   }

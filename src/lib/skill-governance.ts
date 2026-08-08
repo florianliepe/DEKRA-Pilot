@@ -1158,6 +1158,41 @@ export function markReleaseFailed(workspace: SkillWorkspace, message: string): S
   };
 }
 
+export function applyReleaseReceiptToWorkingWorkspace(
+  working: SkillWorkspace,
+  approved: SkillWorkspace,
+  manifest: ReleaseManifest,
+  commitSha: string,
+): SkillWorkspace {
+  if (approved.revision !== manifest.revision || approved.publication.revision !== manifest.revision) throw new Error("Approved snapshot and release manifest revisions do not match.");
+  if (!commitSha.trim()) throw new Error("A verified GitHub commit SHA is required for the release receipt.");
+  if (!approved.publication.expectedGitHubSha?.trim()) throw new Error("The approved GitHub snapshot blob SHA is required for the next concurrency check.");
+  const publishedManifest: ReleaseManifest = { ...manifest, state: "published", githubCommitSha: commitSha.trim() };
+  const alreadyRecorded = working.releaseHistory.some((item) => item.revision === publishedManifest.revision && item.githubCommitSha === commitSha.trim());
+  const next: SkillWorkspace = {
+    ...working,
+    releaseHistory: [publishedManifest, ...working.releaseHistory.filter((item) => item.revision !== publishedManifest.revision)],
+    publication: {
+      ...working.publication,
+      revision: publishedManifest.revision,
+      state: "working",
+      approvedAt: publishedManifest.approvedAt,
+      approvedBy: publishedManifest.approvedBy,
+      githubCommitSha: commitSha.trim(),
+      expectedGitHubSha: approved.publication.expectedGitHubSha,
+      idempotencyKey: publishedManifest.idempotencyKey,
+      lastError: undefined,
+    },
+  };
+  if (alreadyRecorded) return next;
+  return recordGovernedVersion(next, "release", publishedManifest.id, "release.receipt_recorded", publishedManifest.approvedBy, {
+    revision: publishedManifest.revision,
+    commitSha: commitSha.trim(),
+    idempotencyKey: publishedManifest.idempotencyKey,
+    approvedSnapshotSha: approved.publication.expectedGitHubSha,
+  });
+}
+
 export function requestRollback(workspace: SkillWorkspace, target: ReleaseManifest, actor: string, reason = ""): SkillWorkspace {
   if (target.state !== "published") throw new Error("Only a published release can be restored.");
   if (!actor.trim() || !reason.trim()) throw new Error("An accountable rollback requester and reason are required.");
