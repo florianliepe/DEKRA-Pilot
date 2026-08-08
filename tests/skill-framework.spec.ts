@@ -285,6 +285,17 @@ test("requires accountable review decisions and supports approve, defer and merg
   expect(merged.objectVersions.length).toBeGreaterThan(0);
 });
 
+test("routes every seeded AI profile and mapping proposal to human review", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const profileReview = workspace.reviewQueue.find((item) => item.entityId === "ROLE-DATA");
+  const mappingReview = workspace.reviewQueue.find((item) => item.entityId === "MAP-MC");
+
+  expect(workspace.profiles.find((profile) => profile.id === "ROLE-DATA")?.status).toBe("in_review");
+  expect(profileReview).toMatchObject({ id: "REV-003", type: "profile", status: "pending" });
+  expect(workspace.mappings.find((mapping) => mapping.id === "MAP-MC")).toMatchObject({ source: "agent", status: "proposed" });
+  expect(mappingReview).toMatchObject({ id: "REV-004", type: "mapping", status: "pending" });
+});
+
 test("blocks publication until reviews resolve and protects optimistic concurrency", () => {
   const workspace = structuredClone(bootstrapSkillWorkspace);
   expect(() => prepareRelease(workspace, "Framework Owner", 0)).toThrow(/review/i);
