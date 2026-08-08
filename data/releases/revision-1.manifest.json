@@ -1,0 +1,42 @@
+{
+  "id": "REL-0001",
+  "revision": 1,
+  "schemaVersion": 3,
+  "frameworkVersion": "3.1.0",
+  "rulesVersion": "rules-3.1.0",
+  "promptVersion": "skill-agent-2.0.0",
+  "mappingScoreVersion": "mapping-2.0.0",
+  "state": "published",
+  "approvedAt": "2026-08-08T10:12:09.957Z",
+  "approvedBy": "Florian Liepe",
+  "expectedPreviousRevision": 0,
+  "expectedGitHubSha": "be2004c607bab7fee428e56b9402d89862c0baee",
+  "githubPath": "data/skill-workspace.approved.json",
+  "idempotencyKey": "release-1-90f9bb46",
+  "objectCounts": {
+    "domains": 2,
+    "groups": 2,
+    "relationships": 1,
+    "skills": 3,
+    "profiles": 0,
+    "kflaFactors": 4,
+    "kflaClusters": 12,
+    "kflaCompetencies": 38,
+    "jobDescriptions": 1,
+    "mappings": 1,
+    "mappingFeedback": 0,
+    "localizedLabels": 2,
+    "controlledTools": 2,
+    "agentTools": 11,
+    "validationRules": 21,
+    "proficiencyDefinitions": 4,
+    "sources": 1,
+    "evidenceRecords": 1,
+    "reviewDecisions": 2,
+    "auditEvents": 3
+  },
+  "validationSummary": {
+    "blocking": 0,
+    "warnings": 0
+  }
+}

@@ -1,8 +1,14 @@
 {
-  "latestRevision": 0,
-  "latestManifest": "revision-0.bootstrap.manifest.json",
+  "latestRevision": 1,
+  "latestManifest": "revision-1.manifest.json",
   "releases": [
-    { "revision": 0, "state": "bootstrap", "manifest": "revision-0.bootstrap.manifest.json", "approvedSnapshot": "../skill-workspace.approved.json" }
-  ],
-  "note": "Revision 1 may only be created by the authenticated n8n publisher after all human review decisions and blocking validation findings are resolved."
+    {
+      "revision": 1,
+      "state": "published",
+      "manifest": "revision-1.manifest.json",
+      "approvedAt": "2026-08-08T10:12:09.957Z",
+      "approvedBy": "Florian Liepe",
+      "idempotencyKey": "release-1-90f9bb46"
+    }
+  ]
 }

@@ -1,39 +1,4316 @@
 {
   "schemaVersion": 3,
-  "revision": 0,
-  "updatedAt": "2026-08-07T00:00:00.000Z",
-  "domains": [],
-  "groups": [],
-  "relationships": [],
-  "skills": [],
+  "revision": 1,
+  "updatedAt": "2026-08-08T10:12:09.957Z",
+  "domains": [
+    {
+      "id": "DOM-DT",
+      "name": "Digital & Technology",
+      "description": "Digital products, data and technology capabilities.",
+      "status": "approved"
+    },
+    {
+      "id": "DOM-PC",
+      "name": "People & Culture",
+      "description": "Organisation, talent and people leadership capabilities.",
+      "status": "approved"
+    }
+  ],
+  "groups": [
+    {
+      "id": "GRP-DA",
+      "domainId": "DOM-DT",
+      "name": "Data & Analytics",
+      "description": "Data products, insight and decision support.",
+      "status": "approved"
+    },
+    {
+      "id": "GRP-SBO",
+      "domainId": "DOM-PC",
+      "name": "Skill-based Organisation",
+      "description": "Skill architecture, governance and workforce activation.",
+      "status": "approved"
+    }
+  ],
+  "relationships": [
+    {
+      "id": "REL-DV-ST",
+      "sourceId": "SK-DV",
+      "targetId": "SK-ST",
+      "type": "related",
+      "rationale": "Governed visualisation depends on reusable reporting concepts and taxonomy definitions.",
+      "status": "approved"
+    }
+  ],
+  "skills": [
+    {
+      "id": "SK-DV",
+      "name": "Data Visualization",
+      "description": "Transforms data into clear visual narratives that support decisions.",
+      "groupId": "GRP-DA",
+      "dimension": "technical",
+      "aliases": [
+        "Dashboard Design"
+      ],
+      "evidence": [
+        "Global Reporting Analyst JD"
+      ],
+      "confidence": 92,
+      "observability": "Builds decision-ready dashboards and explains the underlying signal.",
+      "futureRelevance": "core",
+      "status": "approved",
+      "syntax": {
+        "action": "Visualise",
+        "object": "business data",
+        "outcome": "to enable decision-making"
+      },
+      "externalRefs": [
+        {
+          "framework": "ESCO",
+          "id": "optional",
+          "label": "External mapping candidate"
+        }
+      ]
+    },
+    {
+      "id": "SK-ST",
+      "name": "Skill Taxonomy Design",
+      "description": "Designs coherent, governed and usable enterprise skill structures.",
+      "groupId": "GRP-SBO",
+      "dimension": "technical",
+      "aliases": [
+        "Skill Architecture"
+      ],
+      "evidence": [
+        "SBO design workshop"
+      ],
+      "confidence": 88,
+      "observability": "Defines MECE taxonomy nodes and resolves overlaps using evidence.",
+      "futureRelevance": "core",
+      "status": "approved",
+      "syntax": {
+        "action": "Design",
+        "object": "skill taxonomies",
+        "outcome": "to create a reusable capability language"
+      }
+    },
+    {
+      "id": "SK-MC",
+      "name": "Managing Complexity",
+      "description": "Makes sense of complex, high-volume and sometimes contradictory information.",
+      "groupId": "GRP-SBO",
+      "dimension": "competency",
+      "kflaCompetencyId": "KFLA-08",
+      "aliases": [],
+      "evidence": [
+        "Programme Lead interview"
+      ],
+      "confidence": 83,
+      "observability": "Frames ambiguity, identifies patterns and selects a viable course of action.",
+      "futureRelevance": "core",
+      "status": "approved",
+      "syntax": {
+        "action": "Resolve",
+        "object": "complex information",
+        "outcome": "to select a viable course of action"
+      }
+    }
+  ],
   "profiles": [],
   "interviews": [],
   "elicitationSessions": [],
-  "reviewQueue": [],
-  "kflaFactors": [],
-  "kflaClusters": [],
-  "kfla": [],
-  "jobDescriptions": [],
-  "mappings": [],
-  "mappingFeedback": [],
-  "strategicVectors": [],
+  "reviewQueue": [
+    {
+      "id": "REV-001",
+      "title": "Skill Taxonomy Design",
+      "type": "new_skill",
+      "summary": "Agent normalized three task statements into one durable capability.",
+      "confidence": 88,
+      "evidence": "SBO design workshop · 3 excerpts",
+      "status": "accepted",
+      "decisionBy": "Florian Liepe",
+      "decisionAt": "2026-08-08T09:55:15.933Z",
+      "decisionReason": "Sounds reasonable; the evidence supports this governed skill proposal."
+    },
+    {
+      "id": "REV-002",
+      "title": "Dashboard Design → Data Visualization",
+      "type": "duplicate",
+      "summary": "Alias candidate detected against an approved skill.",
+      "confidence": 94,
+      "evidence": "Global Reporting Analyst JD · line 18",
+      "status": "merged",
+      "mergeTargetId": "SK-DV",
+      "decisionBy": "Florian Liepe",
+      "decisionAt": "2026-08-08T09:55:16.064Z",
+      "decisionReason": "Reasonable duplicate resolution; retain Data Visualization as the canonical skill and Dashboard Design as its alias."
+    }
+  ],
+  "kflaFactors": [
+    {
+      "id": "KFLA-FACTOR-THOUGHT",
+      "name": "Thought",
+      "description": "How work is understood, framed and shaped into sound choices.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-FACTOR-RESULTS",
+      "name": "Results",
+      "description": "How intent becomes accountable, reliable delivery.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-FACTOR-PEOPLE",
+      "name": "People",
+      "description": "How relationships, talent and shared purpose enable performance.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-FACTOR-SELF",
+      "name": "Self",
+      "description": "How personal awareness, learning and adaptability sustain effectiveness.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "status": "approved"
+    }
+  ],
+  "kflaClusters": [
+    {
+      "id": "KFLA-CL-T1",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "name": "Business context",
+      "description": "Interpreting customers, economics, markets and technology as decision context.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-T2",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "name": "Complex decisions",
+      "description": "Integrating complexity, trade-offs and multiple stakeholder perspectives.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-T3",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "name": "Future possibilities",
+      "description": "Connecting global signals, innovation and long-term direction.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-R1",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "name": "Initiative",
+      "description": "Mobilising action and resources without waiting for perfect conditions.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-R2",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "name": "Delivery",
+      "description": "Aligning plans, ownership and sustained focus on outcomes.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-R3",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "name": "Work systems",
+      "description": "Directing and improving the flow of work.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-P1",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "name": "Talent growth",
+      "description": "Attracting, developing and engaging diverse talent and teams.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-P2",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "name": "Open relationships",
+      "description": "Building effective relationships across difference, networks and conflict.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-P3",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "name": "Purposeful influence",
+      "description": "Communicating, persuading and creating trust around shared direction.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-S1",
+      "factorId": "KFLA-FACTOR-SELF",
+      "name": "Authenticity",
+      "description": "Acting with courage, organizational awareness and self-knowledge.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-S2",
+      "factorId": "KFLA-FACTOR-SELF",
+      "name": "Learning openness",
+      "description": "Remaining curious and deliberately developing through ambiguity.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-CL-S3",
+      "factorId": "KFLA-FACTOR-SELF",
+      "name": "Adaptability",
+      "description": "Remaining effective through pressure and changing demands.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "assignmentBasis": "organization_authored_navigation",
+      "status": "approved"
+    }
+  ],
+  "kfla": [
+    {
+      "id": "KFLA-01",
+      "number": 1,
+      "name": "Action Oriented",
+      "factor": "Results",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "clusterId": "KFLA-CL-R1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Moves promptly from intent to useful action while managing appropriate risk.",
+      "internalInterpretation": "Moves promptly from intent to useful action while managing appropriate risk.",
+      "observableSignals": [
+        "Shows action oriented through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace action oriented from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-27"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Action Oriented"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-02",
+      "number": 2,
+      "name": "Ensures Accountability",
+      "factor": "Results",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "clusterId": "KFLA-CL-R2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Creates clear ownership and follows through on commitments and consequences.",
+      "internalInterpretation": "Creates clear ownership and follows through on commitments and consequences.",
+      "observableSignals": [
+        "Shows ensures accountability through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace ensures accountability from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-25",
+        "KFLA-28"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Ensures Accountability"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-03",
+      "number": 3,
+      "name": "Manages Ambiguity",
+      "factor": "Self",
+      "factorId": "KFLA-FACTOR-SELF",
+      "clusterId": "KFLA-CL-S2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Maintains direction and makes progress when information or outcomes are uncertain.",
+      "internalInterpretation": "Maintains direction and makes progress when information or outcomes are uncertain.",
+      "observableSignals": [
+        "Shows manages ambiguity through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace manages ambiguity from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-22",
+        "KFLA-30"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Manages Ambiguity"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-04",
+      "number": 4,
+      "name": "Attracts Top Talent",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Identifies, attracts and selects people whose capabilities fit current and future needs.",
+      "internalInterpretation": "Identifies, attracts and selects people whose capabilities fit current and future needs.",
+      "observableSignals": [
+        "Shows attracts top talent through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace attracts top talent from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-13",
+        "KFLA-16",
+        "KFLA-34"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Attracts Top Talent"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-05",
+      "number": 5,
+      "name": "Business Insight",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Uses knowledge of the business model, market and operating context to make sound choices.",
+      "internalInterpretation": "Uses knowledge of the business model, market and operating context to make sound choices.",
+      "observableSignals": [
+        "Shows business insight through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace business insight from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-11",
+        "KFLA-17",
+        "KFLA-35"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Business Insight"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-06",
+      "number": 6,
+      "name": "Collaborates",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Works across boundaries to combine perspectives, effort and accountability.",
+      "internalInterpretation": "Works across boundaries to combine perspectives, effort and accountability.",
+      "observableSignals": [
+        "Shows collaborates through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace collaborates from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-09",
+        "KFLA-14",
+        "KFLA-20",
+        "KFLA-21"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Collaborates"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-07",
+      "number": 7,
+      "name": "Communicates Effectively",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Adapts messages and channels so relevant audiences understand and can act.",
+      "internalInterpretation": "Adapts messages and channels so relevant audiences understand and can act.",
+      "observableSignals": [
+        "Shows communicates effectively through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace communicates effectively from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-24",
+        "KFLA-36",
+        "KFLA-37"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Communicates Effectively"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-08",
+      "number": 8,
+      "name": "Manages Complexity",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Structures interconnected or contradictory information into a workable course of action.",
+      "internalInterpretation": "Structures interconnected or contradictory information into a workable course of action.",
+      "observableSignals": [
+        "Shows manages complexity through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace manages complexity from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-12",
+        "KFLA-32"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Manages Complexity"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-09",
+      "number": 9,
+      "name": "Manages Conflict",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Surfaces disagreement constructively and helps parties reach a durable resolution.",
+      "internalInterpretation": "Surfaces disagreement constructively and helps parties reach a durable resolution.",
+      "observableSignals": [
+        "Shows manages conflict through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace manages conflict from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-06",
+        "KFLA-14",
+        "KFLA-20",
+        "KFLA-21"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Manages Conflict"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-10",
+      "number": 10,
+      "name": "Courage",
+      "factor": "Self",
+      "factorId": "KFLA-FACTOR-SELF",
+      "clusterId": "KFLA-CL-S1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Raises difficult issues and takes principled action despite personal or organisational pressure.",
+      "internalInterpretation": "Raises difficult issues and takes principled action despite personal or organisational pressure.",
+      "observableSignals": [
+        "Shows courage through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace courage from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-23",
+        "KFLA-29"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Courage"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-11",
+      "number": 11,
+      "name": "Customer Focus",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Uses customer evidence to shape decisions, experiences and sustainable value.",
+      "internalInterpretation": "Uses customer evidence to shape decisions, experiences and sustainable value.",
+      "observableSignals": [
+        "Shows customer focus through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace customer focus from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-05",
+        "KFLA-17",
+        "KFLA-35"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Customer Focus"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-12",
+      "number": 12,
+      "name": "Decision Quality",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Evaluates evidence, alternatives and trade-offs to reach timely, defensible decisions.",
+      "internalInterpretation": "Evaluates evidence, alternatives and trade-offs to reach timely, defensible decisions.",
+      "observableSignals": [
+        "Shows decision quality through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace decision quality from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-08",
+        "KFLA-32"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Decision Quality"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-13",
+      "number": 13,
+      "name": "Develops Talent",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Builds capability through feedback, challenge, opportunity and deliberate development.",
+      "internalInterpretation": "Builds capability through feedback, challenge, opportunity and deliberate development.",
+      "observableSignals": [
+        "Shows develops talent through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace develops talent from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-04",
+        "KFLA-16",
+        "KFLA-34"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Develops Talent"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-14",
+      "number": 14,
+      "name": "Values Differences",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Uses differences in background and perspective as an input to stronger decisions and inclusion.",
+      "internalInterpretation": "Uses differences in background and perspective as an input to stronger decisions and inclusion.",
+      "observableSignals": [
+        "Shows values differences through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace values differences from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-06",
+        "KFLA-09",
+        "KFLA-20",
+        "KFLA-21"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Values Differences"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-15",
+      "number": 15,
+      "name": "Directs Work",
+      "factor": "Results",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "clusterId": "KFLA-CL-R3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Translates outcomes into clear priorities, ownership, constraints and operating guidance.",
+      "internalInterpretation": "Translates outcomes into clear priorities, ownership, constraints and operating guidance.",
+      "observableSignals": [
+        "Shows directs work through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace directs work from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-38"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Directs Work"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-16",
+      "number": 16,
+      "name": "Drives Engagement",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Creates conditions in which people understand the purpose and choose to contribute.",
+      "internalInterpretation": "Creates conditions in which people understand the purpose and choose to contribute.",
+      "observableSignals": [
+        "Shows drives engagement through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace drives engagement from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-04",
+        "KFLA-13",
+        "KFLA-34"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Drives Engagement"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-17",
+      "number": 17,
+      "name": "Financial Acumen",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Interprets financial drivers and consequences to improve resource and business decisions.",
+      "internalInterpretation": "Interprets financial drivers and consequences to improve resource and business decisions.",
+      "observableSignals": [
+        "Shows financial acumen through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace financial acumen from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-05",
+        "KFLA-11",
+        "KFLA-35"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Financial Acumen"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-18",
+      "number": 18,
+      "name": "Global Perspective",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Integrates cultural, geographic and market perspectives into enterprise decisions.",
+      "internalInterpretation": "Integrates cultural, geographic and market perspectives into enterprise decisions.",
+      "observableSignals": [
+        "Shows global perspective through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace global perspective from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-19",
+        "KFLA-33"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Global Perspective"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-19",
+      "number": 19,
+      "name": "Cultivates Innovation",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Turns insight and experimentation into useful new approaches, services or solutions.",
+      "internalInterpretation": "Turns insight and experimentation into useful new approaches, services or solutions.",
+      "observableSignals": [
+        "Shows cultivates innovation through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace cultivates innovation from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-18",
+        "KFLA-33"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Cultivates Innovation"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-20",
+      "number": 20,
+      "name": "Interpersonal Savvy",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Reads interpersonal dynamics and adjusts behaviour to build effective working relationships.",
+      "internalInterpretation": "Reads interpersonal dynamics and adjusts behaviour to build effective working relationships.",
+      "observableSignals": [
+        "Shows interpersonal savvy through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace interpersonal savvy from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-06",
+        "KFLA-09",
+        "KFLA-14",
+        "KFLA-21"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Interpersonal Savvy"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-21",
+      "number": 21,
+      "name": "Builds Networks",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Builds reciprocal relationships that improve access to information, expertise and support.",
+      "internalInterpretation": "Builds reciprocal relationships that improve access to information, expertise and support.",
+      "observableSignals": [
+        "Shows builds networks through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace builds networks from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-06",
+        "KFLA-09",
+        "KFLA-14",
+        "KFLA-20"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Builds Networks"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-22",
+      "number": 22,
+      "name": "Nimble Learning",
+      "factor": "Self",
+      "factorId": "KFLA-FACTOR-SELF",
+      "clusterId": "KFLA-CL-S2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Learns from experience and applies learning quickly in unfamiliar situations.",
+      "internalInterpretation": "Learns from experience and applies learning quickly in unfamiliar situations.",
+      "observableSignals": [
+        "Shows nimble learning through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace nimble learning from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-03",
+        "KFLA-30"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Nimble Learning"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-23",
+      "number": 23,
+      "name": "Organizational Savvy",
+      "factor": "Self",
+      "factorId": "KFLA-FACTOR-SELF",
+      "clusterId": "KFLA-CL-S1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Navigates formal structures, informal networks and decision pathways ethically.",
+      "internalInterpretation": "Navigates formal structures, informal networks and decision pathways ethically.",
+      "observableSignals": [
+        "Shows organizational savvy through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace organizational savvy from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-10",
+        "KFLA-29"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Organizational Savvy"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-24",
+      "number": 24,
+      "name": "Persuades",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Builds commitment through credible reasoning, audience insight and constructive influence.",
+      "internalInterpretation": "Builds commitment through credible reasoning, audience insight and constructive influence.",
+      "observableSignals": [
+        "Shows persuades through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace persuades from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-07",
+        "KFLA-36",
+        "KFLA-37"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Persuades"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-25",
+      "number": 25,
+      "name": "Plans and Aligns",
+      "factor": "Results",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "clusterId": "KFLA-CL-R2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Connects priorities, dependencies, resources and milestones into an executable plan.",
+      "internalInterpretation": "Connects priorities, dependencies, resources and milestones into an executable plan.",
+      "observableSignals": [
+        "Shows plans and aligns through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace plans and aligns from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-02",
+        "KFLA-28"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Plans and Aligns"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-26",
+      "number": 26,
+      "name": "Being Resilient",
+      "factor": "Self",
+      "factorId": "KFLA-FACTOR-SELF",
+      "clusterId": "KFLA-CL-S3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Recovers and remains effective through pressure, setbacks and sustained change.",
+      "internalInterpretation": "Recovers and remains effective through pressure, setbacks and sustained change.",
+      "observableSignals": [
+        "Shows being resilient through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace being resilient from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-31"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Being Resilient"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-27",
+      "number": 27,
+      "name": "Resourcefulness",
+      "factor": "Results",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "clusterId": "KFLA-CL-R1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Finds practical ways to secure and combine limited resources to achieve an outcome.",
+      "internalInterpretation": "Finds practical ways to secure and combine limited resources to achieve an outcome.",
+      "observableSignals": [
+        "Shows resourcefulness through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace resourcefulness from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-01"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Resourcefulness"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-28",
+      "number": 28,
+      "name": "Drives Results",
+      "factor": "Results",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "clusterId": "KFLA-CL-R2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Sustains focus, removes obstacles and delivers measurable outcomes with appropriate quality.",
+      "internalInterpretation": "Sustains focus, removes obstacles and delivers measurable outcomes with appropriate quality.",
+      "observableSignals": [
+        "Shows drives results through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace drives results from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-02",
+        "KFLA-25"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Drives Results"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-29",
+      "number": 29,
+      "name": "Demonstrates Self-Awareness",
+      "factor": "Self",
+      "factorId": "KFLA-FACTOR-SELF",
+      "clusterId": "KFLA-CL-S1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Recognises personal patterns, impact, strengths and limits and acts on that insight.",
+      "internalInterpretation": "Recognises personal patterns, impact, strengths and limits and acts on that insight.",
+      "observableSignals": [
+        "Shows demonstrates self-awareness through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace demonstrates self-awareness from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-10",
+        "KFLA-23"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Demonstrates Self-Awareness"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-30",
+      "number": 30,
+      "name": "Self-Development",
+      "factor": "Self",
+      "factorId": "KFLA-FACTOR-SELF",
+      "clusterId": "KFLA-CL-S2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Takes ownership of continued growth through reflection, feedback and deliberate practice.",
+      "internalInterpretation": "Takes ownership of continued growth through reflection, feedback and deliberate practice.",
+      "observableSignals": [
+        "Shows self-development through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace self-development from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-03",
+        "KFLA-22"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Self-Development"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-31",
+      "number": 31,
+      "name": "Situational Adaptability",
+      "factor": "Self",
+      "factorId": "KFLA-FACTOR-SELF",
+      "clusterId": "KFLA-CL-S3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Adjusts approach and behaviour to fit changing demands without losing integrity or purpose.",
+      "internalInterpretation": "Adjusts approach and behaviour to fit changing demands without losing integrity or purpose.",
+      "observableSignals": [
+        "Shows situational adaptability through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace situational adaptability from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-26"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Situational Adaptability"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-32",
+      "number": 32,
+      "name": "Balances Stakeholders",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T2",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Understands stakeholder needs and makes transparent trade-offs across competing interests.",
+      "internalInterpretation": "Understands stakeholder needs and makes transparent trade-offs across competing interests.",
+      "observableSignals": [
+        "Shows balances stakeholders through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace balances stakeholders from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-08",
+        "KFLA-12"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Balances Stakeholders"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-33",
+      "number": 33,
+      "name": "Strategic Mindset",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Connects external signals and long-term choices to a coherent direction and portfolio of action.",
+      "internalInterpretation": "Connects external signals and long-term choices to a coherent direction and portfolio of action.",
+      "observableSignals": [
+        "Shows strategic mindset through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace strategic mindset from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-18",
+        "KFLA-19"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Strategic Mindset"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-34",
+      "number": 34,
+      "name": "Builds Effective Teams",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Shapes roles, trust and collaboration so a diverse group performs as a coordinated team.",
+      "internalInterpretation": "Shapes roles, trust and collaboration so a diverse group performs as a coordinated team.",
+      "observableSignals": [
+        "Shows builds effective teams through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace builds effective teams from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-04",
+        "KFLA-13",
+        "KFLA-16"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Builds Effective Teams"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-35",
+      "number": 35,
+      "name": "Tech Savvy",
+      "factor": "Thought",
+      "factorId": "KFLA-FACTOR-THOUGHT",
+      "clusterId": "KFLA-CL-T1",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Evaluates and applies technology to improve value, decisions and ways of working.",
+      "internalInterpretation": "Evaluates and applies technology to improve value, decisions and ways of working.",
+      "observableSignals": [
+        "Shows tech savvy through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace tech savvy from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-05",
+        "KFLA-11",
+        "KFLA-17"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Tech Savvy"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-36",
+      "number": 36,
+      "name": "Instills Trust",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Builds confidence through honesty, consistency, sound judgement and reliable commitments.",
+      "internalInterpretation": "Builds confidence through honesty, consistency, sound judgement and reliable commitments.",
+      "observableSignals": [
+        "Shows instills trust through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace instills trust from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-07",
+        "KFLA-24",
+        "KFLA-37"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Instills Trust"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-37",
+      "number": 37,
+      "name": "Drives Vision and Purpose",
+      "factor": "People",
+      "factorId": "KFLA-FACTOR-PEOPLE",
+      "clusterId": "KFLA-CL-P3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Creates a compelling direction and connects it to meaningful action for others.",
+      "internalInterpretation": "Creates a compelling direction and connects it to meaningful action for others.",
+      "observableSignals": [
+        "Shows drives vision and purpose through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace drives vision and purpose from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-07",
+        "KFLA-24",
+        "KFLA-36"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Drives Vision and Purpose"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    },
+    {
+      "id": "KFLA-38",
+      "number": 38,
+      "name": "Optimizes Work Processes",
+      "factor": "Results",
+      "factorId": "KFLA-FACTOR-RESULTS",
+      "clusterId": "KFLA-CL-R3",
+      "enabled": true,
+      "definition": "",
+      "source": "public-name",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "sourceVersion": "public-metadata-2026-08",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "reviewStatus": "internal_review",
+      "publicSummary": "Improves end-to-end flow, controls and capacity to deliver reliable outcomes efficiently.",
+      "internalInterpretation": "Improves end-to-end flow, controls and capacity to deliver reliable outcomes efficiently.",
+      "observableSignals": [
+        "Shows optimizes work processes through a specific action in a real work situation.",
+        "Explains the context, chosen action, trade-offs and resulting outcome."
+      ],
+      "inclusionCriteria": [
+        "The evidence describes observable behavior, not a personality label.",
+        "The behavior materially contributes to a work outcome."
+      ],
+      "exclusionCriteria": [
+        "A job title, qualification or tool without demonstrated behavior.",
+        "A single administrative task with no enduring behavioral pattern."
+      ],
+      "positiveExamples": [
+        "A reviewer can trace optimizes work processes from context through action to outcome."
+      ],
+      "counterExamples": [
+        "The mapping is based only on a keyword without behavioral evidence."
+      ],
+      "typicalEvidence": [
+        "Critical-incident interview excerpt",
+        "Responsibility plus measurable outcome",
+        "Reviewer-confirmed work example"
+      ],
+      "relatedCompetencyIds": [
+        "KFLA-15"
+      ],
+      "mappingMistakes": [
+        "Treating the internal explanation as an official Korn Ferry definition.",
+        "Mapping from a role title without evidence."
+      ],
+      "boundaryNotes": "Internal public-source summary for navigation and elicitation only. It is not a Korn Ferry definition, rating anchor or substitute for licensed material.",
+      "localizedLabels": {
+        "en": "Optimizes Work Processes"
+      },
+      "provenance": [
+        {
+          "label": "Korn Ferry Leadership Architect overview",
+          "url": "https://www.kornferry.com/capabilities/talent-suite/korn-ferry-assess/leadership-architect",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        },
+        {
+          "label": "KFLA Global Competency Framework product overview",
+          "url": "https://store.kornferry.com/en/product/5d7bc4a3-c28a-47eb-b8d1-47bc293e65ff",
+          "access": "public",
+          "reviewedAt": "2026-08-07"
+        }
+      ]
+    }
+  ],
+  "jobDescriptions": [
+    {
+      "id": "JD-DATA",
+      "title": "Global Reporting Analyst",
+      "jobFamily": "Data & Analytics",
+      "country": "Global",
+      "language": "English",
+      "purpose": "Turn operational and financial data into trusted management insight.",
+      "sourceText": "Build interactive dashboards to report weekly revenue metrics. Analyse performance drivers and explain material movements to senior stakeholders. Maintain reporting definitions and improve data quality.",
+      "responsibilities": [
+        "Build interactive dashboards for weekly revenue reporting.",
+        "Analyse performance drivers and material movements.",
+        "Maintain reporting definitions and improve data quality."
+      ],
+      "outcomes": [
+        "Decision-ready management insight",
+        "Consistent reporting definitions",
+        "Improved data quality"
+      ],
+      "status": "mapped",
+      "version": 1,
+      "updatedAt": "2026-08-06T10:00:00.000Z"
+    }
+  ],
+  "mappings": [
+    {
+      "id": "MAP-DV",
+      "jobDescriptionId": "JD-DATA",
+      "skillId": "SK-DV",
+      "targetLevel": 3,
+      "weight": 35,
+      "critical": true,
+      "relevance": 93,
+      "confidence": 92,
+      "rationale": "Dashboard creation and executive reporting require advanced visualisation capability.",
+      "evidence": [
+        "Build interactive dashboards to report weekly revenue metrics."
+      ],
+      "strategicVectorIds": [
+        "VEC-AI"
+      ],
+      "toolIds": [
+        "TOOL-POWERBI"
+      ],
+      "scoreBreakdown": {
+        "semanticRelevance": 98,
+        "directEvidenceStrength": 98,
+        "responsibilityCoverage": 95,
+        "outcomeRelevance": 94,
+        "taxonomyCompatibility": 96,
+        "granularityCompatibility": 94,
+        "kflaCompatibility": 72,
+        "controlledToolRelevance": 98,
+        "proficiencyCompatibility": 92,
+        "approvedMappingSimilarity": 90,
+        "duplicatePenalty": 0,
+        "contradictionPenalty": 0,
+        "missingEvidencePenalty": 0
+      },
+      "scoreVersion": "mapping-2.0.0",
+      "source": "agent",
+      "status": "approved"
+    }
+  ],
+  "strategicVectors": [
+    {
+      "id": "VEC-AI",
+      "name": "AI & Data",
+      "description": "Use trustworthy data and AI to improve decisions, services and productivity.",
+      "horizon": "2026–2029",
+      "priority": "accelerate",
+      "skillIds": [
+        "SK-DV"
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "VEC-DIG",
+      "name": "Digitalisation",
+      "description": "Digitise journeys and operations through scalable products and platforms.",
+      "horizon": "2026–2029",
+      "priority": "accelerate",
+      "skillIds": [],
+      "status": "draft"
+    },
+    {
+      "id": "VEC-CUST",
+      "name": "Customer",
+      "description": "Translate customer and market insight into differentiated value.",
+      "horizon": "2026–2029",
+      "priority": "differentiate",
+      "skillIds": [],
+      "status": "draft"
+    },
+    {
+      "id": "VEC-OPS",
+      "name": "Operational Excellence",
+      "description": "Improve quality, flow, reliability and cost through disciplined systems.",
+      "horizon": "2026–2029",
+      "priority": "foundational",
+      "skillIds": [],
+      "status": "approved"
+    },
+    {
+      "id": "VEC-SUS",
+      "name": "Sustainability",
+      "description": "Embed environmental and social outcomes into business decisions.",
+      "horizon": "2026–2029",
+      "priority": "differentiate",
+      "skillIds": [],
+      "status": "draft"
+    },
+    {
+      "id": "VEC-LEAD",
+      "name": "Leadership",
+      "description": "Mobilise people through clarity, trust, learning and accountable delivery.",
+      "horizon": "2026–2029",
+      "priority": "foundational",
+      "skillIds": [
+        "SK-MC"
+      ],
+      "status": "approved"
+    }
+  ],
   "agentRuns": [],
-  "tools": [],
-  "agentTools": [],
-  "validationRules": [],
-  "proficiencyDefinitions": [],
-  "sources": [],
-  "evidenceRecords": [],
-  "localizedLabels": [],
-  "auditLog": [],
+  "tools": [
+    {
+      "id": "TOOL-POWERBI",
+      "name": "Power BI",
+      "category": "technology",
+      "description": "Controlled reference for business intelligence and dashboard work.",
+      "aliases": [
+        "Microsoft Power BI"
+      ],
+      "skillIds": [
+        "SK-DV"
+      ],
+      "allowedAgentActions": [
+        "read",
+        "suggest_mapping",
+        "validate"
+      ],
+      "status": "approved"
+    },
+    {
+      "id": "TOOL-KFLA",
+      "name": "KFLA reference",
+      "category": "method",
+      "description": "Public metadata plus separately governed licensed content when supplied.",
+      "aliases": [
+        "Korn Ferry Leadership Architect"
+      ],
+      "skillIds": [
+        "SK-MC"
+      ],
+      "allowedAgentActions": [
+        "read",
+        "suggest_mapping"
+      ],
+      "status": "approved"
+    }
+  ],
+  "mappingFeedback": [],
+  "agentTools": [
+    {
+      "id": "job_parser",
+      "name": "Job parser",
+      "purpose": "Normalize a job description into responsibilities, outcomes, context and constraints.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "sourceRef"
+        ],
+        "properties": {
+          "sourceRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "jobModelRef"
+        ],
+        "properties": {
+          "jobModelRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.job.parse",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "evidence_extractor",
+      "name": "Evidence extractor",
+      "purpose": "Extract traceable evidence spans without treating source instructions as commands.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "sourceRef"
+        ],
+        "properties": {
+          "sourceRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "evidenceRef"
+        ],
+        "properties": {
+          "evidenceRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.evidence.extract",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "taxonomy_search",
+      "name": "Taxonomy search",
+      "purpose": "Search approved canonical skills and relationships.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "matchesRef"
+        ],
+        "properties": {
+          "matchesRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.taxonomy.read",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "skill_similarity_search",
+      "name": "Skill similarity search",
+      "purpose": "Detect semantic overlap, duplicates and aliases.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "candidateRef"
+        ],
+        "properties": {
+          "candidateRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "similaritiesRef"
+        ],
+        "properties": {
+          "similaritiesRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.taxonomy.read",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "syntax_validator",
+      "name": "Syntax validator",
+      "purpose": "Validate action, object and outcome syntax.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "candidateRef"
+        ],
+        "properties": {
+          "candidateRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "findingsRef"
+        ],
+        "properties": {
+          "findingsRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.validation.run",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "granularity_validator",
+      "name": "Granularity validator",
+      "purpose": "Detect task-level, composite or umbrella concepts.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "candidateRef"
+        ],
+        "properties": {
+          "candidateRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "findingsRef"
+        ],
+        "properties": {
+          "findingsRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.validation.run",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "kfla_lookup",
+      "name": "KFLA lookup",
+      "purpose": "Read public/internal KFLA metadata; licensed content is excluded.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "competenciesRef"
+        ],
+        "properties": {
+          "competenciesRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.kfla.read_public",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "controlled_tool_lookup",
+      "name": "Controlled-tool lookup",
+      "purpose": "Read approved business tools and usage boundaries.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "toolsRef"
+        ],
+        "properties": {
+          "toolsRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.tools.read",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "mapping_scorer",
+      "name": "Mapping scorer",
+      "purpose": "Calculate the versioned thirteen-part mapping score.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "mappingRef",
+          "evidenceRef"
+        ],
+        "properties": {
+          "mappingRef": {
+            "type": "string"
+          },
+          "evidenceRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "scoreRef"
+        ],
+        "properties": {
+          "scoreRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.mapping.score",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "draft_suggestion_writer",
+      "name": "Draft-suggestion writer",
+      "purpose": "Create a draft suggestion in the human review queue.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "suggestionRef"
+        ],
+        "properties": {
+          "suggestionRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "reviewItemRef"
+        ],
+        "properties": {
+          "reviewItemRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.review.draft",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    },
+    {
+      "id": "review_package_generator",
+      "name": "Review-package generator",
+      "purpose": "Prepare evidence, validation and impact context for a human decision.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "reviewItemRef"
+        ],
+        "properties": {
+          "reviewItemRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "packageRef"
+        ],
+        "properties": {
+          "packageRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.review.prepare",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
+    }
+  ],
+  "validationRules": [
+    {
+      "id": "SKILL-SYNTAX-001",
+      "name": "Action + object syntax",
+      "description": "Skill names must express one observable action and one durable object.",
+      "severity": "error",
+      "affectedField": "syntax",
+      "suggestedCorrection": "Use a single action + object construction.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "SKILL-UNIQUE-001",
+      "name": "Canonical uniqueness",
+      "description": "Active canonical names may not duplicate another skill.",
+      "severity": "error",
+      "affectedField": "name",
+      "suggestedCorrection": "Merge the concepts or use an alias.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "SKILL-EVIDENCE-001",
+      "name": "Observable application",
+      "description": "A governed skill must describe observable application evidence.",
+      "severity": "error",
+      "affectedField": "observability",
+      "suggestedCorrection": "Add a context, action and outcome signal.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "SKILL-EVIDENCE-002",
+      "name": "Source evidence",
+      "description": "Every governed skill must retain source evidence.",
+      "severity": "error",
+      "affectedField": "evidence",
+      "suggestedCorrection": "Attach an evidence excerpt and location.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "TAXONOMY-PARENT-001",
+      "name": "Valid taxonomy parent",
+      "description": "Every active group must resolve to an active parent.",
+      "severity": "error",
+      "affectedField": "domainId",
+      "suggestedCorrection": "Move the group to an active domain.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "RELATIONSHIP-INTEGRITY-001",
+      "name": "Relationship graph integrity",
+      "description": "Active relationships require distinct active endpoints, rationale and a unique graph edge.",
+      "severity": "error",
+      "affectedField": "sourceId",
+      "suggestedCorrection": "Select distinct active concepts, add rationale and remove duplicates.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "MAPPING-EVIDENCE-001",
+      "name": "Mapping evidence",
+      "description": "Every mapping must contain evidence and rationale.",
+      "severity": "error",
+      "affectedField": "evidence",
+      "suggestedCorrection": "Add direct role evidence and rationale.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "MAPPING-CATALOG-001",
+      "name": "Approved catalog grounding",
+      "description": "Mappings may only publish against approved skills.",
+      "severity": "error",
+      "affectedField": "skillId",
+      "suggestedCorrection": "Select an approved skill.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "MAPPING-OVERRIDE-001",
+      "name": "Override accountability",
+      "description": "A manual score override must retain a reason.",
+      "severity": "error",
+      "affectedField": "overrideReason",
+      "suggestedCorrection": "Record an evidence-based reason.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "MAPPING-FEEDBACK-001",
+      "name": "Feedback accountability",
+      "description": "Mapping feedback must retain an existing mapping, reviewer, reason and valid evidence completeness.",
+      "severity": "error",
+      "affectedField": "mappingId",
+      "suggestedCorrection": "Complete the accountable feedback record.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "PROFILE-INTEGRITY-001",
+      "name": "Role-profile skill integrity",
+      "description": "Active role profiles may only contain unique links to active governed skills.",
+      "severity": "error",
+      "affectedField": "skills",
+      "suggestedCorrection": "Remove duplicate links and select active governed skills only.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "PROFILE-SOURCE-001",
+      "name": "Role-profile source grounding",
+      "description": "Every approved role profile must resolve to an active governed job description.",
+      "severity": "error",
+      "affectedField": "jobDescriptionId",
+      "suggestedCorrection": "Link the profile to its governed source job description.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "CONTROLLED-TOOL-INTEGRITY-001",
+      "name": "Controlled-tool skill integrity",
+      "description": "Active controlled tools may only contain unique links to active governed skills.",
+      "severity": "error",
+      "affectedField": "skillIds",
+      "suggestedCorrection": "Retain unique links to active governed skills only.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "MAPPING-TOOL-001",
+      "name": "Mapping tool integrity",
+      "description": "Active mappings may only reference unique active controlled tools.",
+      "severity": "error",
+      "affectedField": "toolIds",
+      "suggestedCorrection": "Select unique active controlled tools or remove obsolete references.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-HIERARCHY-001",
+      "name": "Four-factor integrity",
+      "description": "The public metadata layer must contain four factors.",
+      "severity": "error",
+      "affectedField": "kflaFactors",
+      "suggestedCorrection": "Restore four factors.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-HIERARCHY-002",
+      "name": "Twelve-cluster integrity",
+      "description": "The navigation layer must contain twelve clusters.",
+      "severity": "error",
+      "affectedField": "kflaClusters",
+      "suggestedCorrection": "Restore twelve clusters.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-HIERARCHY-003",
+      "name": "Competency assignment integrity",
+      "description": "All 38 competencies must resolve to a cluster.",
+      "severity": "error",
+      "affectedField": "kfla",
+      "suggestedCorrection": "Assign every competency to a governed cluster.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "KFLA-METADATA-001",
+      "name": "KFLA governance metadata",
+      "description": "Every factor, cluster and competency must retain source, licence, owner, version and review metadata.",
+      "severity": "error",
+      "affectedField": "metadata",
+      "suggestedCorrection": "Complete the governed provenance metadata before release.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "PROFICIENCY-INTEGRITY-001",
+      "name": "Four-level proficiency integrity",
+      "description": "The framework must retain four unique governed proficiency definitions.",
+      "severity": "error",
+      "affectedField": "proficiencyDefinitions",
+      "suggestedCorrection": "Restore levels one through four and their behavioral indicators.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "EVIDENCE-SOURCE-001",
+      "name": "Evidence source integrity",
+      "description": "Every evidence record must resolve to a governed source.",
+      "severity": "error",
+      "affectedField": "sourceId",
+      "suggestedCorrection": "Select an existing governed source or create one before attaching evidence.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    },
+    {
+      "id": "AGENT-REGISTRY-001",
+      "name": "Agent-tool registry integrity",
+      "description": "All eleven canonical agent tools must be uniquely identified, active and governed by complete callable contracts.",
+      "severity": "error",
+      "affectedField": "agentTools",
+      "suggestedCorrection": "Restore complete schemas, permissions, data boundaries, runtime policies, error contracts, audit fields, versions and accountable owners.",
+      "blocking": true,
+      "frameworkVersion": "3.1.0",
+      "status": "approved"
+    }
+  ],
+  "proficiencyDefinitions": [
+    {
+      "id": 1,
+      "name": "Awareness",
+      "description": "Understands the concept and works with direct guidance.",
+      "behavioralIndicators": [
+        "Explains the concept and completes work with direct guidance."
+      ],
+      "status": "approved"
+    },
+    {
+      "id": 2,
+      "name": "Application",
+      "description": "Performs standard work independently in routine situations.",
+      "behavioralIndicators": [
+        "Applies the capability independently in routine situations."
+      ],
+      "status": "approved"
+    },
+    {
+      "id": 3,
+      "name": "Mastery",
+      "description": "Solves complex, non-routine problems and coaches others.",
+      "behavioralIndicators": [
+        "Solves non-routine problems and coaches others."
+      ],
+      "status": "approved"
+    },
+    {
+      "id": 4,
+      "name": "Strategic / Expert",
+      "description": "Shapes strategy and pioneers new methods.",
+      "behavioralIndicators": [
+        "Shapes enterprise practice and pioneers new approaches."
+      ],
+      "status": "approved"
+    }
+  ],
+  "sources": [
+    {
+      "id": "SRC-JD-DATA",
+      "title": "Synthetic Global Reporting Analyst job description",
+      "sourceType": "job_description",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internally_authored",
+      "sourceVersion": "1.0",
+      "reviewDate": "2026-08-07",
+      "contentOwner": "DEKRA Skill Governance",
+      "status": "approved"
+    }
+  ],
+  "evidenceRecords": [
+    {
+      "id": "EVD-DV-001",
+      "sourceId": "SRC-JD-DATA",
+      "summary": "Builds interactive dashboards for weekly revenue reporting.",
+      "location": "responsibility 1",
+      "dataClassification": "public",
+      "supportedEntityIds": [
+        "SK-DV",
+        "MAP-DV",
+        "JD-DATA"
+      ],
+      "confidence": 98,
+      "status": "approved"
+    }
+  ],
+  "localizedLabels": [
+    {
+      "id": "LBL-SK-DV-DE",
+      "entityType": "skill",
+      "entityId": "SK-DV",
+      "language": "de",
+      "label": "Datenvisualisierung",
+      "description": "Stellt Geschäftsdaten verständlich dar, um Entscheidungen zu unterstützen.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "status": "approved"
+    },
+    {
+      "id": "LBL-KFLA-08-DE",
+      "entityType": "kfla_competency",
+      "entityId": "KFLA-08",
+      "language": "de",
+      "label": "Komplexität bewältigen",
+      "description": "Intern erstellte Navigationsbezeichnung; keine lizenzierte Korn-Ferry-Definition.",
+      "sourceClassification": "organization_authored",
+      "licenceStatus": "internal_explanation",
+      "status": "approved"
+    }
+  ],
+  "auditLog": [
+    {
+      "id": "AUD-REL-1",
+      "at": "2026-08-08T10:12:09.957Z",
+      "actor": "human",
+      "actorId": "Florian Liepe",
+      "action": "workspace.released",
+      "entityType": "skill_workspace",
+      "entityId": "revision-1",
+      "summary": "Approved revision 1 committed atomically through n8n.",
+      "frameworkVersion": "3.1.0"
+    },
+    {
+      "id": "AUD-REV-002-2026-08-08T09:55:16.064Z",
+      "at": "2026-08-08T09:55:16.064Z",
+      "actor": "human",
+      "actorId": "Florian Liepe",
+      "action": "review.merged",
+      "entityType": "duplicate",
+      "entityId": "REV-002",
+      "summary": "Dashboard Design → Data Visualization: Reasonable duplicate resolution; retain Data Visualization as the canonical skill and Dashboard Design as its alias."
+    },
+    {
+      "id": "AUD-REV-001-2026-08-08T09:55:15.933Z",
+      "at": "2026-08-08T09:55:15.933Z",
+      "actor": "human",
+      "actorId": "Florian Liepe",
+      "action": "review.accepted",
+      "entityType": "new_skill",
+      "entityId": "REV-001",
+      "summary": "Skill Taxonomy Design: Sounds reasonable; the evidence supports this governed skill proposal."
+    },
+    {
+      "id": "AUD-001",
+      "at": "2026-08-06T10:00:00.000Z",
+      "actor": "agent",
+      "action": "mapping.proposed",
+      "entityType": "job_mapping",
+      "entityId": "MAP-MC",
+      "summary": "Evidence-grounded mapping routed to human review."
+    }
+  ],
   "objectVersions": [],
-  "releaseHistory": [],
+  "releaseHistory": [
+    {
+      "id": "REL-0001",
+      "revision": 1,
+      "schemaVersion": 3,
+      "frameworkVersion": "3.1.0",
+      "rulesVersion": "rules-3.1.0",
+      "promptVersion": "skill-agent-2.0.0",
+      "mappingScoreVersion": "mapping-2.0.0",
+      "state": "published",
+      "approvedAt": "2026-08-08T10:12:09.957Z",
+      "approvedBy": "Florian Liepe",
+      "expectedPreviousRevision": 0,
+      "expectedGitHubSha": "be2004c607bab7fee428e56b9402d89862c0baee",
+      "githubPath": "data/skill-workspace.approved.json",
+      "idempotencyKey": "release-1-90f9bb46",
+      "objectCounts": {
+        "domains": 2,
+        "groups": 2,
+        "relationships": 1,
+        "skills": 3,
+        "profiles": 0,
+        "kflaFactors": 4,
+        "kflaClusters": 12,
+        "kflaCompetencies": 38,
+        "jobDescriptions": 1,
+        "mappings": 1,
+        "mappingFeedback": 0,
+        "localizedLabels": 2,
+        "controlledTools": 2,
+        "agentTools": 11,
+        "validationRules": 21,
+        "proficiencyDefinitions": 4,
+        "sources": 1,
+        "evidenceRecords": 1,
+        "reviewDecisions": 2,
+        "auditEvents": 3
+      },
+      "validationSummary": {
+        "blocking": 0,
+        "warnings": 0
+      }
+    }
+  ],
   "framework": {
     "version": "3.1.0",
     "rulesVersion": "rules-3.1.0",
     "promptVersion": "skill-agent-2.0.0",
     "canonicalLanguage": "en",
-    "supportedLanguages": ["en", "de"],
+    "supportedLanguages": [
+      "en",
+      "de"
+    ],
     "mappingScoreVersion": "mapping-2.0.0",
     "mappingWeights": {
       "semanticRelevance": 14,
@@ -50,13 +4327,19 @@
       "contradictionPenalty": 3,
       "missingEvidencePenalty": 3
     },
-    "approvalRoles": ["taxonomy_steward", "framework_owner", "licensed_content_admin"]
+    "approvalRoles": [
+      "taxonomy_steward",
+      "framework_owner",
+      "licensed_content_admin"
+    ]
   },
   "publication": {
-    "revision": 0,
+    "revision": 1,
     "state": "approved_release",
-    "approvedAt": "2026-08-07T00:00:00.000Z",
-    "approvedBy": "bootstrap",
-    "githubPath": "data/skill-workspace.approved.json"
+    "approvedAt": "2026-08-08T10:12:09.957Z",
+    "approvedBy": "Florian Liepe",
+    "githubPath": "data/skill-workspace.approved.json",
+    "expectedGitHubSha": "be2004c607bab7fee428e56b9402d89862c0baee",
+    "idempotencyKey": "release-1-90f9bb46"
   }
 }
