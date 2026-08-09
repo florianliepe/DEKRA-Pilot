@@ -54,6 +54,7 @@ for (const [path, expectedWebhook] of workflows) {
   if (path.includes("publisher") && (!JSON.stringify(workflow).includes("PROFICIENCY-INTEGRITY-001") || !JSON.stringify(workflow).includes("evidenceRecords"))) throw new Error("Publisher v3 must validate and sanitize proficiency, source and evidence contracts.");
   if (path.includes("designer") && (!JSON.stringify(workflow).includes("permissionsByMode") || !JSON.stringify(workflow).includes("DATA_CLASSIFICATION_DENIED") || !JSON.stringify(workflow).includes("agent_tool.denied"))) throw new Error("Orchestrator v3 must enforce and audit least-privilege tool calls.");
   if (path.includes("designer") && ["skill.ingest_job", "skill.clarify_job", "mapping_omissions", "evidenceRefs", "zm01Receipts", "rate limit exceeded", "ZM-01 JOB MAPPING CONTRACT"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-01 intake, clarification, mapping or recovery contract.");
+  if (path.includes("designer") && ["Working revision conflict", "expectedRevision", "skill.save", "idempotencyKey"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-02 optimistic concurrency or idempotent save contract.");
 }
 
 console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 2 n8n v3 workflows.`);

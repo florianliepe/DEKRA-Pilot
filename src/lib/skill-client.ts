@@ -77,7 +77,16 @@ export async function loadApprovedSkillWorkspace(): Promise<SkillWorkspace> {
 }
 
 export const loadSkillWorkspace = (secret: string) => call(secret, { mode: "skill.read" });
-export const saveSkillWorkspace = (secret: string, workspace: SkillWorkspace) => call(secret, { mode: "skill.save", workspace: { ...workspace, schemaVersion: 3 } });
+export const saveSkillWorkspace = (
+  secret: string,
+  workspace: SkillWorkspace,
+  idempotencyKey = governedIdempotencyKey("skill.save", `revision-${workspace.revision}`),
+) => call(secret, {
+  mode: "skill.save",
+  workspace: { ...workspace, schemaVersion: 3 },
+  expectedRevision: workspace.revision,
+  idempotencyKey,
+});
 export const publishSkillWorkspace = (secret: string, workspace: SkillWorkspace, approvedBy: string, manifest?: ReleaseManifest) => call(secret, { mode: "skill.publish", workspace, approvedBy, manifest, expectedPreviousRevision: workspace.publication.revision, expectedGitHubSha: manifest?.expectedGitHubSha || workspace.publication.expectedGitHubSha }, publishUrl());
 
 export async function ingestSkillEvidence(secret: string, files: File[], brief: string, roleTitle: string) {

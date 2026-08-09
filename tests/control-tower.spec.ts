@@ -267,6 +267,25 @@ test("opens the governed Skill Designer with all nine workspaces", async ({ page
   await expect(page.locator(".kfla-grid .kfla-card")).toHaveCount(38);
 });
 
+test("explores taxonomy dependencies and overlap without mutating canonical concepts", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await page.getByRole("button", { name: "Graph & overlap" }).click();
+  await expect(page.getByRole("heading", { name: "Explore structure, overlap and dependency impact" })).toBeVisible();
+  await page.getByLabel("Search taxonomy graph").fill("Data Visualization");
+  await page.getByRole("button", { name: /Data Visualization/ }).click();
+  await expect(page.locator(".graph-inspector").getByRole("heading", { name: "Data Visualization" })).toBeVisible();
+  await expect(page.locator(".graph-impact")).toContainText("total dependencies");
+  const saveRequest = page.waitForRequest((request) => request.postDataJSON()?.mode === "skill.save");
+  await page.getByRole("button", { name: "Save working state" }).click();
+  const saveBody = (await saveRequest).postDataJSON() as { expectedRevision?: number; idempotencyKey?: string };
+  expect(saveBody.expectedRevision).toBe(bootstrapSkillWorkspace.revision);
+  expect(saveBody.idempotencyKey).toMatch(/^skill\.save:revision-/);
+  await page.getByRole("button", { name: "Add governed edge" }).click();
+  await expect(page.getByRole("heading", { name: "Govern relationship" })).toBeVisible();
+  await expect(page.getByText("Semantic overlap signals")).toBeVisible();
+});
+
 test("creates and edits a governed core skill", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Skill library" }).click();
