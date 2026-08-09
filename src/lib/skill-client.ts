@@ -16,6 +16,9 @@ export type SkillWorkflowResponse = {
   interview?: SkillWorkspace["interviews"][number];
   message?: string;
   agentRun?: SkillWorkspace["agentRuns"][number];
+  jobDescription?: SkillWorkspace["jobDescriptions"][number];
+  clarification?: SkillWorkspace["jobClarifications"][number];
+  idempotencyKey?: string;
 };
 
 export class SkillWorkflowError extends Error {
@@ -84,9 +87,31 @@ export async function ingestSkillEvidence(secret: string, files: File[], brief: 
   return call(secret, { mode: "skill.ingest", roleTitle, extracted });
 }
 
+export function governedIdempotencyKey(operation: string, entityId = "new") {
+  return `${operation}:${entityId}:${crypto.randomUUID()}`;
+}
+
+export async function ingestJobDescription(
+  secret: string,
+  files: File[],
+  sourceText: string,
+  metadata: { title: string; jobFamily: string; country: string; language: string; dataClassification: "public" | "internal" | "confidential" },
+  idempotencyKey = governedIdempotencyKey("skill.ingest_job"),
+) {
+  const extracted = await extractEvidence(files);
+  if (sourceText.trim()) extracted.unshift({ name: "pasted-job-description.txt", type: "text_update", content: sourceText.trim(), mediaType: "text/plain", size: new Blob([sourceText]).size });
+  if (!extracted.length) throw new Error("Add a DOCX, PDF, JSON or pasted job description.");
+  return call(secret, { mode: "skill.ingest_job", metadata, extracted, idempotencyKey });
+}
+
+export const runJobClarification = (
+  secret: string,
+  payload: { jobDescriptionId: string; action: "start" | "answer" | "skip"; questionId?: string; answer?: string; idempotencyKey: string; workspace: SkillWorkspace },
+) => call(secret, { mode: "skill.clarify_job", ...payload });
+
 export const runSkillInterview = (secret: string, payload: Record<string, unknown>) => call(secret, { mode: "skill.interview", ...payload });
-export const runJobMapping = (secret: string, jobDescriptionId: string, workspace: SkillWorkspace) =>
-  call(secret, { mode: "skill.map_job", jobDescriptionId, workspace });
+export const runJobMapping = (secret: string, jobDescriptionId: string, workspace: SkillWorkspace, idempotencyKey = governedIdempotencyKey("skill.map_job", jobDescriptionId), retryOfRunId?: string) =>
+  call(secret, { mode: "skill.map_job", jobDescriptionId, workspace, idempotencyKey, retryOfRunId });
 export const runTaxonomyRegression = (secret: string, workspace: SkillWorkspace) =>
   call(secret, { mode: "skill.regression", workspace });
 export const runSkillElicitation = (secret: string, sessionId: string, action: "rewrite" | "validate", workspace: SkillWorkspace) =>

@@ -937,6 +937,7 @@ export function releaseObjectCounts(workspace: SkillWorkspace): Record<string, n
     kflaCompetencies: workspace.kfla.length,
     jobDescriptions: workspace.jobDescriptions.length,
     mappings: workspace.mappings.length,
+    mappingOmissions: workspace.mappingOmissions.length,
     mappingFeedback: workspace.mappingFeedback.length,
     localizedLabels: workspace.localizedLabels.length,
     controlledTools: workspace.tools.length,
@@ -951,7 +952,7 @@ export function releaseObjectCounts(workspace: SkillWorkspace): Record<string, n
 }
 
 const governedImportCollections = [
-  "domains", "groups", "relationships", "skills", "profiles", "interviews", "elicitationSessions", "kflaFactors", "kflaClusters", "kfla", "jobDescriptions", "mappings", "mappingFeedback", "strategicVectors", "agentRuns", "tools", "agentTools", "validationRules", "proficiencyDefinitions", "sources", "evidenceRecords", "localizedLabels",
+  "domains", "groups", "relationships", "skills", "profiles", "interviews", "jobClarifications", "elicitationSessions", "kflaFactors", "kflaClusters", "kfla", "jobDescriptions", "mappings", "mappingOmissions", "mappingFeedback", "strategicVectors", "agentRuns", "tools", "agentTools", "validationRules", "proficiencyDefinitions", "sources", "evidenceRecords", "localizedLabels",
 ] as const;
 
 export type GovernedImportPreview = {
@@ -967,9 +968,9 @@ export function previewGovernedImport(workspace: SkillWorkspace, candidate: Skil
   const canonicalCandidate: SkillWorkspace = {
     schemaVersion: 3, revision: Number(candidate.revision || 0), updatedAt: candidate.updatedAt,
     domains: candidate.domains, groups: candidate.groups, relationships: candidate.relationships, skills: candidate.skills, profiles: candidate.profiles,
-    interviews: candidate.interviews, elicitationSessions: candidate.elicitationSessions, reviewQueue: candidate.reviewQueue,
+    interviews: candidate.interviews, jobClarifications: candidate.jobClarifications, elicitationSessions: candidate.elicitationSessions, reviewQueue: candidate.reviewQueue,
     kflaFactors: candidate.kflaFactors, kflaClusters: candidate.kflaClusters, kfla: candidate.kfla,
-    jobDescriptions: candidate.jobDescriptions, mappings: candidate.mappings, mappingFeedback: candidate.mappingFeedback, strategicVectors: candidate.strategicVectors,
+    jobDescriptions: candidate.jobDescriptions, mappings: candidate.mappings, mappingOmissions: candidate.mappingOmissions, mappingFeedback: candidate.mappingFeedback, strategicVectors: candidate.strategicVectors,
     agentRuns: candidate.agentRuns, tools: candidate.tools, agentTools: candidate.agentTools, validationRules: candidate.validationRules,
     proficiencyDefinitions: candidate.proficiencyDefinitions, sources: candidate.sources, evidenceRecords: candidate.evidenceRecords, localizedLabels: candidate.localizedLabels,
     auditLog: candidate.auditLog, objectVersions: candidate.objectVersions, releaseHistory: candidate.releaseHistory, framework: candidate.framework, publication: candidate.publication,
@@ -1085,8 +1086,10 @@ export function sanitizeApprovedWorkspace(workspace: SkillWorkspace): SkillWorks
     evidenceRecords: approvedEvidence,
     localizedLabels: approvedLocalizedLabels,
     interviews: [],
+    jobClarifications: [],
     elicitationSessions: [],
     agentRuns: [],
+    mappingOmissions: [],
     mappingFeedback: [],
     objectVersions: [],
     kfla: workspace.kfla.map((competency) => ({

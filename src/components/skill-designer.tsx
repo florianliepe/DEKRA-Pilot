@@ -162,7 +162,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {tab === "elicitation" && <ElicitationWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} mutate={mutate} onMessage={setMessage} onError={setError}/>}
     {tab === "taxonomy" && <TaxonomyStandardWorkbench workspace={workspace} mutate={mutate}/>}
-    {tab === "jobs" && <JobMappingWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
+    {tab === "jobs" && <JobMappingWorkbench workspace={workspace} approvedWorkspace={approvedWorkspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "profiles" && <Profiles workspace={workspace} mutate={mutate}/>}
     {tab === "vectors" && <StrategicVectors workspace={workspace} mutate={mutate}/>}
     {tab === "review" && <Review workspace={workspace} mutate={mutate}/>}

@@ -260,6 +260,38 @@ test("calculates the transparent thirteen-part weighted score and penalties", ()
   expect(penalized).toBeLessThan(clean);
 });
 
+test("keeps agent mapping proposals traceable to normalized job evidence and explains omissions", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const job = workspace.jobDescriptions.find((item) => item.id === "JD-DATA")!;
+  const segmentIds = new Set(job.evidenceSegments.map((segment) => segment.id));
+  const proposals = workspace.mappings.filter((mapping) => mapping.jobDescriptionId === job.id && mapping.source === "agent");
+  expect(job.sourceFiles[0]).toMatchObject({ name: expect.any(String), contentHash: expect.any(String) });
+  expect(job.evidenceSegments.length).toBeGreaterThanOrEqual(4);
+  expect(proposals.every((mapping) => mapping.evidenceRefs?.length && mapping.evidenceRefs.every((id) => segmentIds.has(id) || workspace.evidenceRecords.some((record) => record.id === id)))).toBe(true);
+  expect(proposals.every((mapping) => Object.keys(mapping.scoreBreakdown || {}).length === 13)).toBe(true);
+  expect(workspace.mappingOmissions.find((item) => item.jobDescriptionId === job.id)).toMatchObject({ status: "explained", agentRunId: "RUN-001" });
+  expect(validateWorkspace(workspace).some((finding) => ["MAPPING-EVIDENCE-REF-001", "MAPPING-OMISSION-001"].includes(finding.ruleId))).toBe(false);
+});
+
+test("persists job clarification answers as governed evidence and supports save resume", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const session = workspace.jobClarifications.find((item) => item.jobDescriptionId === "JD-DATA")!;
+  const answered = session.questions.find((question) => question.status === "answered")!;
+  expect(session).toMatchObject({ status: "in_progress", idempotencyKey: expect.stringContaining("clarification") });
+  expect(answered.answer).toBeTruthy();
+  expect(workspace.evidenceRecords.find((record) => record.id === answered.evidenceRecordId)).toMatchObject({ sourceId: "SRC-JD-DATA" });
+  expect(validateWorkspace(workspace).some((finding) => finding.ruleId === "JOB-CLARIFICATION-001")).toBe(false);
+});
+
+test("excludes working clarifications, omissions and non-approved links from public releases", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const sanitized = sanitizeApprovedWorkspace(workspace);
+  expect(sanitized.jobClarifications).toEqual([]);
+  expect(sanitized.mappingOmissions).toEqual([]);
+  expect(sanitized.mappings.every((mapping) => mapping.status === "approved")).toBe(true);
+  expect(sanitized.profiles.every((profile) => profile.status === "approved" && profile.skills.every((link) => sanitized.skills.some((skill) => skill.id === link.skillId)))).toBe(true);
+});
+
 test("records accountable mapping feedback without changing approval status", () => {
   const workspace = structuredClone(bootstrapSkillWorkspace);
   expect(calculateEvidenceCompleteness(workspace.mappings[0], workspace)).toBe(100);

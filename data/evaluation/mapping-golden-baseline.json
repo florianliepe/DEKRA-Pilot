@@ -72,6 +72,42 @@
           "breakdown": { "semanticRelevance": 60, "directEvidenceStrength": 35, "responsibilityCoverage": 10, "outcomeRelevance": 15, "taxonomyCompatibility": 75, "granularityCompatibility": 60, "kflaCompatibility": 20, "controlledToolRelevance": 25, "proficiencyCompatibility": 10, "approvedMappingSimilarity": 55, "duplicatePenalty": 0, "contradictionPenalty": 100, "missingEvidencePenalty": 40 }
         }
       ]
+    },
+    {
+      "id": "GOLDEN-TOOL-EVIDENCE-01",
+      "title": "Controlled tool evidence strengthens but does not replace capability evidence",
+      "evidence": "Design and publish Power BI dashboards that explain regional revenue variance and support corrective action.",
+      "expectedTopCandidateId": "SK-DV",
+      "minimumTopScore": 88,
+      "minimumMargin": 35,
+      "candidates": [
+        {
+          "skillId": "SK-DV",
+          "breakdown": { "semanticRelevance": 98, "directEvidenceStrength": 97, "responsibilityCoverage": 95, "outcomeRelevance": 94, "taxonomyCompatibility": 96, "granularityCompatibility": 94, "kflaCompatibility": 72, "controlledToolRelevance": 100, "proficiencyCompatibility": 90, "approvedMappingSimilarity": 92, "duplicatePenalty": 0, "contradictionPenalty": 0, "missingEvidencePenalty": 0 }
+        },
+        {
+          "skillId": "SK-MC",
+          "breakdown": { "semanticRelevance": 42, "directEvidenceStrength": 30, "responsibilityCoverage": 35, "outcomeRelevance": 55, "taxonomyCompatibility": 68, "granularityCompatibility": 65, "kflaCompatibility": 58, "controlledToolRelevance": 0, "proficiencyCompatibility": 55, "approvedMappingSimilarity": 35, "duplicatePenalty": 0, "contradictionPenalty": 5, "missingEvidencePenalty": 10 }
+        }
+      ]
+    },
+    {
+      "id": "GOLDEN-KFLA-AUTONOMY-01",
+      "title": "Clarified autonomy and complexity strengthen KFLA-compatible mapping",
+      "evidence": "Independently resolves contradictory regional evidence, decides which variance requires escalation and recommends the response.",
+      "expectedTopCandidateId": "SK-MC",
+      "minimumTopScore": 85,
+      "minimumMargin": 30,
+      "candidates": [
+        {
+          "skillId": "SK-MC",
+          "breakdown": { "semanticRelevance": 94, "directEvidenceStrength": 95, "responsibilityCoverage": 91, "outcomeRelevance": 90, "taxonomyCompatibility": 94, "granularityCompatibility": 92, "kflaCompatibility": 100, "controlledToolRelevance": 20, "proficiencyCompatibility": 92, "approvedMappingSimilarity": 88, "duplicatePenalty": 0, "contradictionPenalty": 0, "missingEvidencePenalty": 0 }
+        },
+        {
+          "skillId": "SK-DV",
+          "breakdown": { "semanticRelevance": 35, "directEvidenceStrength": 25, "responsibilityCoverage": 30, "outcomeRelevance": 40, "taxonomyCompatibility": 65, "granularityCompatibility": 62, "kflaCompatibility": 28, "controlledToolRelevance": 0, "proficiencyCompatibility": 45, "approvedMappingSimilarity": 30, "duplicatePenalty": 0, "contradictionPenalty": 10, "missingEvidencePenalty": 10 }
+        }
+      ]
     }
   ]
 }

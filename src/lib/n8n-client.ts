@@ -4,7 +4,7 @@ const DEFAULT_WEBHOOK_URL =
   "https://eraneos-agentic-platform.azurewebsites.net/webhook/7666d3c6-b63f-4e79-b10a-82a002a9cf47";
 
 const MAX_BATCH_BYTES = 29 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set([".pdf", ".md", ".txt", ".csv", ".xlsx", ".png", ".jpg", ".jpeg"]);
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".docx", ".json", ".md", ".txt", ".csv", ".xlsx", ".png", ".jpg", ".jpeg"]);
 
 export type PmoApiResponse = {
   ok?: boolean;
@@ -25,7 +25,14 @@ export type WorkflowIntakeResponse = {
   appliedChanges?: Array<{ entity: string; action: string; id?: string; summary?: string }>;
 };
 
-type ExtractedEvidence = { name: string; type: "text" | "xlsx" | "pdf_text" | "image_ocr" | "text_update"; content: string };
+export type ExtractedEvidence = {
+  name: string;
+  type: "text" | "json" | "docx_text" | "xlsx" | "pdf_text" | "image_ocr" | "text_update";
+  content: string;
+  mediaType?: string;
+  size?: number;
+  contentHash?: string;
+};
 
 function webhookUrl() {
   return process.env.NEXT_PUBLIC_N8N_PMO_WEBHOOK_URL?.trim() || DEFAULT_WEBHOOK_URL;
@@ -90,8 +97,35 @@ export async function extractEvidence(files: File[]): Promise<ExtractedEvidence[
     const ext = extension(file.name);
     if (!ALLOWED_EXTENSIONS.has(ext)) throw new Error(`Unsupported file type: ${file.name}`);
 
+    const bytes = await file.arrayBuffer();
+    const contentHash = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
+      .map((value) => value.toString(16).padStart(2, "0")).join("");
+    const metadata = { mediaType: file.type || "application/octet-stream", size: file.size, contentHash };
+
     if (ext === ".md" || ext === ".txt" || ext === ".csv") {
-      extracted.push({ name: file.name, type: "text", content: await file.text() });
+      extracted.push({ name: file.name, type: "text", content: new TextDecoder().decode(bytes), ...metadata });
+      continue;
+    }
+
+    if (ext === ".json") {
+      const raw = new TextDecoder().decode(bytes);
+      let content = raw;
+      try { content = JSON.stringify(JSON.parse(raw), null, 2); }
+      catch { throw new Error(`Invalid JSON document: ${file.name}`); }
+      extracted.push({ name: file.name, type: "json", content, ...metadata });
+      continue;
+    }
+
+    if (ext === ".docx") {
+      const { default: JSZip } = await import("jszip");
+      const zip = await JSZip.loadAsync(bytes);
+      const documentXml = await zip.file("word/document.xml")?.async("string");
+      if (!documentXml) throw new Error(`DOCX has no readable document body: ${file.name}`);
+      const xml = new DOMParser().parseFromString(documentXml, "application/xml");
+      const paragraphs = Array.from(xml.getElementsByTagNameNS("*", "p")).map((paragraph) =>
+        Array.from(paragraph.getElementsByTagNameNS("*", "t")).map((node) => node.textContent || "").join(""),
+      ).filter(Boolean);
+      extracted.push({ name: file.name, type: "docx_text", content: paragraphs.join("\n"), ...metadata });
       continue;
     }
 
@@ -105,7 +139,7 @@ export async function extractEvidence(files: File[]): Promise<ExtractedEvidence[
         }).join(",")).join("\n");
         return `## Sheet: ${sheet}\n${csv}`;
       }).join("\n\n");
-      extracted.push({ name: file.name, type: "xlsx", content });
+      extracted.push({ name: file.name, type: "xlsx", content, ...metadata });
       continue;
     }
 
@@ -115,7 +149,7 @@ export async function extractEvidence(files: File[]): Promise<ExtractedEvidence[
         "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
         import.meta.url,
       ).toString();
-      const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+      const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
       const pages: string[] = [];
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber);
@@ -123,13 +157,13 @@ export async function extractEvidence(files: File[]): Promise<ExtractedEvidence[
         const text = content.items.map((item) => "str" in item ? item.str : "").join(" ");
         pages.push(`## Page ${pageNumber}\n${text}`);
       }
-      extracted.push({ name: file.name, type: "pdf_text", content: pages.join("\n\n") });
+      extracted.push({ name: file.name, type: "pdf_text", content: pages.join("\n\n"), ...metadata });
       continue;
     }
 
     const Tesseract = await import("tesseract.js");
     const result = await Tesseract.recognize(file, "eng");
-    extracted.push({ name: file.name, type: "image_ocr", content: result.data.text || "" });
+    extracted.push({ name: file.name, type: "image_ocr", content: result.data.text || "", ...metadata });
   }
   return extracted;
 }

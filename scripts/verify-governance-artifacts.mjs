@@ -25,6 +25,8 @@ const snapshot = json("data/skill-workspace.approved.json");
 const requiredWorkspaceArrays = ["domains", "groups", "relationships", "skills", "profiles", "interviews", "elicitationSessions", "reviewQueue", "kflaFactors", "kflaClusters", "kfla", "jobDescriptions", "mappings", "mappingFeedback", "strategicVectors", "agentRuns", "tools", "agentTools", "validationRules", "proficiencyDefinitions", "sources", "evidenceRecords", "localizedLabels", "auditLog", "objectVersions", "releaseHistory"];
 if (requiredWorkspaceArrays.some((key) => !Array.isArray(snapshot[key]))) throw new Error("Approved workspace bootstrap is missing a schema-v3 collection.");
 if (!snapshot.framework?.mappingWeights || Object.keys(snapshot.framework.mappingWeights).length !== 13 || !snapshot.publication) throw new Error("Approved workspace bootstrap is missing framework or publication contracts.");
+const workspaceSchema = json("data/schemas/skill-workspace.schema.json");
+if (["jobClarifications", "mappingOmissions"].some((key) => !workspaceSchema.required?.includes(key) || !workspaceSchema.properties?.[key])) throw new Error("Workspace schema is missing the ZM-01 governed collections.");
 
 const registry = json("data/agent-tool-registry.json");
 if (registry.policy?.defaultAccess !== "deny" || registry.tools?.length !== 11) throw new Error("Agent-tool registry must be deny-by-default with exactly eleven tools.");
@@ -51,6 +53,7 @@ for (const [path, expectedWebhook] of workflows) {
   }
   if (path.includes("publisher") && (!JSON.stringify(workflow).includes("PROFICIENCY-INTEGRITY-001") || !JSON.stringify(workflow).includes("evidenceRecords"))) throw new Error("Publisher v3 must validate and sanitize proficiency, source and evidence contracts.");
   if (path.includes("designer") && (!JSON.stringify(workflow).includes("permissionsByMode") || !JSON.stringify(workflow).includes("DATA_CLASSIFICATION_DENIED") || !JSON.stringify(workflow).includes("agent_tool.denied"))) throw new Error("Orchestrator v3 must enforce and audit least-privilege tool calls.");
+  if (path.includes("designer") && ["skill.ingest_job", "skill.clarify_job", "mapping_omissions", "evidenceRefs", "zm01Receipts", "rate limit exceeded", "ZM-01 JOB MAPPING CONTRACT"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-01 intake, clarification, mapping or recovery contract.");
 }
 
 console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 2 n8n v3 workflows.`);

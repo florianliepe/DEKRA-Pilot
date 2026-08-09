@@ -221,7 +221,22 @@ export type Skill = {
 };
 
 export type ProfileSkill = { skillId: string; targetLevel: 1 | 2 | 3 | 4; weight: number; critical: boolean };
-export type RoleProfile = { id: string; title: string; jobFamily: string; purpose: string; status: Lifecycle; skills: ProfileSkill[]; jobDescriptionId?: string; strategicVectorIds?: string[]; governance?: GovernanceMeta };
+export type ProfileExcludedLink = { skillId: string; reason: string; sourceMappingId?: string; status: "unapproved_skill" | "rejected_mapping" | "deferred_mapping" | "coverage_gap" };
+export type RoleProfile = { id: string; title: string; jobFamily: string; purpose: string; status: Lifecycle; skills: ProfileSkill[]; jobDescriptionId?: string; strategicVectorIds?: string[]; excludedLinks?: ProfileExcludedLink[]; agentRunId?: string; governance?: GovernanceMeta };
+export type JobEvidenceKind = "purpose" | "responsibility" | "outcome" | "activity" | "tool" | "qualification" | "context" | "constraint";
+export type JobSourceFile = { name: string; mediaType: string; size: number; contentHash?: string };
+export type JobEvidenceSegment = {
+  id: string;
+  sourceId: string;
+  sourceName: string;
+  section: string;
+  location: string;
+  quotation: string;
+  normalizedType: JobEvidenceKind;
+  normalizedValue: string;
+  confidence: number;
+};
+export type JobIntakeFinding = { code: "UNSUPPORTED" | "DUPLICATE" | "LOW_QUALITY" | "MISSING_SECTION"; severity: "warning" | "error"; message: string; sourceName?: string };
 export type JobDescription = {
   id: string;
   title: string;
@@ -232,6 +247,15 @@ export type JobDescription = {
   sourceText: string;
   responsibilities: string[];
   outcomes: string[];
+  activities: string[];
+  tools: string[];
+  qualifications: string[];
+  context: string[];
+  constraints: string[];
+  evidenceSegments: JobEvidenceSegment[];
+  sourceFiles: JobSourceFile[];
+  intakeFindings: JobIntakeFinding[];
+  intakeIdempotencyKey?: string;
   status: "draft" | "analysed" | "mapped" | "approved" | "archived";
   version: number;
   updatedAt: string;
@@ -264,6 +288,8 @@ export type JobSkillMapping = {
   confidence?: number;
   rationale: string;
   evidence: string[];
+  evidenceRefs?: string[];
+  kflaCompetencyIds?: string[];
   strategicVectorIds: string[];
   source: "agent" | "manual";
   status: "proposed" | "approved" | "rejected" | "deferred";
@@ -273,7 +299,19 @@ export type JobSkillMapping = {
   overrideReason?: string;
   reviewerFeedback?: string;
   evidenceCompleteness?: number;
+  agentRunId?: string;
   governance?: GovernanceMeta;
+};
+
+export type MappingOmission = {
+  id: string;
+  jobDescriptionId: string;
+  skillId: string;
+  reason: string;
+  evidenceRefs: string[];
+  score?: number;
+  status: "explained" | "challenged" | "superseded";
+  agentRunId: string;
 };
 
 export type MappingFeedback = {
@@ -329,6 +367,10 @@ export type AgentRun = {
   invocations?: AgentToolInvocation[];
   policyVersion?: string;
   promptVersion?: string;
+  idempotencyKey?: string;
+  retryOfRunId?: string;
+  attempt?: number;
+  error?: { code: string; message: string; retryable: boolean };
 };
 
 export type Interview = {
@@ -339,6 +381,19 @@ export type Interview = {
   status: "not_started" | "in_progress" | "complete";
   currentQuestion: number;
   responses: Array<{ question: string; answer: string }>;
+};
+
+export type JobClarificationDimension = "outcomes" | "critical_incident" | "autonomy" | "complexity" | "performance_level";
+export type JobClarificationQuestion = { id: string; dimension: JobClarificationDimension; question: string; rationale: string; answer?: string; evidenceRecordId?: string; status: "open" | "answered" | "skipped" };
+export type JobClarificationSession = {
+  id: string;
+  jobDescriptionId: string;
+  status: "draft" | "in_progress" | "complete";
+  currentQuestion: number;
+  questions: JobClarificationQuestion[];
+  startedAt: string;
+  updatedAt: string;
+  idempotencyKey: string;
 };
 
 export type ReviewItem = {
@@ -465,6 +520,7 @@ export type SkillWorkspace = {
   skills: Skill[];
   profiles: RoleProfile[];
   interviews: Interview[];
+  jobClarifications: JobClarificationSession[];
   elicitationSessions: ElicitationSession[];
   reviewQueue: ReviewItem[];
   kflaFactors: KflaFactor[];
@@ -472,6 +528,7 @@ export type SkillWorkspace = {
   kfla: KflaCompetency[];
   jobDescriptions: JobDescription[];
   mappings: JobSkillMapping[];
+  mappingOmissions: MappingOmission[];
   mappingFeedback: MappingFeedback[];
   strategicVectors: StrategicVector[];
   agentRuns: AgentRun[];
@@ -506,17 +563,34 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
     skills: arrayOr(source.skills, fallback.skills),
     profiles: arrayOr(source.profiles, fallback.profiles),
     interviews: arrayOr(source.interviews, fallback.interviews),
+    jobClarifications: arrayOr(source.jobClarifications, fallback.jobClarifications),
     elicitationSessions: arrayOr(source.elicitationSessions, fallback.elicitationSessions),
     reviewQueue: arrayOr(source.reviewQueue, fallback.reviewQueue),
     kflaFactors: arrayOr(source.kflaFactors, fallback.kflaFactors).map((item) => ({ ...fallback.kflaFactors.find((candidate) => candidate.id === item.id), ...item } as KflaFactor)),
     kflaClusters: arrayOr(source.kflaClusters, fallback.kflaClusters).map((item) => ({ ...fallback.kflaClusters.find((candidate) => candidate.id === item.id), ...item } as KflaCluster)),
-    jobDescriptions: arrayOr(source.jobDescriptions, fallback.jobDescriptions),
+    jobDescriptions: arrayOr(source.jobDescriptions, fallback.jobDescriptions).map((job) => {
+      const baseline = fallback.jobDescriptions.find((candidate) => candidate.id === job.id);
+      return {
+        ...baseline,
+        ...job,
+        activities: arrayOr(job.activities, baseline?.activities || []),
+        tools: arrayOr(job.tools, baseline?.tools || []),
+        qualifications: arrayOr(job.qualifications, baseline?.qualifications || []),
+        context: arrayOr(job.context, baseline?.context || []),
+        constraints: arrayOr(job.constraints, baseline?.constraints || []),
+        evidenceSegments: arrayOr(job.evidenceSegments, baseline?.evidenceSegments || []),
+        sourceFiles: arrayOr(job.sourceFiles, baseline?.sourceFiles || []),
+        intakeFindings: arrayOr(job.intakeFindings, baseline?.intakeFindings || []),
+      };
+    }),
     mappings: arrayOr(source.mappings, fallback.mappings).map((mapping) => ({
+      ...fallback.mappings.find((candidate) => candidate.id === mapping.id),
       ...mapping,
       scoreBreakdown: mapping.scoreBreakdown && "evidence" in mapping.scoreBreakdown
         ? legacyScoreBreakdown(mapping.scoreBreakdown as unknown as Record<string, number>)
         : mapping.scoreBreakdown,
     })),
+    mappingOmissions: arrayOr(source.mappingOmissions, fallback.mappingOmissions),
     mappingFeedback: arrayOr(source.mappingFeedback, fallback.mappingFeedback),
     strategicVectors: arrayOr(source.strategicVectors, fallback.strategicVectors),
     agentRuns: arrayOr(source.agentRuns, fallback.agentRuns),
@@ -611,6 +685,23 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     if (!mapping.evidence.length || !mapping.rationale.trim()) add("MAPPING-EVIDENCE-001", "mapping", mapping.id, "Mapping evidence or rationale is missing.", "evidence", "Add a source excerpt and explain the relationship.");
     if (!workspace.skills.some((skill) => skill.id === mapping.skillId && skill.status === "approved")) add("MAPPING-CATALOG-001", "mapping", mapping.id, "Mapping is not grounded in an approved skill.", "skillId", "Select an approved catalog skill or route the skill proposal for approval.");
     if (mapping.overrideReason === "") add("MAPPING-OVERRIDE-001", "mapping", mapping.id, "A reviewer override requires a reason.", "overrideReason", "Record the evidence-based override rationale.");
+    const job = workspace.jobDescriptions.find((candidate) => candidate.id === mapping.jobDescriptionId);
+    const evidenceIds = new Set([...(job?.evidenceSegments || []).map((segment) => segment.id), ...workspace.evidenceRecords.map((record) => record.id)]);
+    if (mapping.source === "agent" && (!mapping.evidenceRefs?.length || mapping.evidenceRefs.some((id) => !evidenceIds.has(id)))) add("MAPPING-EVIDENCE-REF-001", "mapping", mapping.id, "Agent mapping does not resolve to direct governed job evidence.", "evidenceRefs", "Link at least one source segment or clarification evidence record from the selected job description.");
+    const scoreKeys: Array<keyof MappingScoreBreakdown> = ["semanticRelevance", "directEvidenceStrength", "responsibilityCoverage", "outcomeRelevance", "taxonomyCompatibility", "granularityCompatibility", "kflaCompatibility", "controlledToolRelevance", "proficiencyCompatibility", "approvedMappingSimilarity", "duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
+    if (!mapping.scoreBreakdown || scoreKeys.some((key) => !Number.isFinite(mapping.scoreBreakdown?.[key]) || Number(mapping.scoreBreakdown?.[key]) < 0 || Number(mapping.scoreBreakdown?.[key]) > 100)) add("MAPPING-SCORE-001", "mapping", mapping.id, "The transparent thirteen-part mapping score is incomplete or outside 0–100.", "scoreBreakdown", "Provide all ten positive dimensions and three penalties within the governed range.");
+  }
+  for (const job of workspace.jobDescriptions.filter((item) => ["analysed", "mapped", "approved"].includes(item.status))) {
+    if (!job.evidenceSegments.length) add("JOB-EVIDENCE-001", "job_description", job.id, "Analysed job description has no traceable source segments.", "evidenceSegments", "Re-run governed intake and retain source, section, location and quotation for each normalized statement.");
+    if (job.intakeFindings.some((finding) => finding.severity === "error")) add("JOB-INTAKE-QUALITY-001", "job_description", job.id, "Job intake contains unresolved blocking quality findings.", "intakeFindings", "Correct unsupported or low-quality source material before mapping.");
+  }
+  for (const omission of workspace.mappingOmissions.filter((item) => item.status !== "superseded")) {
+    const job = workspace.jobDescriptions.find((candidate) => candidate.id === omission.jobDescriptionId);
+    const evidenceIds = new Set([...(job?.evidenceSegments || []).map((segment) => segment.id), ...workspace.evidenceRecords.map((record) => record.id)]);
+    if (!job || !workspace.skills.some((skill) => skill.id === omission.skillId && skill.status === "approved") || !omission.reason.trim() || omission.evidenceRefs.some((id) => !evidenceIds.has(id))) add("MAPPING-OMISSION-001", "mapping_omission", omission.id, "Omitted candidate requires an approved skill, explanation and traceable evidence.", "evidenceRefs", "Repair the omission explanation or mark it superseded.");
+  }
+  for (const session of workspace.jobClarifications) {
+    if (!workspace.jobDescriptions.some((job) => job.id === session.jobDescriptionId) || !session.idempotencyKey.trim() || session.questions.some((question) => question.status === "answered" && (!question.answer?.trim() || !question.evidenceRecordId || !workspace.evidenceRecords.some((record) => record.id === question.evidenceRecordId)))) add("JOB-CLARIFICATION-001", "job_clarification", session.id, "Clarification answers require a job, idempotency key and governed evidence record.", "questions", "Persist each answer as an evidence record before completing the clarification.");
   }
   for (const feedback of workspace.mappingFeedback) {
     if (!workspace.mappings.some((mapping) => mapping.id === feedback.mappingId) || !feedback.reviewer.trim() || !feedback.reason.trim() || feedback.evidenceCompleteness < 0 || feedback.evidenceCompleteness > 100) add("MAPPING-FEEDBACK-001", "mapping_feedback", feedback.id, "Mapping feedback requires an existing mapping, accountable reviewer, reason and evidence completeness between 0 and 100.", "mappingId", "Link an existing mapping and complete the accountable feedback record.");

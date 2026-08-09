@@ -13,6 +13,7 @@
     "verify:mapping-evaluation": "node scripts/verify-mapping-evaluation.mjs",
     "verify:agent-policy": "node scripts/verify-agent-policy.mjs",
     "sync:n8n-v3": "node scripts/sync-n8n-v3.mjs",
+    "sync:n8n-zm01": "node scripts/sync-zm01-n8n.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

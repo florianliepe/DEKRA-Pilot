@@ -1,5 +1,7 @@
 # Control Tower architecture
 
+The evidence-first job-mapping slice is specified in [ZM-01 — Agent-guided job mapping](./zm01-agent-guided-job-mapping.md). It adds hashed multi-format intake, normalized evidence segments, save/resume clarification, direct mapping evidence references, explained omissions, approved-snapshot comparison and draft profile composition. n8n remains the working-state and orchestration boundary; GitHub JSON remains the human-approved release boundary.
+
 ## GitHub Pages decision
 
 GitHub Pages hosts only the static product shell. n8n is the protected API and
@@ -25,7 +27,7 @@ People -> GitHub Pages workbench -> n8n PMO API -> DEKRA-Pilot-Data (private)
 - `src/components/multilingual-label-workbench.tsx`: governed localized-label CRUD linked to canonical concept IDs.
 - `src/components/skill-designer.tsx`: role-profile CRUD and lifecycle control, including dependency previews and immutable version recording.
 - `src/components/controlled-tool-workbench.tsx`: governed business-tool catalogue lifecycle, dependency analysis and mapping-reference migration.
-- `src/components/job-mapping-workbench.tsx`: thirteen-part scoring, source-grounded evidence completeness, accountable mapping feedback and confidence calibration.
+- `src/components/job-mapping-workbench.tsx`: governed job intake, evidence/normalization comparison, save/resume clarification, thirteen-part scoring, omissions, approved-snapshot comparison, profile diagnostics and accountable mapping review.
 - `src/components/taxonomy-standard-workbench.tsx`: governed hierarchy and relationship CRUD, including duplicate, archive, restore and deprecate actions with accountable reasons.
 - `src/components/governance-workbench.tsx`: source, evidence and validation-rule lifecycle with duplicate, archive, restore, deprecate, replace and merge operations; source merges migrate dependent evidence.
 - n8n: authentication, schema enforcement, revision control and GitHub writes.

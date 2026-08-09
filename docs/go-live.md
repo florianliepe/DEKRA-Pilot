@@ -19,6 +19,8 @@ in React memory and cleared when the page is refreshed or closed.
 
 ## 1. Configure the n8n workflow
 
+For the ZM-01 Skill Designer flow, synchronize and import `docs/n8n-skill-designer-v3.workflow.json` after running `npm run sync:n8n-v3` and `npm run sync:n8n-zm01`. The operations `skill.ingest_job`, `skill.clarify_job` and `skill.map_job` require idempotency keys and persist drafts only. See [the ZM-01 runbook](./zm01-agent-guided-job-mapping.md).
+
 Use the active `PMO Assistant` workflow and keep its production webhook path.
 The webhook must accept the `x-n8n-webhook-secret` Header Auth credential and
 allow the origin `https://florianliepe.github.io`.
