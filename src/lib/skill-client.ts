@@ -2,7 +2,7 @@ import { extractEvidence } from "./n8n-client";
 import type { ReleaseManifest, SkillWorkspace } from "./skill-schema";
 
 const DEFAULT_SKILL_WEBHOOK_URL =
-  "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-orchestrator-v3";
+  "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-orchestrator-v3-governed";
 
 export type SkillWorkflowResponse = {
   ok?: boolean;

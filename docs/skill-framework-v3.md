@@ -116,7 +116,7 @@ Workflow artifacts:
 
 Active isolated production workflows:
 
-- Orchestrator v3: `1jgGJdy3wXW6kH87` → `/webhook/skill-designer-orchestrator-v3`
+- Governed orchestrator v3: `etuCxjr2u5bPYqP2` → `/webhook/skill-designer-orchestrator-v3-governed`
 - Atomic publisher v3: `d8RFwzlJJHxBv2HI` → `/webhook/skill-designer-publisher-v3`
 
 Both workflows were imported from commit `4de21ab`, retained the existing header-auth and GitHub credential bindings, and were published before the frontend defaults moved to the `-v3` paths. An unauthenticated or incorrect-secret request returns HTTP 403 by design; complete the authenticated read/save validation with the current shared pilot password.

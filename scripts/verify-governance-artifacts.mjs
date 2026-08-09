@@ -40,7 +40,7 @@ const framework = json("data/framework-config.json");
 if (Object.keys(framework.mappingWeights || {}).length !== 13) throw new Error("Framework configuration must contain all thirteen mapping weights.");
 
 const workflows = [
-  ["docs/n8n-skill-designer-v3.workflow.json", "skill-designer-orchestrator-v3"],
+  ["docs/n8n-skill-designer-v3.workflow.json", "skill-designer-orchestrator-v3-governed"],
   ["docs/n8n-skill-publisher-v3.workflow.json", "skill-designer-publisher-v3"],
 ];
 for (const [path, expectedWebhook] of workflows) {
