@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, applySkillLifecycle, assessElicitationSyntax, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, applySkillLifecycle, assessElicitationSyntax, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus, validateAgentToolContract } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -192,6 +192,20 @@ test("defines eleven permissioned and auditable agent tools", () => {
     expect(tool.auditRequirements).toContain("correlationId");
     expect(tool.version).toMatch(/^\d+\.\d+\.\d+$/);
   }
+});
+
+test("validates the complete callable contract before a tool can be activated", () => {
+  const valid = structuredClone(bootstrapSkillWorkspace.agentTools[0]);
+  expect(validateAgentToolContract(valid)).toEqual([]);
+  const invalid = { ...valid, errorContract: { ...valid.errorContract, redactInputs: false }, auditRequirements: ["correlationId"], allowedDataClassifications: ["licensed" as const] };
+  expect(validateAgentToolContract(invalid)).toEqual(expect.arrayContaining([
+    expect.stringContaining("non-licensed"),
+    expect.stringContaining("redact inputs"),
+    expect.stringContaining("Audit requirements"),
+  ]));
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  workspace.agentTools[0] = invalid;
+  expect(authorizeAgentToolCall(workspace, invalid.id, { permissions: [invalid.requiredPermission], dataClassification: "internal", action: "execute", actingUser: "Policy Tester", correlationId: "POLICY-INVALID", inputRef: "test://invalid" })).toMatchObject({ allowed: false, code: "TOOL_CONTRACT_INVALID" });
 });
 
 test("publishes a fully expanded deny-by-default agent-tool registry", () => {

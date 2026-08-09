@@ -56,6 +56,7 @@ for (const [path, expectedWebhook] of workflows) {
   if (path.includes("designer") && ["skill.ingest_job", "skill.clarify_job", "mapping_omissions", "evidenceRefs", "zm01Receipts", "rate limit exceeded", "ZM-01 JOB MAPPING CONTRACT"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-01 intake, clarification, mapping or recovery contract.");
   if (path.includes("designer") && ["Working revision conflict", "expectedRevision", "skill.save", "idempotencyKey"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-02 optimistic concurrency or idempotent save contract.");
   if (path.includes("designer") && ["ZM-03 ELICITATION CONTRACT", "fieldEvidence", "elicitation_assessment", "elicitation.ai_", "skill.elicitation"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-03 evidence-lineage, elicitation or draft-boundary contract.");
+  if (path.includes("designer") && ["ZM-04 AGENT TOOL CONTRACT", "const implementations={", "job_parser", "review_package_generator", "zm04ToolRates", "TOOL_IMPLEMENTATION_MISSING", "RATE_LIMITED", "tool_outputs"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-04 deterministic tool implementations, runtime limits or output references.");
 }
 
 console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 2 n8n v3 workflows.`);

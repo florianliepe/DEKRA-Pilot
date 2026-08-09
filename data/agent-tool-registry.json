@@ -14,106 +14,798 @@
       "id": "job_parser",
       "name": "Job parser",
       "purpose": "Normalize a job description into responsibilities, outcomes, context and constraints.",
-      "inputSchema": { "type": "object", "required": ["sourceRef"], "properties": { "sourceRef": { "type": "string", "description": "Reference to untrusted source evidence." } } },
-      "outputSchema": { "type": "object", "required": ["jobModelRef"], "properties": { "jobModelRef": { "type": "string", "description": "Reference to the normalized draft job model." } } },
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "sourceRef"
+        ],
+        "properties": {
+          "sourceRef": {
+            "type": "string",
+            "description": "Reference to untrusted source evidence."
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "jobModelRef"
+        ],
+        "properties": {
+          "jobModelRef": {
+            "type": "string",
+            "description": "Reference to the normalized draft job model."
+          }
+        }
+      },
       "requiredPermission": "skill.job.parse",
-      "allowedDataClassifications": ["public", "internal", "confidential"],
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
       "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] },
-      "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"],
-      "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "evidence_extractor", "name": "Evidence extractor", "purpose": "Extract traceable evidence spans without treating source instructions as commands.",
-      "inputSchema": { "type": "object", "required": ["sourceRef"], "properties": { "sourceRef": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["evidenceRef"], "properties": { "evidenceRef": { "type": "string" } } },
-      "requiredPermission": "skill.evidence.extract", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "evidence_extractor",
+      "name": "Evidence extractor",
+      "purpose": "Extract traceable evidence spans without treating source instructions as commands.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "sourceRef"
+        ],
+        "properties": {
+          "sourceRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "evidenceRef"
+        ],
+        "properties": {
+          "evidenceRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.evidence.extract",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "taxonomy_search", "name": "Taxonomy search", "purpose": "Search approved canonical skills and relationships.",
-      "inputSchema": { "type": "object", "required": ["query"], "properties": { "query": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["matchesRef"], "properties": { "matchesRef": { "type": "string" } } },
-      "requiredPermission": "skill.taxonomy.read", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "taxonomy_search",
+      "name": "Taxonomy search",
+      "purpose": "Search approved canonical skills and relationships.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "matchesRef"
+        ],
+        "properties": {
+          "matchesRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.taxonomy.read",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "skill_similarity_search", "name": "Skill similarity search", "purpose": "Detect semantic overlap, duplicates and aliases.",
-      "inputSchema": { "type": "object", "required": ["candidateRef"], "properties": { "candidateRef": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["similaritiesRef"], "properties": { "similaritiesRef": { "type": "string" } } },
-      "requiredPermission": "skill.taxonomy.read", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "skill_similarity_search",
+      "name": "Skill similarity search",
+      "purpose": "Detect semantic overlap, duplicates and aliases.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "candidateRef"
+        ],
+        "properties": {
+          "candidateRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "similaritiesRef"
+        ],
+        "properties": {
+          "similaritiesRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.taxonomy.read",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "syntax_validator", "name": "Syntax validator", "purpose": "Validate action, object and outcome syntax.",
-      "inputSchema": { "type": "object", "required": ["candidateRef"], "properties": { "candidateRef": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["findingsRef"], "properties": { "findingsRef": { "type": "string" } } },
-      "requiredPermission": "skill.validation.run", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "syntax_validator",
+      "name": "Syntax validator",
+      "purpose": "Validate action, object and outcome syntax.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "candidateRef"
+        ],
+        "properties": {
+          "candidateRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "findingsRef"
+        ],
+        "properties": {
+          "findingsRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.validation.run",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "granularity_validator", "name": "Granularity validator", "purpose": "Detect task-level, composite or umbrella concepts.",
-      "inputSchema": { "type": "object", "required": ["candidateRef"], "properties": { "candidateRef": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["findingsRef"], "properties": { "findingsRef": { "type": "string" } } },
-      "requiredPermission": "skill.validation.run", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "granularity_validator",
+      "name": "Granularity validator",
+      "purpose": "Detect task-level, composite or umbrella concepts.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "candidateRef"
+        ],
+        "properties": {
+          "candidateRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "findingsRef"
+        ],
+        "properties": {
+          "findingsRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.validation.run",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "kfla_lookup", "name": "KFLA lookup", "purpose": "Read public and internal KFLA metadata while excluding licensed content.",
-      "inputSchema": { "type": "object", "required": ["query"], "properties": { "query": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["competenciesRef"], "properties": { "competenciesRef": { "type": "string" } } },
-      "requiredPermission": "skill.kfla.read_public", "allowedDataClassifications": ["public", "internal"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "kfla_lookup",
+      "name": "KFLA lookup",
+      "purpose": "Read public and internal KFLA metadata while excluding licensed content.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "competenciesRef"
+        ],
+        "properties": {
+          "competenciesRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.kfla.read_public",
+      "allowedDataClassifications": [
+        "public",
+        "internal"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "controlled_tool_lookup", "name": "Controlled-tool lookup", "purpose": "Read approved business tools and their usage boundaries.",
-      "inputSchema": { "type": "object", "required": ["query"], "properties": { "query": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["toolsRef"], "properties": { "toolsRef": { "type": "string" } } },
-      "requiredPermission": "skill.tools.read", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "controlled_tool_lookup",
+      "name": "Controlled-tool lookup",
+      "purpose": "Read approved business tools and their usage boundaries.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "toolsRef"
+        ],
+        "properties": {
+          "toolsRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.tools.read",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "mapping_scorer", "name": "Mapping scorer", "purpose": "Calculate the versioned thirteen-part mapping score.",
-      "inputSchema": { "type": "object", "required": ["mappingRef", "evidenceRef"], "properties": { "mappingRef": { "type": "string" }, "evidenceRef": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["scoreRef"], "properties": { "scoreRef": { "type": "string" } } },
-      "requiredPermission": "skill.mapping.score", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "mapping_scorer",
+      "name": "Mapping scorer",
+      "purpose": "Calculate the versioned thirteen-part mapping score.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "mappingRef",
+          "evidenceRef"
+        ],
+        "properties": {
+          "mappingRef": {
+            "type": "string"
+          },
+          "evidenceRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "scoreRef"
+        ],
+        "properties": {
+          "scoreRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.mapping.score",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "draft_suggestion_writer", "name": "Draft-suggestion writer", "purpose": "Create a draft suggestion in the human review queue.",
-      "inputSchema": { "type": "object", "required": ["suggestionRef"], "properties": { "suggestionRef": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["reviewItemRef"], "properties": { "reviewItemRef": { "type": "string" } } },
-      "requiredPermission": "skill.review.draft", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "draft_suggestion_writer",
+      "name": "Draft-suggestion writer",
+      "purpose": "Create a draft suggestion in the human review queue.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "suggestionRef"
+        ],
+        "properties": {
+          "suggestionRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "reviewItemRef"
+        ],
+        "properties": {
+          "reviewItemRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.review.draft",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     },
     {
-      "id": "review_package_generator", "name": "Review-package generator", "purpose": "Prepare evidence, validation and impact context for an accountable human decision.",
-      "inputSchema": { "type": "object", "required": ["reviewItemRef"], "properties": { "reviewItemRef": { "type": "string" } } },
-      "outputSchema": { "type": "object", "required": ["packageRef"], "properties": { "packageRef": { "type": "string" } } },
-      "requiredPermission": "skill.review.prepare", "allowedDataClassifications": ["public", "internal", "confidential"], "timeoutMs": 30000,
-      "retryPolicy": { "maxAttempts": 2, "backoffMs": 750, "retryableErrors": ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] }, "rateLimit": { "requests": 30, "windowSeconds": 60 },
-      "errorContract": { "codes": ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], "redactInputs": true },
-      "auditRequirements": ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"], "version": "1.0.0", "lifecycleStatus": "active", "owner": "DEKRA Skill Governance", "allowedAgentActions": ["execute", "audit"]
+      "id": "review_package_generator",
+      "name": "Review-package generator",
+      "purpose": "Prepare evidence, validation and impact context for an accountable human decision.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "reviewItemRef"
+        ],
+        "properties": {
+          "reviewItemRef": {
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "packageRef"
+        ],
+        "properties": {
+          "packageRef": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredPermission": "skill.review.prepare",
+      "allowedDataClassifications": [
+        "public",
+        "internal",
+        "confidential"
+      ],
+      "timeoutMs": 30000,
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffMs": 750,
+        "retryableErrors": [
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE"
+        ]
+      },
+      "rateLimit": {
+        "requests": 30,
+        "windowSeconds": 60
+      },
+      "errorContract": {
+        "codes": [
+          "INVALID_INPUT",
+          "PERMISSION_DENIED",
+          "TIMEOUT",
+          "UPSTREAM_UNAVAILABLE",
+          "RATE_LIMITED",
+          "TOOL_IMPLEMENTATION_MISSING"
+        ],
+        "redactInputs": true
+      },
+      "auditRequirements": [
+        "correlationId",
+        "actingUser",
+        "inputRef",
+        "outputRef",
+        "durationMs",
+        "result"
+      ],
+      "version": "1.0.0",
+      "lifecycleStatus": "active",
+      "owner": "DEKRA Skill Governance",
+      "allowedAgentActions": [
+        "execute",
+        "audit"
+      ]
     }
   ]
 }

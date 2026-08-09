@@ -20,4 +20,6 @@ const afterSession = first.workspace?.elicitationSessions?.find((item) => item.i
 if (JSON.stringify(afterSession?.fieldEvidence || {}) !== evidenceBefore) throw new Error("Live AI validation changed protected evidence lineage.");
 if (!replay.replayed || replay.workspace?.revision !== first.workspace?.revision) throw new Error("Live elicitation idempotency replay did not preserve the revision.");
 if (!first.workspace?.objectVersions?.some((item) => item.entityId === session.id && item.action === "elicitation.ai_validate")) throw new Error("Live elicitation validation did not record immutable history.");
-console.log(`ZM-03 live smoke passed at revision ${first.workspace.revision}; evidence protected and duplicate request replayed.`);
+const invocations = first.agentRun?.invocations || [];
+if (!invocations.length || invocations.some((item) => item.result !== "success" || !item.outputRef?.startsWith("working://agent-tools/"))) throw new Error("Live agent-tool implementations did not return successful opaque output references.");
+console.log(`ZM-03/04 live smoke passed at revision ${first.workspace.revision}; ${invocations.length} tool implementations succeeded, evidence was protected and the duplicate request replayed.`);

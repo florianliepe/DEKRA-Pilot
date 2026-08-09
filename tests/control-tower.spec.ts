@@ -552,6 +552,11 @@ test("governs agent-tool edits and lifecycle through accountable review", async 
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Governance" }).click();
   await page.getByRole("button", { name: "Agent tools" }).click();
+  await expect(page.getByText("Deny", { exact: true })).toBeVisible();
+  await page.locator(".agent-tool-cards > button").filter({ hasText: "Mapping scorer" }).click();
+  await page.getByLabel("Data classification").selectOption("licensed");
+  await page.getByRole("button", { name: "Simulate authorization" }).click();
+  await expect(page.getByText("DATA_CLASSIFICATION_DENIED", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Edit Mapping scorer" }).click();
   await page.getByLabel("Version", { exact: true }).fill("1.1.0");
   await page.getByLabel("Accountable actor").fill("Agent Platform Owner");

@@ -51,10 +51,25 @@ export type AgentToolCallContext = {
 
 export type AgentToolAuthorization = {
   allowed: boolean;
-  code: "ALLOWED" | "TOOL_NOT_FOUND" | "TOOL_INACTIVE" | "PERMISSION_DENIED" | "DATA_CLASSIFICATION_DENIED" | "ACTION_DENIED" | "INVALID_CONTEXT";
+  code: "ALLOWED" | "TOOL_NOT_FOUND" | "TOOL_INACTIVE" | "TOOL_CONTRACT_INVALID" | "PERMISSION_DENIED" | "DATA_CLASSIFICATION_DENIED" | "ACTION_DENIED" | "INVALID_CONTEXT";
   reason: string;
   invocation: AgentToolInvocation;
 };
+
+export function validateAgentToolContract(tool: AgentToolDefinition): string[] {
+  const findings: string[] = [];
+  const schemaComplete = (schema: AgentToolDefinition["inputSchema"]) => schema?.type === "object" && Object.keys(schema.properties || {}).length > 0 && (schema.required || []).every((field) => Boolean(schema.properties[field]));
+  if (!/^[a-z][a-z0-9_]+$/.test(tool.id)) findings.push("Stable tool ID must use lowercase snake_case.");
+  if (!tool.name.trim() || tool.purpose.trim().length < 12) findings.push("Name and a meaningful purpose are required.");
+  if (!schemaComplete(tool.inputSchema) || !schemaComplete(tool.outputSchema)) findings.push("Input and output schemas need properties for every required field.");
+  if (!/^skill\./.test(tool.requiredPermission)) findings.push("Permission must start with skill.");
+  if (!tool.allowedDataClassifications.length || tool.allowedDataClassifications.includes("licensed")) findings.push("At least one non-licensed data classification is required.");
+  if (tool.timeoutMs < 1 || tool.retryPolicy.maxAttempts < 1 || tool.retryPolicy.backoffMs < 0 || !tool.retryPolicy.retryableErrors.length || tool.rateLimit.requests < 1 || tool.rateLimit.windowSeconds < 1) findings.push("Timeout, retry and rate-limit policies are incomplete.");
+  if (!tool.errorContract.redactInputs || !tool.errorContract.codes.length) findings.push("The error contract must redact inputs and define error codes.");
+  if (!["correlationId", "actingUser", "inputRef", "durationMs", "result"].every((field) => tool.auditRequirements.includes(field))) findings.push("Audit requirements must include identity, correlation, input reference, duration and result.");
+  if (!/^\d+\.\d+\.\d+$/.test(tool.version) || !tool.owner.trim() || !tool.allowedAgentActions.length) findings.push("Semantic version, owner and allowed actions are required.");
+  return findings;
+}
 
 export function authorizeAgentToolCall(workspace: SkillWorkspace, toolId: string, context: AgentToolCallContext): AgentToolAuthorization {
   const tool = workspace.agentTools.find((candidate) => candidate.id === toolId);
@@ -78,6 +93,8 @@ export function authorizeAgentToolCall(workspace: SkillWorkspace, toolId: string
   if (!context.actingUser.trim() || !context.correlationId.trim() || !context.inputRef.trim()) return denied("INVALID_CONTEXT", "Acting user, correlation ID and an opaque input reference are required.");
   if (!tool) return denied("TOOL_NOT_FOUND", "The tool is not present in the allowlisted registry.");
   if (tool.lifecycleStatus !== "active") return denied("TOOL_INACTIVE", `Tool lifecycle is ${tool.lifecycleStatus}.`);
+  const contractFindings = validateAgentToolContract(tool);
+  if (contractFindings.length) return denied("TOOL_CONTRACT_INVALID", contractFindings[0]);
   if (!context.permissions.includes(tool.requiredPermission)) return denied("PERMISSION_DENIED", `Missing permission ${tool.requiredPermission}.`);
   if (context.dataClassification === "licensed" || !tool.allowedDataClassifications.includes(context.dataClassification)) return denied("DATA_CLASSIFICATION_DENIED", `${context.dataClassification} data is outside the tool contract.`);
   if (!tool.allowedAgentActions.includes(context.action)) return denied("ACTION_DENIED", `Action ${context.action} is not allowlisted.`);
@@ -441,6 +458,8 @@ function agentToolReview(workspace: SkillWorkspace, tool: AgentToolDefinition, a
 export function saveAgentToolDefinition(workspace: SkillWorkspace, tool: AgentToolDefinition, actor: string, reason: string): SkillWorkspace {
   if (!actor.trim()) throw new Error("An accountable actor is required.");
   if (!reason.trim()) throw new Error("A governance reason is required.");
+  const contractFindings = validateAgentToolContract(tool);
+  if (contractFindings.length) throw new Error(contractFindings.join(" "));
   const exists = workspace.agentTools.some((candidate) => candidate.id === tool.id);
   const value = { ...tool, lifecycleStatus: "draft" as const };
   const review = agentToolReview(workspace, value, actor.trim(), reason.trim());

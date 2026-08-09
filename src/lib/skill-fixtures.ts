@@ -168,7 +168,7 @@ const agentTool = (id: string, name: string, purpose: string, input: string[], o
   timeoutMs: 30000,
   retryPolicy: { maxAttempts: 2, backoffMs: 750, retryableErrors: ["TIMEOUT", "UPSTREAM_UNAVAILABLE"] },
   rateLimit: { requests: 30, windowSeconds: 60 },
-  errorContract: { codes: ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE"], redactInputs: true },
+  errorContract: { codes: ["INVALID_INPUT", "PERMISSION_DENIED", "TIMEOUT", "UPSTREAM_UNAVAILABLE", "RATE_LIMITED", "TOOL_IMPLEMENTATION_MISSING"], redactInputs: true },
   auditRequirements: ["correlationId", "actingUser", "inputRef", "outputRef", "durationMs", "result"],
   version: "1.0.0", lifecycleStatus: "active", owner: "DEKRA Skill Governance", allowedAgentActions: ["execute", "audit"],
 });
