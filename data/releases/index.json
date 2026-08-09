@@ -1,7 +1,15 @@
 {
-  "latestRevision": 1,
-  "latestManifest": "revision-1.manifest.json",
+  "latestRevision": 2,
+  "latestManifest": "revision-2.manifest.json",
   "releases": [
+    {
+      "revision": 2,
+      "state": "published",
+      "manifest": "revision-2.manifest.json",
+      "approvedAt": "2026-08-09T20:19:27.807Z",
+      "approvedBy": "Florian Liepe",
+      "idempotencyKey": "release-2-c880ea91"
+    },
     {
       "revision": 1,
       "state": "published",

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
-  "revision": 1,
-  "updatedAt": "2026-08-08T10:12:09.957Z",
+  "revision": 2,
+  "updatedAt": "2026-08-09T20:19:27.807Z",
   "domains": [
     {
       "id": "DOM-DT",
@@ -126,7 +126,7 @@
       "type": "new_skill",
       "summary": "Agent normalized three task statements into one durable capability.",
       "confidence": 88,
-      "evidence": "SBO design workshop · 3 excerpts",
+      "evidence": "SBO design workshop � 3 excerpts",
       "status": "accepted",
       "decisionBy": "Florian Liepe",
       "decisionAt": "2026-08-08T09:55:15.933Z",
@@ -134,16 +134,59 @@
     },
     {
       "id": "REV-002",
-      "title": "Dashboard Design → Data Visualization",
+      "title": "Dashboard Design ? Data Visualization",
       "type": "duplicate",
       "summary": "Alias candidate detected against an approved skill.",
       "confidence": 94,
-      "evidence": "Global Reporting Analyst JD · line 18",
+      "evidence": "Global Reporting Analyst JD � line 18",
       "status": "merged",
       "mergeTargetId": "SK-DV",
       "decisionBy": "Florian Liepe",
       "decisionAt": "2026-08-08T09:55:16.064Z",
       "decisionReason": "Reasonable duplicate resolution; retain Data Visualization as the canonical skill and Dashboard Design as its alias."
+    },
+    {
+      "id": "REV-003",
+      "entityId": "ROLE-DATA",
+      "title": "Review Global Reporting Analyst profile",
+      "type": "profile",
+      "summary": "Agent-composed role profile grounded in the selected job description and approved taxonomy.",
+      "confidence": 86,
+      "evidence": "Global Reporting Analyst JD � responsibilities and outcomes",
+      "explanation": "The proposed profile remains in review until an accountable human accepts, defers or rejects it.",
+      "frameworkVersion": "3.1.0",
+      "rulesVersion": "rules-3.1.0",
+      "status": "deferred",
+      "payload": {
+        "operation": "profile_review",
+        "jobDescriptionId": "JD-DATA",
+        "requestedBy": "skill-design-agent"
+      },
+      "decisionBy": "Florian Liepe",
+      "decisionAt": "2026-08-09T20:15:39.794Z",
+      "decisionReason": "Review Curiosity and profile weights before approval."
+    },
+    {
+      "id": "REV-004",
+      "entityId": "MAP-MC",
+      "title": "Review Managing Complexity mapping",
+      "type": "mapping",
+      "summary": "Explaining material performance movements requires structuring complex information.",
+      "confidence": 83,
+      "evidence": "Analyse performance drivers and explain material movements.",
+      "explanation": "The evidence-grounded AI mapping remains proposed until an accountable human accepts, defers or rejects it.",
+      "frameworkVersion": "3.1.0",
+      "rulesVersion": "rules-3.1.0",
+      "status": "accepted",
+      "payload": {
+        "operation": "mapping_review",
+        "jobDescriptionId": "JD-DATA",
+        "skillId": "SK-MC",
+        "requestedBy": "skill-design-agent"
+      },
+      "decisionBy": "Florian Liepe",
+      "decisionAt": "2026-08-09T20:15:54.377Z",
+      "decisionReason": "Evidence and mapping rationale are reasonable."
     }
   ],
   "kflaFactors": [
@@ -3014,6 +3057,42 @@
       "scoreVersion": "mapping-2.0.0",
       "source": "agent",
       "status": "approved"
+    },
+    {
+      "id": "MAP-MC",
+      "jobDescriptionId": "JD-DATA",
+      "skillId": "SK-MC",
+      "targetLevel": 2,
+      "weight": 20,
+      "critical": true,
+      "relevance": 84,
+      "confidence": 83,
+      "rationale": "Explaining material performance movements requires structuring complex information.",
+      "evidence": [
+        "Analyse performance drivers and explain material movements."
+      ],
+      "strategicVectorIds": [
+        "VEC-LEAD"
+      ],
+      "toolIds": [],
+      "scoreBreakdown": {
+        "semanticRelevance": 87,
+        "directEvidenceStrength": 86,
+        "responsibilityCoverage": 84,
+        "outcomeRelevance": 82,
+        "taxonomyCompatibility": 88,
+        "granularityCompatibility": 85,
+        "kflaCompatibility": 92,
+        "controlledToolRelevance": 40,
+        "proficiencyCompatibility": 78,
+        "approvedMappingSimilarity": 80,
+        "duplicatePenalty": 0,
+        "contradictionPenalty": 0,
+        "missingEvidencePenalty": 0
+      },
+      "scoreVersion": "mapping-2.0.0",
+      "source": "agent",
+      "status": "approved"
     }
   ],
   "strategicVectors": [
@@ -3021,7 +3100,7 @@
       "id": "VEC-AI",
       "name": "AI & Data",
       "description": "Use trustworthy data and AI to improve decisions, services and productivity.",
-      "horizon": "2026–2029",
+      "horizon": "2026-2029",
       "priority": "accelerate",
       "skillIds": [
         "SK-DV"
@@ -3032,7 +3111,7 @@
       "id": "VEC-DIG",
       "name": "Digitalisation",
       "description": "Digitise journeys and operations through scalable products and platforms.",
-      "horizon": "2026–2029",
+      "horizon": "2026-2029",
       "priority": "accelerate",
       "skillIds": [],
       "status": "draft"
@@ -3041,7 +3120,7 @@
       "id": "VEC-CUST",
       "name": "Customer",
       "description": "Translate customer and market insight into differentiated value.",
-      "horizon": "2026–2029",
+      "horizon": "2026-2029",
       "priority": "differentiate",
       "skillIds": [],
       "status": "draft"
@@ -3050,7 +3129,7 @@
       "id": "VEC-OPS",
       "name": "Operational Excellence",
       "description": "Improve quality, flow, reliability and cost through disciplined systems.",
-      "horizon": "2026–2029",
+      "horizon": "2026-2029",
       "priority": "foundational",
       "skillIds": [],
       "status": "approved"
@@ -3059,7 +3138,7 @@
       "id": "VEC-SUS",
       "name": "Sustainability",
       "description": "Embed environmental and social outcomes into business decisions.",
-      "horizon": "2026–2029",
+      "horizon": "2026-2029",
       "priority": "differentiate",
       "skillIds": [],
       "status": "draft"
@@ -3068,7 +3147,7 @@
       "id": "VEC-LEAD",
       "name": "Leadership",
       "description": "Mobilise people through clarity, trust, learning and accountable delivery.",
-      "horizon": "2026–2029",
+      "horizon": "2026-2029",
       "priority": "foundational",
       "skillIds": [
         "SK-MC"
@@ -4198,7 +4277,7 @@
       "entityId": "SK-DV",
       "language": "de",
       "label": "Datenvisualisierung",
-      "description": "Stellt Geschäftsdaten verständlich dar, um Entscheidungen zu unterstützen.",
+      "description": "Stellt Gesch�ftsdaten verst�ndlich dar, um Entscheidungen zu unterst�tzen.",
       "sourceClassification": "organization_authored",
       "licenceStatus": "internal_explanation",
       "status": "approved"
@@ -4208,7 +4287,7 @@
       "entityType": "kfla_competency",
       "entityId": "KFLA-08",
       "language": "de",
-      "label": "Komplexität bewältigen",
+      "label": "Komplexit�t bew�ltigen",
       "description": "Intern erstellte Navigationsbezeichnung; keine lizenzierte Korn-Ferry-Definition.",
       "sourceClassification": "organization_authored",
       "licenceStatus": "internal_explanation",
@@ -4217,14 +4296,49 @@
   ],
   "auditLog": [
     {
-      "id": "AUD-REL-1",
-      "at": "2026-08-08T10:12:09.957Z",
+      "id": "AUD-REL-2",
+      "at": "2026-08-09T20:19:27.807Z",
       "actor": "human",
       "actorId": "Florian Liepe",
       "action": "workspace.released",
       "entityType": "skill_workspace",
-      "entityId": "revision-1",
-      "summary": "Approved revision 1 committed atomically through n8n.",
+      "entityId": "revision-2",
+      "summary": "Approved revision 2 committed atomically through n8n.",
+      "frameworkVersion": "3.1.0"
+    },
+    {
+      "id": "AUD-REV-004-2026-08-09T20:15:54.377Z",
+      "at": "2026-08-09T20:15:54.377Z",
+      "actor": "human",
+      "actorId": "Florian Liepe",
+      "action": "review.accepted",
+      "entityType": "mapping",
+      "entityId": "MAP-MC",
+      "summary": "Review Managing Complexity mapping: Evidence and mapping rationale are reasonable.",
+      "frameworkVersion": "3.1.0"
+    },
+    {
+      "id": "AUD-REV-003-2026-08-09T20:15:39.794Z",
+      "at": "2026-08-09T20:15:39.794Z",
+      "actor": "human",
+      "actorId": "Florian Liepe",
+      "action": "review.deferred",
+      "entityType": "profile",
+      "entityId": "ROLE-DATA",
+      "summary": "Review Global Reporting Analyst profile: Review Curiosity and profile weights before approval.",
+      "frameworkVersion": "3.1.0"
+    },
+    {
+      "id": "AUD-release-REL-0001-1",
+      "at": "2026-08-08T10:16:58.400Z",
+      "actor": "human",
+      "actorId": "Florian Liepe",
+      "action": "release.receipt_recorded",
+      "entityType": "release",
+      "entityId": "REL-0001",
+      "summary": "release.receipt_recorded recorded as version 1.",
+      "beforeVersion": 0,
+      "afterVersion": 1,
       "frameworkVersion": "3.1.0"
     },
     {
@@ -4235,7 +4349,7 @@
       "action": "review.merged",
       "entityType": "duplicate",
       "entityId": "REV-002",
-      "summary": "Dashboard Design → Data Visualization: Reasonable duplicate resolution; retain Data Visualization as the canonical skill and Dashboard Design as its alias."
+      "summary": "Dashboard Design ? Data Visualization: Reasonable duplicate resolution; retain Data Visualization as the canonical skill and Dashboard Design as its alias."
     },
     {
       "id": "AUD-REV-001-2026-08-08T09:55:15.933Z",
@@ -4259,6 +4373,48 @@
   ],
   "objectVersions": [],
   "releaseHistory": [
+    {
+      "id": "REL-0002",
+      "revision": 2,
+      "schemaVersion": 3,
+      "frameworkVersion": "3.1.0",
+      "rulesVersion": "rules-3.1.0",
+      "promptVersion": "skill-agent-2.0.0",
+      "mappingScoreVersion": "mapping-2.0.0",
+      "state": "published",
+      "approvedAt": "2026-08-09T20:19:27.807Z",
+      "approvedBy": "Florian Liepe",
+      "expectedPreviousRevision": 1,
+      "expectedGitHubSha": "3de852ea3c5d9c99a996c20123321dddf08f7610",
+      "githubPath": "data/skill-workspace.approved.json",
+      "idempotencyKey": "release-2-c880ea91",
+      "objectCounts": {
+        "domains": 2,
+        "groups": 2,
+        "relationships": 1,
+        "skills": 3,
+        "profiles": 0,
+        "kflaFactors": 4,
+        "kflaClusters": 12,
+        "kflaCompetencies": 38,
+        "jobDescriptions": 1,
+        "mappings": 2,
+        "mappingFeedback": 0,
+        "localizedLabels": 2,
+        "controlledTools": 2,
+        "agentTools": 11,
+        "validationRules": 21,
+        "proficiencyDefinitions": 4,
+        "sources": 1,
+        "evidenceRecords": 1,
+        "reviewDecisions": 4,
+        "auditEvents": 6
+      },
+      "validationSummary": {
+        "blocking": 0,
+        "warnings": 0
+      }
+    },
     {
       "id": "REL-0001",
       "revision": 1,
@@ -4299,7 +4455,8 @@
       "validationSummary": {
         "blocking": 0,
         "warnings": 0
-      }
+      },
+      "githubCommitSha": "03236c85dbe9b00685e8f5f1ebccb470623d318d"
     }
   ],
   "framework": {
@@ -4334,12 +4491,12 @@
     ]
   },
   "publication": {
-    "revision": 1,
+    "revision": 2,
     "state": "approved_release",
-    "approvedAt": "2026-08-08T10:12:09.957Z",
+    "approvedAt": "2026-08-09T20:19:27.807Z",
     "approvedBy": "Florian Liepe",
     "githubPath": "data/skill-workspace.approved.json",
-    "expectedGitHubSha": "be2004c607bab7fee428e56b9402d89862c0baee",
-    "idempotencyKey": "release-1-90f9bb46"
+    "expectedGitHubSha": "3de852ea3c5d9c99a996c20123321dddf08f7610",
+    "idempotencyKey": "release-2-c880ea91"
   }
 }
