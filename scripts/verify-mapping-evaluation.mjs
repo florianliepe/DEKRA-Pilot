@@ -8,6 +8,7 @@ const penaltyKeys = new Set(["duplicatePenalty", "contradictionPenalty", "missin
 const dimensionKeys = Object.keys(framework.mappingWeights);
 
 if (dataset.mappingModelVersion !== framework.mappingScoreVersion) throw new Error(`Dataset targets ${dataset.mappingModelVersion}, active model is ${framework.mappingScoreVersion}.`);
+if (dataset.frameworkVersion !== framework.version || dataset.rulesVersion !== framework.rulesVersion || dataset.promptVersion !== framework.promptVersion) throw new Error("Golden dataset framework, rules or prompt version has drifted from the active configuration.");
 if (dimensionKeys.length !== 13) throw new Error("The active mapping model must contain thirteen dimensions.");
 
 const score = (breakdown) => {
@@ -25,7 +26,9 @@ for (const evaluation of dataset.cases) {
   if (evaluation.minimumTopScore !== undefined && top.score < evaluation.minimumTopScore) throw new Error(`${evaluation.id}: score ${top.score} is below ${evaluation.minimumTopScore}.`);
   if (evaluation.maximumTopScore !== undefined && top.score > evaluation.maximumTopScore) throw new Error(`${evaluation.id}: score ${top.score} exceeds ${evaluation.maximumTopScore}.`);
   if (ranked.length > 1 && top.score - runnerUp < evaluation.minimumMargin) throw new Error(`${evaluation.id}: margin ${top.score - runnerUp} is below ${evaluation.minimumMargin}.`);
+  const decision = top.score >= dataset.abstentionThreshold ? "map" : "abstain";
+  if (decision !== evaluation.expectedDecision) throw new Error(`${evaluation.id}: expected ${evaluation.expectedDecision}, received ${decision} at ${top.score}.`);
   console.log(`${evaluation.id}: ${top.skillId} ${top.score}${ranked.length > 1 ? ` (margin ${top.score - runnerUp})` : ""}`);
 }
 
-console.log(`Mapping evaluation passed: ${dataset.cases.length} public-safe synthetic cases against ${dataset.mappingModelVersion}.`);
+console.log(`Mapping evaluation passed: ${dataset.cases.length} public-safe synthetic mapping and abstention cases against ${dataset.mappingModelVersion}.`);

@@ -17,6 +17,7 @@
     "sync:n8n-zm02": "node scripts/sync-zm02-n8n.mjs",
     "sync:n8n-zm03": "node scripts/sync-zm03-n8n.mjs",
     "sync:n8n-zm04": "node scripts/sync-zm04-agent-tools.mjs",
+    "sync:n8n-zm05": "node scripts/sync-zm05-mapping-quality.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

@@ -112,6 +112,24 @@ export function calculateMappingScore(breakdown: MappingScoreBreakdown, weights:
   return Math.max(0, Math.min(100, Math.round(weighted / positiveWeight)));
 }
 
+export function mappingScoreContributions(breakdown: MappingScoreBreakdown, weights: SkillWorkspace["framework"]["mappingWeights"]) {
+  const positiveWeight = (Object.keys(weights) as Array<keyof MappingScoreBreakdown>)
+    .filter((key) => !penaltyKeys.includes(key))
+    .reduce((sum, key) => sum + weights[key], 0);
+  return (Object.keys(weights) as Array<keyof MappingScoreBreakdown>).map((key) => ({
+    key,
+    value: breakdown[key],
+    weight: weights[key],
+    contribution: Math.round((breakdown[key] * weights[key] / positiveWeight) * 10) / 10,
+    direction: penaltyKeys.includes(key) ? "penalty" as const : "positive" as const,
+  }));
+}
+
+export function mappingQualityFindings(mapping: JobSkillMapping, workspace: SkillWorkspace) {
+  const candidate = { ...workspace, mappings: [...workspace.mappings.filter((item) => item.id !== mapping.id), mapping] };
+  return validateWorkspace(candidate).filter((finding) => finding.entityType === "mapping" && finding.entityId === mapping.id);
+}
+
 export function impactAnalysis(workspace: SkillWorkspace, entityId: string) {
   const skills = workspace.skills.filter((skill) => skill.groupId === entityId || skill.id === entityId);
   const skillIds = new Set(skills.map((skill) => skill.id));
@@ -916,12 +934,13 @@ export function calculateEvidenceCompleteness(mapping: JobSkillMapping, workspac
     (grounded ? 10 : 0));
 }
 
-export type MappingFeedbackRequest = Pick<MappingFeedback, "mappingId" | "decision" | "reviewer" | "reason"> & { confidenceAfter?: number };
+export type MappingFeedbackRequest = Pick<MappingFeedback, "mappingId" | "decision" | "reviewer" | "reviewerRole" | "reason"> & { confidenceAfter?: number };
 
 export function recordMappingFeedback(workspace: SkillWorkspace, request: MappingFeedbackRequest): SkillWorkspace {
   const mapping = workspace.mappings.find((candidate) => candidate.id === request.mappingId);
   if (!mapping) throw new Error("The mapping feedback target does not exist.");
   if (!request.reviewer.trim() || !request.reason.trim()) throw new Error("An accountable reviewer and reason are required.");
+  if (!["taxonomy_steward", "job_architect"].includes(request.reviewerRole)) throw new Error("Mapping feedback requires a taxonomy steward or job architect role.");
   if (request.decision === "adjusted" && (request.confidenceAfter === undefined || request.confidenceAfter < 0 || request.confidenceAfter > 100)) throw new Error("Adjusted feedback requires a calibrated confidence between 0 and 100.");
   const at = new Date().toISOString();
   const evidenceCompleteness = calculateEvidenceCompleteness(mapping, workspace);
@@ -930,6 +949,7 @@ export function recordMappingFeedback(workspace: SkillWorkspace, request: Mappin
     mappingId: mapping.id,
     decision: request.decision,
     reviewer: request.reviewer.trim(),
+    reviewerRole: request.reviewerRole,
     reason: request.reason.trim(),
     recordedAt: at,
     confidenceBefore: mapping.confidence ?? mapping.relevance,
@@ -938,6 +958,7 @@ export function recordMappingFeedback(workspace: SkillWorkspace, request: Mappin
     frameworkVersion: workspace.framework.version,
     rulesVersion: workspace.framework.rulesVersion,
     scoreVersion: mapping.scoreVersion || workspace.framework.mappingScoreVersion,
+    promptVersion: workspace.framework.promptVersion,
   };
   const updated = {
     ...mapping,
@@ -954,19 +975,20 @@ export function recordMappingFeedback(workspace: SkillWorkspace, request: Mappin
 
 export function mappingCalibrationSummary(workspace: SkillWorkspace) {
   const records = workspace.mappingFeedback;
+  const calibratable = records.filter((item) => item.decision !== "needs_evidence");
   const bins = [
     { label: "0–59", min: 0, max: 59 },
     { label: "60–79", min: 60, max: 79 },
     { label: "80–100", min: 80, max: 100 },
   ].map((bin) => {
-    const items = records.filter((item) => item.confidenceBefore >= bin.min && item.confidenceBefore <= bin.max);
+    const items = calibratable.filter((item) => item.confidenceBefore >= bin.min && item.confidenceBefore <= bin.max);
     const confirmed = items.filter((item) => item.decision === "confirmed").length;
     return { label: bin.label, count: items.length, predicted: items.length ? Math.round(items.reduce((sum, item) => sum + item.confidenceBefore, 0) / items.length) : 0, observed: items.length ? Math.round(confirmed / items.length * 100) : 0 };
   });
-  const predicted = records.length ? Math.round(records.reduce((sum, item) => sum + item.confidenceBefore, 0) / records.length) : 0;
-  const observed = records.length ? Math.round(records.filter((item) => item.decision === "confirmed").length / records.length * 100) : 0;
+  const predicted = calibratable.length ? Math.round(calibratable.reduce((sum, item) => sum + item.confidenceBefore, 0) / calibratable.length) : 0;
+  const observed = calibratable.length ? Math.round(calibratable.filter((item) => item.decision === "confirmed").length / calibratable.length * 100) : 0;
   const evidenceCompleteness = records.length ? Math.round(records.reduce((sum, item) => sum + item.evidenceCompleteness, 0) / records.length) : 0;
-  return { sampleSize: records.length, predicted, observed, calibrationGap: observed - predicted, evidenceCompleteness, bins };
+  return { sampleSize: records.length, calibratableSize: calibratable.length, needsEvidence: records.length - calibratable.length, predicted, observed, calibrationGap: observed - predicted, evidenceCompleteness, bins };
 }
 
 export function detectReleaseDrift(working: SkillWorkspace, approved: SkillWorkspace) {

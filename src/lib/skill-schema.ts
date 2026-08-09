@@ -295,6 +295,10 @@ export type JobSkillMapping = {
   status: "proposed" | "approved" | "rejected" | "deferred";
   scoreBreakdown?: MappingScoreBreakdown;
   scoreVersion?: string;
+  frameworkVersion?: string;
+  rulesVersion?: string;
+  promptVersion?: string;
+  evaluationDatasetVersion?: string;
   toolIds?: string[];
   overrideReason?: string;
   reviewerFeedback?: string;
@@ -319,6 +323,7 @@ export type MappingFeedback = {
   mappingId: string;
   decision: "confirmed" | "adjusted" | "rejected" | "needs_evidence";
   reviewer: string;
+  reviewerRole: "taxonomy_steward" | "job_architect";
   reason: string;
   recordedAt: string;
   confidenceBefore: number;
@@ -327,6 +332,30 @@ export type MappingFeedback = {
   frameworkVersion: string;
   rulesVersion: string;
   scoreVersion: string;
+  promptVersion: string;
+};
+
+export type MappingEvaluationCase = {
+  id: string;
+  title: string;
+  evidence: string;
+  expectedDecision: "map" | "abstain";
+  expectedTopCandidateId?: string;
+  minimumTopScore?: number;
+  maximumTopScore?: number;
+  minimumMargin: number;
+  candidates: Array<{ skillId: string; breakdown: MappingScoreBreakdown }>;
+};
+
+export type MappingEvaluationDataset = {
+  id: string;
+  version: string;
+  frameworkVersion: string;
+  rulesVersion: string;
+  promptVersion: string;
+  mappingModelVersion: string;
+  abstentionThreshold: number;
+  cases: MappingEvaluationCase[];
 };
 
 export type StrategicVector = {
@@ -367,6 +396,7 @@ export type AgentRun = {
   invocations?: AgentToolInvocation[];
   policyVersion?: string;
   promptVersion?: string;
+  mappingEvaluationVersion?: string;
   idempotencyKey?: string;
   retryOfRunId?: string;
   attempt?: number;
@@ -596,9 +626,17 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
       scoreBreakdown: mapping.scoreBreakdown && "evidence" in mapping.scoreBreakdown
         ? legacyScoreBreakdown(mapping.scoreBreakdown as unknown as Record<string, number>)
         : mapping.scoreBreakdown,
+      frameworkVersion: mapping.frameworkVersion || source.framework?.version || fallback.framework.version,
+      rulesVersion: mapping.rulesVersion || source.framework?.rulesVersion || fallback.framework.rulesVersion,
+      promptVersion: mapping.promptVersion || source.framework?.promptVersion || fallback.framework.promptVersion,
+      evaluationDatasetVersion: mapping.evaluationDatasetVersion || "DEKRA-MAPPING-GOLDEN-001@2.0.0",
     })),
     mappingOmissions: arrayOr(source.mappingOmissions, fallback.mappingOmissions),
-    mappingFeedback: arrayOr(source.mappingFeedback, fallback.mappingFeedback),
+    mappingFeedback: arrayOr(source.mappingFeedback, fallback.mappingFeedback).map((feedback) => ({
+      ...feedback,
+      reviewerRole: feedback.reviewerRole || "taxonomy_steward",
+      promptVersion: feedback.promptVersion || source.framework?.promptVersion || fallback.framework.promptVersion,
+    })),
     strategicVectors: arrayOr(source.strategicVectors, fallback.strategicVectors),
     agentRuns: arrayOr(source.agentRuns, fallback.agentRuns),
     tools: arrayOr(source.tools, fallback.tools),
@@ -636,6 +674,15 @@ function legacyScoreBreakdown(value: Record<string, number>): MappingScoreBreakd
     contradictionPenalty: 0,
     missingEvidencePenalty: value.evidence ? 0 : 100,
   };
+}
+
+const mappingPenaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
+
+function calculatedMappingScore(breakdown: MappingScoreBreakdown, weights: FrameworkConfig["mappingWeights"]) {
+  const keys = Object.keys(weights) as Array<keyof MappingScoreBreakdown>;
+  const positiveWeight = keys.filter((key) => !mappingPenaltyKeys.includes(key)).reduce((sum, key) => sum + weights[key], 0);
+  const weighted = keys.reduce((sum, key) => sum + (mappingPenaltyKeys.includes(key) ? -1 : 1) * Math.max(0, Math.min(100, breakdown[key])) * weights[key], 0);
+  return Math.max(0, Math.min(100, Math.round(weighted / positiveWeight)));
 }
 
 export function skillQuality(skill: Skill, workspace: SkillWorkspace) {
@@ -697,6 +744,12 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     if (mapping.source === "agent" && (!mapping.evidenceRefs?.length || mapping.evidenceRefs.some((id) => !evidenceIds.has(id)))) add("MAPPING-EVIDENCE-REF-001", "mapping", mapping.id, "Agent mapping does not resolve to direct governed job evidence.", "evidenceRefs", "Link at least one source segment or clarification evidence record from the selected job description.");
     const scoreKeys: Array<keyof MappingScoreBreakdown> = ["semanticRelevance", "directEvidenceStrength", "responsibilityCoverage", "outcomeRelevance", "taxonomyCompatibility", "granularityCompatibility", "kflaCompatibility", "controlledToolRelevance", "proficiencyCompatibility", "approvedMappingSimilarity", "duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
     if (!mapping.scoreBreakdown || scoreKeys.some((key) => !Number.isFinite(mapping.scoreBreakdown?.[key]) || Number(mapping.scoreBreakdown?.[key]) < 0 || Number(mapping.scoreBreakdown?.[key]) > 100)) add("MAPPING-SCORE-001", "mapping", mapping.id, "The transparent thirteen-part mapping score is incomplete or outside 0–100.", "scoreBreakdown", "Provide all ten positive dimensions and three penalties within the governed range.");
+    if (mapping.scoreBreakdown && mapping.scoreVersion !== workspace.framework.mappingScoreVersion) add("MAPPING-SCORE-VERSION-001", "mapping", mapping.id, "Mapping score version differs from the active framework.", "scoreVersion", "Re-evaluate the mapping against the active score model before approval.");
+    if (mapping.source === "agent" && (mapping.frameworkVersion !== workspace.framework.version || mapping.rulesVersion !== workspace.framework.rulesVersion || mapping.promptVersion !== workspace.framework.promptVersion || !mapping.evaluationDatasetVersion)) add("MAPPING-LINEAGE-001", "mapping", mapping.id, "Agent mapping lineage is incomplete or differs from the active framework, rules or prompt.", "promptVersion", "Re-evaluate the proposal and retain framework, rules, prompt, score and evaluation-dataset versions.");
+    if (mapping.scoreBreakdown) {
+      const expected = calculatedMappingScore(mapping.scoreBreakdown, workspace.framework.mappingWeights);
+      if (mapping.source === "manual" && mapping.relevance !== expected && !mapping.overrideReason?.trim()) add("MAPPING-OVERRIDE-001", "mapping", mapping.id, `Stored fit ${mapping.relevance} differs from calculated fit ${expected}.`, "overrideReason", "Restore the calculated fit or record an accountable evidence-based override reason.");
+    }
   }
   for (const job of workspace.jobDescriptions.filter((item) => ["analysed", "mapped", "approved"].includes(item.status))) {
     if (!job.evidenceSegments.length) add("JOB-EVIDENCE-001", "job_description", job.id, "Analysed job description has no traceable source segments.", "evidenceSegments", "Re-run governed intake and retain source, section, location and quotation for each normalized statement.");
@@ -711,7 +764,7 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     if (!workspace.jobDescriptions.some((job) => job.id === session.jobDescriptionId) || !session.idempotencyKey.trim() || session.questions.some((question) => question.status === "answered" && (!question.answer?.trim() || !question.evidenceRecordId || !workspace.evidenceRecords.some((record) => record.id === question.evidenceRecordId)))) add("JOB-CLARIFICATION-001", "job_clarification", session.id, "Clarification answers require a job, idempotency key and governed evidence record.", "questions", "Persist each answer as an evidence record before completing the clarification.");
   }
   for (const feedback of workspace.mappingFeedback) {
-    if (!workspace.mappings.some((mapping) => mapping.id === feedback.mappingId) || !feedback.reviewer.trim() || !feedback.reason.trim() || feedback.evidenceCompleteness < 0 || feedback.evidenceCompleteness > 100) add("MAPPING-FEEDBACK-001", "mapping_feedback", feedback.id, "Mapping feedback requires an existing mapping, accountable reviewer, reason and evidence completeness between 0 and 100.", "mappingId", "Link an existing mapping and complete the accountable feedback record.");
+    if (!workspace.mappings.some((mapping) => mapping.id === feedback.mappingId) || !feedback.reviewer.trim() || !["taxonomy_steward", "job_architect"].includes(feedback.reviewerRole) || !feedback.reason.trim() || feedback.evidenceCompleteness < 0 || feedback.evidenceCompleteness > 100 || !feedback.promptVersion) add("MAPPING-FEEDBACK-001", "mapping_feedback", feedback.id, "Mapping feedback requires an existing mapping, accountable steward or architect, reason, prompt version and valid evidence completeness.", "mappingId", "Link an existing mapping and complete the accountable feedback record.");
   }
   for (const profile of workspace.profiles.filter((item) => !["archived", "retired"].includes(item.status))) {
     const skillIds = profile.skills.map((link) => link.skillId);

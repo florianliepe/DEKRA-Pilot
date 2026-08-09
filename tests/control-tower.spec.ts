@@ -405,7 +405,7 @@ test("creates, edits and removes a job-description record", async ({ page }) => 
   await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toHaveCount(0);
 });
 
-test("shows traceable job evidence, clarification progress, omissions and approved comparison", async ({ page }) => {
+test("shows traceable job evidence, calibrated score quality, omissions and approved comparison", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();
   await expect(page.getByText("TRACEABLE JOB EVIDENCE")).toBeVisible();
@@ -413,6 +413,11 @@ test("shows traceable job evidence, clarification progress, omissions and approv
   await expect(page.getByText("SAVE / RESUME CLARIFICATION")).toBeVisible();
   await expect(page.getByText("Why candidate skills were omitted")).toBeVisible();
   await expect(page.getByText("Proposed versus approved baseline")).toBeVisible();
+  await expect(page.getByText("VERSIONED GOLDEN EVALUATION")).toBeVisible();
+  await expect(page.getByText("100% pass")).toBeVisible();
+  await expect(page.locator(".mapping-evaluation-kpis").getByText("100%", { exact: true })).toHaveCount(2);
+  await page.getByText(/13-part score/).first().click();
+  await expect(page.getByText(/Semantic Relevance · 14% weight/).first()).toBeVisible();
   await page.getByRole("button", { name: "SEG-JD-DATA-01", exact: true }).first().click();
   await expect(page.locator(".evidence-segments button.active")).toContainText("Build interactive dashboards");
 });

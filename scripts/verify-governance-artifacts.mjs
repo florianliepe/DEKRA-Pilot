@@ -38,6 +38,8 @@ for (const tool of registry.tools) {
 
 const framework = json("data/framework-config.json");
 if (Object.keys(framework.mappingWeights || {}).length !== 13) throw new Error("Framework configuration must contain all thirteen mapping weights.");
+const evaluation = json("data/evaluation/mapping-golden-baseline.json");
+if (evaluation.cases?.length < 10 || !evaluation.abstentionThreshold || evaluation.mappingModelVersion !== framework.mappingScoreVersion || evaluation.frameworkVersion !== framework.version || evaluation.rulesVersion !== framework.rulesVersion || evaluation.promptVersion !== framework.promptVersion) throw new Error("Mapping evaluation must contain at least ten version-aligned mapping and abstention cases.");
 
 const workflows = [
   ["docs/n8n-skill-designer-v3.workflow.json", "skill-designer-orchestrator-v3-governed"],
@@ -57,6 +59,7 @@ for (const [path, expectedWebhook] of workflows) {
   if (path.includes("designer") && ["Working revision conflict", "expectedRevision", "skill.save", "idempotencyKey"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-02 optimistic concurrency or idempotent save contract.");
   if (path.includes("designer") && ["ZM-03 ELICITATION CONTRACT", "fieldEvidence", "elicitation_assessment", "elicitation.ai_", "skill.elicitation"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-03 evidence-lineage, elicitation or draft-boundary contract.");
   if (path.includes("designer") && ["ZM-04 AGENT TOOL CONTRACT", "const implementations={", "job_parser", "review_package_generator", "zm04ToolRates", "TOOL_IMPLEMENTATION_MISSING", "RATE_LIMITED", "tool_outputs"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-04 deterministic tool implementations, runtime limits or output references.");
+  if (path.includes("designer") && ["ZM-05 MAPPING QUALITY CONTRACT", "MAPPING-ABSTENTION-001", "MAPPING_VALIDATION_FAILED", "mappingEvaluationVersion", "evaluationDatasetVersion", "mapping.validation_failed", "mappingWeights"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-05 weighted score, abstention, lineage or fail-closed validation contract.");
 }
 
 console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 2 n8n v3 workflows.`);

@@ -1,8 +1,12 @@
 {
   "$schema": "../schemas/mapping-evaluation.schema.json",
   "id": "DEKRA-MAPPING-GOLDEN-001",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "frameworkVersion": "3.1.0",
+  "rulesVersion": "rules-3.1.0",
+  "promptVersion": "skill-agent-2.0.0",
   "mappingModelVersion": "mapping-2.0.0",
+  "abstentionThreshold": 60,
   "sourceClassification": "organization_authored",
   "licenceStatus": "internal_public_safe_synthetic",
   "approvedForRegressionBy": "DEKRA Skill Governance",
@@ -13,6 +17,7 @@
       "id": "GOLDEN-DASHBOARD-01",
       "title": "Direct dashboard evidence ranks data visualization first",
       "evidence": "Build interactive dashboards and explain weekly revenue movements to senior decision makers.",
+      "expectedDecision": "map",
       "expectedTopCandidateId": "SK-DV",
       "minimumTopScore": 85,
       "minimumMargin": 30,
@@ -31,6 +36,7 @@
       "id": "GOLDEN-COMPLEXITY-01",
       "title": "Ambiguous performance analysis ranks managing complexity first",
       "evidence": "Integrate contradictory operational and financial evidence, frame trade-offs and recommend a viable course of action.",
+      "expectedDecision": "map",
       "expectedTopCandidateId": "SK-MC",
       "minimumTopScore": 80,
       "minimumMargin": 25,
@@ -49,6 +55,7 @@
       "id": "GOLDEN-MISSING-EVIDENCE-01",
       "title": "Job-title-only inference remains below review threshold",
       "evidence": "Reporting specialist.",
+      "expectedDecision": "abstain",
       "expectedTopCandidateId": "SK-DV",
       "maximumTopScore": 45,
       "minimumMargin": 0,
@@ -63,6 +70,7 @@
       "id": "GOLDEN-CONTRADICTION-01",
       "title": "Explicit exclusion penalizes an otherwise plausible skill",
       "evidence": "The role consumes approved dashboards but does not design, build or maintain visualizations.",
+      "expectedDecision": "abstain",
       "expectedTopCandidateId": "SK-DV",
       "maximumTopScore": 35,
       "minimumMargin": 0,
@@ -77,6 +85,7 @@
       "id": "GOLDEN-TOOL-EVIDENCE-01",
       "title": "Controlled tool evidence strengthens but does not replace capability evidence",
       "evidence": "Design and publish Power BI dashboards that explain regional revenue variance and support corrective action.",
+      "expectedDecision": "map",
       "expectedTopCandidateId": "SK-DV",
       "minimumTopScore": 88,
       "minimumMargin": 35,
@@ -95,6 +104,7 @@
       "id": "GOLDEN-KFLA-AUTONOMY-01",
       "title": "Clarified autonomy and complexity strengthen KFLA-compatible mapping",
       "evidence": "Independently resolves contradictory regional evidence, decides which variance requires escalation and recommends the response.",
+      "expectedDecision": "map",
       "expectedTopCandidateId": "SK-MC",
       "minimumTopScore": 85,
       "minimumMargin": 30,
@@ -107,6 +117,56 @@
           "skillId": "SK-DV",
           "breakdown": { "semanticRelevance": 35, "directEvidenceStrength": 25, "responsibilityCoverage": 30, "outcomeRelevance": 40, "taxonomyCompatibility": 65, "granularityCompatibility": 62, "kflaCompatibility": 28, "controlledToolRelevance": 0, "proficiencyCompatibility": 45, "approvedMappingSimilarity": 30, "duplicatePenalty": 0, "contradictionPenalty": 10, "missingEvidencePenalty": 10 }
         }
+      ]
+    },
+    {
+      "id": "GOLDEN-DUPLICATE-PENALTY-01",
+      "title": "Duplicate candidate is suppressed despite semantic similarity",
+      "evidence": "Create interactive dashboards that explain operational variance.",
+      "expectedDecision": "map",
+      "expectedTopCandidateId": "SK-DV",
+      "minimumTopScore": 80,
+      "minimumMargin": 5,
+      "candidates": [
+        { "skillId": "SK-DV", "breakdown": { "semanticRelevance": 96, "directEvidenceStrength": 93, "responsibilityCoverage": 91, "outcomeRelevance": 90, "taxonomyCompatibility": 95, "granularityCompatibility": 93, "kflaCompatibility": 65, "controlledToolRelevance": 80, "proficiencyCompatibility": 82, "approvedMappingSimilarity": 91, "duplicatePenalty": 0, "contradictionPenalty": 0, "missingEvidencePenalty": 0 } },
+        { "skillId": "SK-DV-DUP", "breakdown": { "semanticRelevance": 98, "directEvidenceStrength": 93, "responsibilityCoverage": 91, "outcomeRelevance": 90, "taxonomyCompatibility": 70, "granularityCompatibility": 75, "kflaCompatibility": 65, "controlledToolRelevance": 80, "proficiencyCompatibility": 82, "approvedMappingSimilarity": 95, "duplicatePenalty": 100, "contradictionPenalty": 0, "missingEvidencePenalty": 0 } }
+      ]
+    },
+    {
+      "id": "GOLDEN-PROFICIENCY-MISMATCH-01",
+      "title": "Strategic proficiency is not inferred from routine execution",
+      "evidence": "Refresh an established dashboard each week using the approved template.",
+      "expectedDecision": "abstain",
+      "expectedTopCandidateId": "SK-DV",
+      "maximumTopScore": 58,
+      "minimumMargin": 0,
+      "candidates": [
+        { "skillId": "SK-DV", "breakdown": { "semanticRelevance": 72, "directEvidenceStrength": 76, "responsibilityCoverage": 60, "outcomeRelevance": 44, "taxonomyCompatibility": 78, "granularityCompatibility": 55, "kflaCompatibility": 20, "controlledToolRelevance": 75, "proficiencyCompatibility": 8, "approvedMappingSimilarity": 60, "duplicatePenalty": 0, "contradictionPenalty": 12, "missingEvidencePenalty": 10 } }
+      ]
+    },
+    {
+      "id": "GOLDEN-TAXONOMY-BOUNDARY-01",
+      "title": "Task wording does not override taxonomy boundary mismatch",
+      "evidence": "Export the existing monthly dashboard to PDF and distribute it.",
+      "expectedDecision": "abstain",
+      "expectedTopCandidateId": "SK-DV",
+      "maximumTopScore": 48,
+      "minimumMargin": 0,
+      "candidates": [
+        { "skillId": "SK-DV", "breakdown": { "semanticRelevance": 62, "directEvidenceStrength": 55, "responsibilityCoverage": 35, "outcomeRelevance": 25, "taxonomyCompatibility": 28, "granularityCompatibility": 20, "kflaCompatibility": 10, "controlledToolRelevance": 45, "proficiencyCompatibility": 30, "approvedMappingSimilarity": 42, "duplicatePenalty": 0, "contradictionPenalty": 30, "missingEvidencePenalty": 25 } }
+      ]
+    },
+    {
+      "id": "GOLDEN-OUTCOME-COVERAGE-01",
+      "title": "Direct outcome evidence outweighs generic tool mention",
+      "evidence": "Explain material performance movements so leaders can select corrective action; Power BI access is optional.",
+      "expectedDecision": "map",
+      "expectedTopCandidateId": "SK-MC",
+      "minimumTopScore": 78,
+      "minimumMargin": 20,
+      "candidates": [
+        { "skillId": "SK-MC", "breakdown": { "semanticRelevance": 91, "directEvidenceStrength": 92, "responsibilityCoverage": 88, "outcomeRelevance": 96, "taxonomyCompatibility": 91, "granularityCompatibility": 88, "kflaCompatibility": 90, "controlledToolRelevance": 15, "proficiencyCompatibility": 82, "approvedMappingSimilarity": 84, "duplicatePenalty": 0, "contradictionPenalty": 0, "missingEvidencePenalty": 0 } },
+        { "skillId": "SK-DV", "breakdown": { "semanticRelevance": 48, "directEvidenceStrength": 32, "responsibilityCoverage": 30, "outcomeRelevance": 28, "taxonomyCompatibility": 65, "granularityCompatibility": 55, "kflaCompatibility": 20, "controlledToolRelevance": 60, "proficiencyCompatibility": 45, "approvedMappingSimilarity": 40, "duplicatePenalty": 0, "contradictionPenalty": 20, "missingEvidencePenalty": 10 } }
       ]
     }
   ]
