@@ -611,6 +611,25 @@ test("exports working JSON with an accountable audit receipt", async ({ page }) 
   await expect(page.getByText("workspace.exported", { exact: true })).toBeVisible();
 });
 
+test("supports steward diagnostics, audit search, overlap analysis and cross-role comparison", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  await expect(page.getByRole("heading", { name: /findings$/ })).toBeVisible();
+  await page.getByRole("button", { name: "Record diagnostic snapshot" }).click();
+  await page.getByLabel("Accountable actor").fill("Taxonomy Steward");
+  await page.getByLabel("Evidence-based reason").fill("Capture the governed pilot readiness baseline.");
+  await page.locator("footer").getByRole("button", { name: "Record diagnostic snapshot" }).click();
+  await page.getByRole("button", { name: "Audit log" }).click();
+  await page.getByPlaceholder("Action, object, correlation ID…").fill("diagnostics_snapshot");
+  await expect(page.getByText("governance.diagnostics_snapshot_recorded", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Taxonomy graph" }).click();
+  await expect(page.getByRole("heading", { name: "Canonical concepts and dependencies" })).toBeVisible();
+  await expect(page.getByText(/downstream|mappings/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Coverage & impact" }).click();
+  await expect(page.getByRole("heading", { name: "Compare governed profiles" })).toBeVisible();
+  await expect(page.getByText("CROSS-ROLE COMPARISON", { exact: true })).toBeVisible();
+});
+
 test("submits KFLA structural lifecycle changes for human approval before mutation", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Taxonomy" }).click();

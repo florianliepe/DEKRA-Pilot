@@ -4,7 +4,36 @@ import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
 import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, applySkillLifecycle, assessElicitationSyntax, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, mappingScoreContributions, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus, validateAgentToolContract } from "../src/lib/skill-governance";
 import { evaluateMappingDataset } from "../src/lib/mapping-evaluation";
+import { compareObjectVersions, compareRoleProfiles, filterAuditEvents, governanceDiagnostics, replacementChain, taxonomyOverlapSignals } from "../src/lib/governance-analytics";
 import { migrateSkillWorkspace, validateWorkspace, type MappingEvaluationDataset, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
+
+test("provides deterministic steward analytics for versions, audit, overlap, roles and quality", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const versions = [
+    { id: "VER-TEST-1", entityType: "skill", entityId: "SKL-TEST", version: 1, recordedAt: workspace.updatedAt, recordedBy: "test", action: "created", snapshot: { name: "Test", aliases: [] } },
+    { id: "VER-TEST-2", entityType: "skill", entityId: "SKL-TEST", version: 2, recordedAt: workspace.updatedAt, recordedBy: "test", action: "updated", snapshot: { name: "Test", aliases: ["Example"] } },
+  ];
+  expect(compareObjectVersions(versions[0], versions[1]).some((field) => field.changed)).toBe(true);
+  const audit = filterAuditEvents(workspace.auditLog, "", "all", "all");
+  expect(audit).toHaveLength(workspace.auditLog.length);
+  expect(taxonomyOverlapSignals(workspace).every((signal, index, values) => !index || values[index - 1].score >= signal.score)).toBe(true);
+  const comparison = compareRoleProfiles(workspace, workspace.profiles[0]?.id || "", workspace.profiles[1]?.id || workspace.profiles[0]?.id || "");
+  expect(comparison.leftCoverage).toBeGreaterThanOrEqual(0);
+  expect(comparison.rightCoverage).toBeLessThanOrEqual(100);
+  const diagnostics = governanceDiagnostics(workspace, validateWorkspace(workspace));
+  expect(diagnostics).toEqual(expect.objectContaining({ frameworkVersion: workspace.framework.version, revision: workspace.revision }));
+  expect(diagnostics.localizationCoverage).toBeGreaterThanOrEqual(0);
+});
+
+test("detects unresolved and cyclic skill replacement chains", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const [first, second] = workspace.skills;
+  first.status = "deprecated";
+  first.governance = { version: 1, createdAt: workspace.updatedAt, updatedAt: workspace.updatedAt, createdBy: "test", updatedBy: "test", replacedById: second.id };
+  second.status = "deprecated";
+  second.governance = { version: 1, createdAt: workspace.updatedAt, updatedAt: workspace.updatedAt, createdBy: "test", updatedBy: "test", replacedById: first.id };
+  expect(replacementChain(workspace, first.id)).toMatchObject({ cyclic: true });
+});
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
   const workspace = structuredClone(bootstrapSkillWorkspace);
