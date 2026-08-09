@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/verify-public-bundle.mjs",
     "verify:public-bundle": "node scripts/verify-public-bundle.mjs",
     "verify:governance-artifacts": "node scripts/verify-governance-artifacts.mjs",
     "verify:mapping-evaluation": "node scripts/verify-mapping-evaluation.mjs",
@@ -18,6 +18,7 @@
     "sync:n8n-zm03": "node scripts/sync-zm03-n8n.mjs",
     "sync:n8n-zm04": "node scripts/sync-zm04-agent-tools.mjs",
     "sync:n8n-zm05": "node scripts/sync-zm05-mapping-quality.mjs",
+    "sync:n8n-zm07": "node scripts/sync-zm07-pilot-readiness.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

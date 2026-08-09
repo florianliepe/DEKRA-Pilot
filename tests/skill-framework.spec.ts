@@ -5,6 +5,7 @@ import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
 import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, applySkillLifecycle, assessElicitationSyntax, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, mappingScoreContributions, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus, validateAgentToolContract } from "../src/lib/skill-governance";
 import { evaluateMappingDataset } from "../src/lib/mapping-evaluation";
 import { compareObjectVersions, compareRoleProfiles, filterAuditEvents, governanceDiagnostics, replacementChain, taxonomyOverlapSignals } from "../src/lib/governance-analytics";
+import { assessPilotReadiness, pilotReadinessSummary } from "../src/lib/pilot-readiness";
 import { migrateSkillWorkspace, validateWorkspace, type MappingEvaluationDataset, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("provides deterministic steward analytics for versions, audit, overlap, roles and quality", () => {
@@ -33,6 +34,16 @@ test("detects unresolved and cyclic skill replacement chains", () => {
   second.status = "deprecated";
   second.governance = { version: 1, createdAt: workspace.updatedAt, updatedAt: workspace.updatedAt, createdBy: "test", updatedBy: "test", replacedById: first.id };
   expect(replacementChain(workspace, first.id)).toMatchObject({ cyclic: true });
+});
+
+test("keeps pilot readiness evidence-based and blocks unresolved human decisions", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const checks = assessPilotReadiness(workspace);
+  expect(checks.map((check) => check.id)).toEqual(["schema", "validation", "review", "agent-tools", "mapping", "operations", "release", "localization"]);
+  expect(checks.every((check) => check.owner && check.evidence)).toBe(true);
+  const summary = pilotReadinessSummary(checks);
+  expect(summary.passed + summary.attention + summary.blocked).toBe(checks.length);
+  expect(summary.ready).toBe(checks.every((check) => check.status !== "blocked"));
 });
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {

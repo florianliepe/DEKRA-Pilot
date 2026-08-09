@@ -19,7 +19,18 @@ in React memory and cleared when the page is refreshed or closed.
 
 ## 1. Configure the n8n workflow
 
-For the ZM-01 Skill Designer flow, synchronize and import `docs/n8n-skill-designer-v3.workflow.json` after running `npm run sync:n8n-v3` and `npm run sync:n8n-zm01`. The operations `skill.ingest_job`, `skill.clarify_job` and `skill.map_job` require idempotency keys and persist drafts only. See [the ZM-01 runbook](./zm01-agent-guided-job-mapping.md).
+For the governed Skill Designer flow, synchronize and import `docs/n8n-skill-designer-v3.workflow.json` after running the phase scripts through `npm run sync:n8n-zm07`. State-changing operations require idempotency keys and persist AI output as drafts only. The `skill.health` operation is authenticated, bounded and read-only. See the [ZM-01 job-mapping runbook](./zm01-agent-guided-job-mapping.md) and [ZM-07 pilot handover](./zm07-pilot-readiness-handover.md).
+
+Skill Designer production modes:
+
+| Mode | Behaviour |
+| --- | --- |
+| `skill.read` | Load the governed schema-v3 working state. |
+| `skill.health` | Return sanitized reachability, revision, tool-registry, receipt and audit telemetry. |
+| `skill.save` | Persist an optimistic-concurrency-protected working revision. |
+| `skill.ingest_job` / `skill.clarify_job` / `skill.map_job` | Normalize job evidence, close gaps and persist draft mapping/profile proposals. |
+| `skill.elicitation` | Produce evidence-bound draft syntax and validation assistance. |
+| `skill.regression` | Run deterministic framework checks without mutation. |
 
 Use the active `PMO Assistant` workflow and keep its production webhook path.
 The webhook must accept the `x-n8n-webhook-secret` Header Auth credential and
@@ -63,17 +74,20 @@ Pages build. Any `NEXT_PUBLIC_*` value is readable by site visitors.
 ## 3. Release
 
 Merge the GitHub Pages pull request into `main`. The workflow runs lint,
-type-checking, the static build, artifact upload, and Pages deployment.
+type-checking, governed contract checks, mapping evaluation, the static build,
+public-bundle credential/licensed-content scanning, artifact upload and Pages deployment.
 
 Verify:
 
 1. The Pages Actions run completes successfully.
 2. The project URL displays the pilot-password prompt.
 3. An invalid password is rejected by n8n.
-4. A valid password loads the PMO document from the private repository.
-5. One controlled update creates exactly one private-repository commit.
-6. Evidence intake creates the expected Markdown and JSON artifacts.
-7. Refreshing the browser requires the password again.
+4. A valid password loads the PMO and Skill Designer working states.
+5. Governance → Pilot readiness → **Run health check** reports the expected working revision and 11/11 required active tools.
+6. One controlled update creates exactly one private-repository commit or one n8n working-state revision, as applicable.
+7. Evidence intake creates the expected governed artifacts and direct evidence references.
+8. The approved release manifest and GitHub commit SHA are visible in release history.
+9. Refreshing the browser requires the password again.
 
 ## Security limitations accepted for the MVP
 

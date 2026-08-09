@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Icons } from "./icons";
 import { bootstrapSkillWorkspace } from "@/lib/skill-fixtures";
-import { ingestSkillEvidence, loadApprovedSkillWorkspace, loadSkillWorkspace, publishSkillWorkspace, runSkillInterview, saveSkillWorkspace, SkillWorkflowError } from "@/lib/skill-client";
+import { ingestSkillEvidence, loadApprovedSkillWorkspace, loadSkillWorkflowHealth, loadSkillWorkspace, publishSkillWorkspace, runSkillInterview, saveSkillWorkspace, SkillWorkflowError } from "@/lib/skill-client";
 import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, workspaceFindings, type Lifecycle, type ReleaseManifest, type RoleProfile, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
 import { JobMappingWorkbench } from "./job-mapping-workbench";
 import { StrategicVectors } from "./strategic-vectors";
@@ -167,7 +167,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {tab === "vectors" && <StrategicVectors workspace={workspace} mutate={mutate}/>}
     {tab === "review" && <Review workspace={workspace} mutate={mutate}/>}
     {tab === "runs" && <AgentRunLog workspace={workspace}/>}
-    {tab === "governance" && <GovernanceWorkbench workspace={workspace} approvedWorkspace={approvedWorkspace} releaseFailure={releaseFailure} canRetryRelease={Boolean(releaseAttempt)} mutate={mutate} onMessage={setMessage} onError={setError} onRefreshApproved={() => void refreshApprovedWorkspace()} onRetryRelease={() => releaseAttempt && void executeRelease(releaseAttempt)}/>}
+    {tab === "governance" && <GovernanceWorkbench workspace={workspace} approvedWorkspace={approvedWorkspace} releaseFailure={releaseFailure} canRetryRelease={Boolean(releaseAttempt)} mutate={mutate} onMessage={setMessage} onError={setError} onRefreshApproved={() => void refreshApprovedWorkspace()} onRetryRelease={() => releaseAttempt && void executeRelease(releaseAttempt)} onHealthCheck={async () => { const payload = await loadSkillWorkflowHealth(workspaceSecret); if (!payload.health) throw new Error("The governed workflow returned no health contract."); return payload.health; }}/>}
     {editing && <SkillEditor workspace={workspace} skill={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} onSave={saveSkill}/>}
     {tab === "library" && <button className="skill-fab button primary" onClick={() => setEditing("new")}><Icons.plus/>Create skill</button>}
   </div>;

@@ -19,6 +19,22 @@ export type SkillWorkflowResponse = {
   jobDescription?: SkillWorkspace["jobDescriptions"][number];
   clarification?: SkillWorkspace["jobClarifications"][number];
   idempotencyKey?: string;
+  health?: SkillWorkflowHealth;
+};
+
+export type SkillWorkflowHealth = {
+  status: "operational" | "degraded";
+  checkedAt: string;
+  schemaVersion: number;
+  revision: number;
+  frameworkVersion: string;
+  pendingReviews: number;
+  failedRuns: number;
+  activeAgentTools: number;
+  requiredAgentTools: number;
+  receiptCount: number;
+  auditEvents: number;
+  lastUpdatedAt?: string;
 };
 
 export class SkillWorkflowError extends Error {
@@ -77,6 +93,7 @@ export async function loadApprovedSkillWorkspace(): Promise<SkillWorkspace> {
 }
 
 export const loadSkillWorkspace = (secret: string) => call(secret, { mode: "skill.read" });
+export const loadSkillWorkflowHealth = (secret: string) => call(secret, { mode: "skill.health" });
 export const saveSkillWorkspace = (
   secret: string,
   workspace: SkillWorkspace,

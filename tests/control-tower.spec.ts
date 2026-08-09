@@ -65,6 +65,10 @@ test.beforeEach(async ({ page }) => {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace }) });
       return;
     }
+    if (body.mode === "skill.health") {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, health: { status: "operational", checkedAt: new Date().toISOString(), schemaVersion: 3, revision: bootstrapSkillWorkspace.revision, frameworkVersion: bootstrapSkillWorkspace.framework.version, pendingReviews: bootstrapSkillWorkspace.reviewQueue.filter((item) => item.status === "pending").length, failedRuns: 0, activeAgentTools: 11, requiredAgentTools: 11, receiptCount: 3, auditEvents: bootstrapSkillWorkspace.auditLog.length, lastUpdatedAt: bootstrapSkillWorkspace.updatedAt } }) });
+      return;
+    }
     if (body.mode === "skill.save" && body.workspace) {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: body.workspace }) });
       return;
@@ -614,6 +618,7 @@ test("exports working JSON with an accountable audit receipt", async ({ page }) 
 test("supports steward diagnostics, audit search, overlap analysis and cross-role comparison", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Governance" }).click();
+  await page.getByRole("button", { name: "Data quality" }).click();
   await expect(page.getByRole("heading", { name: /findings$/ })).toBeVisible();
   await page.getByRole("button", { name: "Record diagnostic snapshot" }).click();
   await page.getByLabel("Accountable actor").fill("Taxonomy Steward");
@@ -628,6 +633,28 @@ test("supports steward diagnostics, audit search, overlap analysis and cross-rol
   await page.getByRole("button", { name: "Coverage & impact" }).click();
   await expect(page.getByRole("heading", { name: "Compare governed profiles" })).toBeVisible();
   await expect(page.getByText("CROSS-ROLE COMPARISON", { exact: true })).toBeVisible();
+});
+
+test("runs a bounded live workflow health check from the pilot readiness control room", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  await expect(page.getByText("PILOT CONTROL ROOM", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Run health check" }).click();
+  await expect(page.getByRole("heading", { name: "operational" })).toBeVisible();
+  await expect(page.getByText("11/11", { exact: true })).toBeVisible();
+  await expect(page.getByText("RECOVERY ORDER", { exact: true })).toBeVisible();
+});
+
+test("keeps the pilot readiness workspace keyboard-labelled and responsive", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Governance" }).click();
+  const unnamedButtons = await page.locator(".governance-workbench button").evaluateAll((buttons) => buttons.filter((button) => !(button.getAttribute("aria-label") || button.textContent || "").trim()).length);
+  expect(unnamedButtons).toBe(0);
+  expect(await page.locator(".governance-workbench").evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  await page.keyboard.press("Tab");
+  await expect(page.locator(":focus")).toBeVisible();
 });
 
 test("submits KFLA structural lifecycle changes for human approval before mutation", async ({ page }) => {
