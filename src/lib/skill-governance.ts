@@ -1,6 +1,44 @@
-import { validateWorkspace, type AgentToolDefinition, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type EvidenceRecord, type JobSkillMapping, type KflaCluster, type KflaCompetency, type KflaFactor, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type SourceRecord, type TaxonomyRelationship, type ValidationRule } from "./skill-schema";
+import { validateWorkspace, type AgentToolDefinition, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type ElicitationSession, type EvidenceRecord, type JobSkillMapping, type KflaCluster, type KflaCompetency, type KflaFactor, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type SourceRecord, type TaxonomyRelationship, type ValidationRule } from "./skill-schema";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
+
+export type ElicitationSyntaxAssessment = {
+  candidate: { action: string; object: string; outcome: string; canonicalName: string };
+  findings: Array<{ ruleId: string; severity: "blocking" | "warning" | "ready"; message: string }>;
+  possibleMatches: Array<{ id: string; name: string; score: number }>;
+  evidenceCoverage: number;
+};
+
+export function assessElicitationSyntax(session: ElicitationSession, workspace: SkillWorkspace): ElicitationSyntaxAssessment {
+  const capability = session.fields.capability.trim().replace(/\s+/g, " ");
+  const activity = session.fields.activities.trim().replace(/\s+/g, " ");
+  const outcome = session.fields.outcomes.trim().split(/[.!?\n]/).find(Boolean)?.trim() || "";
+  const words = capability.split(" ").filter(Boolean);
+  const activityWords = activity.split(" ").filter(Boolean);
+  const observableVerbs = new Set(["analyse", "analyze", "apply", "assess", "build", "create", "define", "deliver", "design", "develop", "evaluate", "facilitate", "govern", "implement", "lead", "manage", "map", "monitor", "optimise", "optimize", "plan", "resolve", "translate", "validate", "visualise", "visualize"]);
+  const capabilityStartsWithAction = observableVerbs.has((words[0] || "").toLowerCase());
+  const action = capabilityStartsWithAction ? words[0] : activityWords[0] || words[0] || "";
+  const object = (capabilityStartsWithAction ? words.slice(1).join(" ") : capability || activityWords.slice(1, 7).join(" ")).trim();
+  const canonicalName = [action, object].filter(Boolean).join(" ");
+  const normalized = (value: string) => new Set(value.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((item) => item.length > 2));
+  const candidateTokens = normalized(`${canonicalName} ${session.fields.synonyms}`);
+  const possibleMatches = workspace.skills.map((skill) => {
+    const skillTokens = normalized(`${skill.name} ${skill.description} ${skill.aliases.join(" ")}`);
+    const shared = [...candidateTokens].filter((token) => skillTokens.has(token)).length;
+    return { id: skill.id, name: skill.name, score: Math.round(shared / Math.max(1, Math.min(candidateTokens.size, skillTokens.size)) * 100) };
+  }).filter((item) => item.score >= 18).sort((left, right) => right.score - left.score).slice(0, 4);
+  const evidenceFields = Object.values(session.fieldEvidence || {}).filter((records) => records?.some((record) => record.quote.trim() && record.location.trim())).length;
+  const evidenceCoverage = Math.round(evidenceFields / 5 * 100);
+  const findings: ElicitationSyntaxAssessment["findings"] = [];
+  if (!action || !object) findings.push({ ruleId: "SKILL-SYNTAX-001", severity: "blocking", message: "A canonical candidate needs an observable action and a durable object." });
+  if (!outcome) findings.push({ ruleId: "SKILL-OUTCOME-001", severity: "blocking", message: "Add the observable outcome created by competent application." });
+  if (session.fields.granularity !== "atomic") findings.push({ ruleId: "SKILL-GRANULARITY-001", severity: "warning", message: "Composite or umbrella scope should be decomposed before canonical review." });
+  if (!activity) findings.push({ ruleId: "SKILL-OBSERVABILITY-001", severity: "warning", message: "Add observable activities or critical incidents." });
+  if (possibleMatches[0]?.score >= 45) findings.push({ ruleId: "SKILL-UNIQUENESS-001", severity: "warning", message: `Review the existing concept ${possibleMatches[0].name} before proposing a new canonical skill.` });
+  if (evidenceCoverage < 40) findings.push({ ruleId: "EVIDENCE-LINEAGE-001", severity: "warning", message: "Record direct quotations and source locations for at least two elicitation dimensions." });
+  if (!findings.some((item) => item.severity === "blocking")) findings.push({ ruleId: "SKILL-SYNTAX-READY", severity: "ready", message: "The candidate is structurally ready for accountable review; this is not an approval." });
+  return { candidate: { action, object, outcome, canonicalName }, findings, possibleMatches, evidenceCoverage };
+}
 
 export type AgentToolCallContext = {
   permissions: string[];

@@ -124,4 +124,4 @@ export const runJobMapping = (secret: string, jobDescriptionId: string, workspac
 export const runTaxonomyRegression = (secret: string, workspace: SkillWorkspace) =>
   call(secret, { mode: "skill.regression", workspace });
 export const runSkillElicitation = (secret: string, sessionId: string, action: "rewrite" | "validate", workspace: SkillWorkspace) =>
-  call(secret, { mode: "skill.elicitation", sessionId, action, workspace });
+  call(secret, { mode: "skill.elicitation", sessionId, action, workspace, idempotencyKey: governedIdempotencyKey("skill.elicitation", `${sessionId}-${action}`) });

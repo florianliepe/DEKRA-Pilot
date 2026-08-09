@@ -60,7 +60,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
-    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }> };
+    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }> };
     if (body.mode === "skill.read") {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace }) });
       return;
@@ -77,6 +77,10 @@ test.beforeEach(async ({ page }) => {
       const mapped = structuredClone(body.workspace);
       mapped.agentRuns = [{ id: "RUN-TEST", mode: "job_mapping", status: "needs_review", model: "claude-sonnet-5", startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), tools: ["read_catalog", "map_job_skills", "create_review_draft"], trace: [{ step: "Catalog grounding", result: "Approved catalog loaded." }] }, ...mapped.agentRuns];
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: mapped, agentRun: mapped.agentRuns[0], message: "AI mapping draft added to human review." }) });
+      return;
+    }
+    if (body.mode === "skill.elicitation" && body.workspace && body.sessionId) {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: body.workspace, message: "AI elicitation assistance saved as a draft." }) });
       return;
     }
     if (body.mode === "pmo.save" && body.document) {
@@ -685,11 +689,22 @@ test("requires accountable context before elicitation save or AI assistance", as
   await page.getByRole("tab", { name: "Elicitation wizard" }).click();
   await expect(page.getByRole("button", { name: "Save draft" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "AI-assisted rewrite" })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Syntax readiness" })).toBeVisible();
+  await expect(page.getByText(/direct evidence coverage/)).toBeVisible();
+  await page.getByLabel("Source location").fill("Role profile · paragraph 3");
+  await page.getByLabel("Direct evidence quotation").fill("Build dashboards and analyse performance drivers.");
   await page.getByLabel("Accountable actor").fill("Capability Owner");
   await page.getByLabel("Governance reason").fill("Retain an evidence-backed checkpoint for the elicitation package.");
   await expect(page.getByRole("button", { name: "Save draft" })).toBeEnabled();
   await page.getByRole("button", { name: "Save draft" }).click();
   await expect(page.getByText(/saved at \d+% completion/)).toBeVisible();
+  const requestPromise = page.waitForRequest((request) => request.url().includes("skill-designer-orchestrator") && request.postDataJSON()?.mode === "skill.elicitation");
+  await page.getByRole("button", { name: "AI validation" }).click();
+  const request = await requestPromise;
+  expect(request.postDataJSON()).toMatchObject({ mode: "skill.elicitation", action: "validate" });
+  expect(request.postDataJSON().idempotencyKey).toMatch(/^skill\.elicitation:/);
+  expect(request.postDataJSON().workspace.elicitationSessions[0].fieldEvidence).toBeTruthy();
+  await expect(page.getByText("AI elicitation assistance saved as a draft.")).toBeVisible();
 });
 
 test("records accountable review edits and controlled re-evaluation requests", async ({ page }) => {

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
-import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, applySkillLifecycle, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
+import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, applySkillLifecycle, assessElicitationSyntax, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus } from "../src/lib/skill-governance";
 import { migrateSkillWorkspace, validateWorkspace, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("models four factors, twelve clusters and all 38 assigned competencies", () => {
@@ -14,6 +14,33 @@ test("models four factors, twelve clusters and all 38 assigned competencies", ()
   expect(workspace.kfla.every((item) => workspace.kflaClusters.some((cluster) => cluster.id === item.clusterId && cluster.factorId === item.factorId))).toBe(true);
   expect(workspace.kfla.every((item) => item.sourceClassification && item.licenceStatus && item.sourceVersion && item.reviewDate && item.contentOwner)).toBe(true);
   expect([...workspace.kflaFactors, ...workspace.kflaClusters].every((item) => item.sourceClassification && item.licenceStatus && item.sourceVersion && item.reviewDate && item.contentOwner && item.status)).toBe(true);
+});
+
+test("derives a governed elicitation syntax candidate with evidence lineage", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const session = structuredClone(workspace.elicitationSessions[0]);
+  session.fields.capability = "Build decision-ready dashboards";
+  session.fields.activities = "Build and explain governed management dashboards";
+  session.fields.outcomes = "Leaders make timely evidence-based decisions.";
+  session.fields.synonyms = "data visualization";
+  session.fieldEvidence = {
+    capability: [{ id: "ELI-EVD-1", location: "Role profile · paragraph 3", quote: "Build decision-ready dashboards", status: "verified" }],
+    outcomes: [{ id: "ELI-EVD-2", location: "Manager interview · answer 4", quote: "Leaders make timely evidence-based decisions", status: "draft" }],
+  };
+  const assessment = assessElicitationSyntax(session, workspace);
+  expect(assessment.candidate).toMatchObject({ action: "Build", object: "decision-ready dashboards", outcome: "Leaders make timely evidence-based decisions" });
+  expect(assessment.evidenceCoverage).toBe(40);
+  expect(assessment.findings).toContainEqual(expect.objectContaining({ ruleId: "SKILL-SYNTAX-READY", severity: "ready" }));
+  expect(assessment.possibleMatches.some((item) => item.name === "Data Visualization")).toBe(true);
+});
+
+test("blocks elicitation review readiness when the outcome is missing", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const session = structuredClone(workspace.elicitationSessions[0]);
+  session.fields.outcomes = "";
+  const assessment = assessElicitationSyntax(session, workspace);
+  expect(assessment.findings).toContainEqual(expect.objectContaining({ ruleId: "SKILL-OUTCOME-001", severity: "blocking" }));
+  expect(assessment.findings.some((item) => item.ruleId === "SKILL-SYNTAX-READY")).toBe(false);
 });
 
 test("previews KFLA structural impact and applies lifecycle changes only after human approval", () => {

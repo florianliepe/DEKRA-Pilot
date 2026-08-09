@@ -497,6 +497,13 @@ export type ElicitationSession = {
     kflaCompetencyIds: string[];
     proficiencyIndicators: string;
   };
+  fieldEvidence?: Partial<Record<keyof ElicitationSession["fields"], Array<{
+    id: string;
+    sourceId?: string;
+    location: string;
+    quote: string;
+    status: "draft" | "verified";
+  }>>>;
 };
 
 export type ObjectVersion = {
