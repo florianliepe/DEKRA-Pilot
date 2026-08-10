@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icons } from "./icons";
 import type { Deliverable, Meeting, PmoDocument, Rag, Risk } from "@/lib/pmo-schema";
 import { ingestEvidence, loadPmoDocument, savePmoDocument } from "@/lib/n8n-client";
 import { DeleteDialog, EntityEditor, type EditableEntity, type EditorTarget } from "./entity-editor";
 import { IntakeWorkbench, type IntakeSubmission } from "./intake-workbench";
 import { SkillDesigner } from "./skill-designer";
+import { SteercoReadOnly, SteercoWorkbench } from "./steerco-summary";
+import { loadSteercoShare } from "@/lib/steerco-client";
+import type { SteercoSnapshot } from "@/lib/steerco-schema";
 
-type View = "intake" | "overview" | "plan" | "risks" | "meetings" | "activity" | "method";
+type View = "intake" | "overview" | "plan" | "risks" | "meetings" | "steerco" | "activity" | "method";
 type IntakeType = "risk" | "deliverable" | "meeting";
 type DeleteTarget = { entity: Exclude<EditableEntity, "project">; id: string; label: string; blockedReason?: string };
 
@@ -18,6 +21,7 @@ const navigation: Array<{ id: View; label: string; icon: keyof typeof Icons }> =
   { id: "plan", label: "Plan & deliverables", icon: "plan" },
   { id: "risks", label: "Risks & issues", icon: "risk" },
   { id: "meetings", label: "Meeting hub", icon: "meeting" },
+  { id: "steerco", label: "SteerCo summary", icon: "dashboard" },
   { id: "activity", label: "Activity log", icon: "activity" },
   { id: "method", label: "Skill designer", icon: "layers" },
 ];
@@ -28,6 +32,7 @@ const viewMeta: Record<View, { eyebrow: string; title: string; description: stri
   plan: { eyebrow: "Delivery", title: "Plan & deliverables", description: "Track gate milestones and workstream commitments." },
   risks: { eyebrow: "RAID", title: "Risks & issues", description: "Prioritise exposure and keep mitigation ownership visible." },
   meetings: { eyebrow: "Collaboration", title: "Meeting hub", description: "Turn discussions into decisions, actions and evidence." },
+  steerco: { eyebrow: "Executive reporting", title: "SteerCo summary", description: "Generate, approve and publish a traceable read-only project view." },
   activity: { eyebrow: "Traceability", title: "Activity log", description: "A chronological audit trail across people and automations." },
   method: { eyebrow: "Skill architecture", title: "Skill designer", description: "Turn role evidence into governed skills, profiles and taxonomy decisions." },
 };
@@ -99,6 +104,22 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
   const [workflowSaving, setWorkflowSaving] = useState(false);
   const [workflowResult, setWorkflowResult] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [sharedSnapshot, setSharedSnapshot] = useState<SteercoSnapshot | null>(null);
+  const [shareRequested, setShareRequested] = useState(false);
+  const [shareError, setShareError] = useState("");
+
+  useEffect(() => {
+    const shareId = new URLSearchParams(window.location.search).get("steerco")?.trim();
+    if (!shareId) return;
+    queueMicrotask(() => { setShareRequested(true); setAccessOpen(false); });
+    void loadSteercoShare(shareId)
+      .then((payload) => {
+        if (!payload.snapshot) throw new Error("The read-only SteerCo snapshot is unavailable.");
+        if (payload.snapshot.status !== "published") throw new Error("This SteerCo link is not active.");
+        setSharedSnapshot(payload.snapshot);
+      })
+      .catch((reason) => setShareError(reason instanceof Error ? reason.message : "The read-only SteerCo link could not be loaded."));
+  }, []);
 
   async function loadData(secret = workspaceSecret) {
     setLoading(true); setError("");
@@ -232,6 +253,9 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
   const completedDeliverables = data?.deliverables.filter((item) => item.status === "done").length ?? 0;
   const query = search.trim().toLowerCase();
 
+  if (shareRequested && sharedSnapshot) return <SteercoReadOnly snapshot={sharedSnapshot}/>;
+  if (shareRequested && !shareError) return <div className="app-loading"><BrandMark/><div className="loading-line"/><p>Loading approved SteerCo snapshot…</p></div>;
+  if (shareRequested && shareError) return <div className="app-loading"><BrandMark/><p>{shareError}</p><small>The link may have expired or been revoked. Request a new approved link from the PMO.</small></div>;
   if (loading) return <div className="app-loading"><BrandMark/><div className="loading-line"/><p>Connecting to the project control tower…</p></div>;
   if (!data) return <div className="app-loading"><BrandMark/><p>{error || "Project data is unavailable."}</p><button className="button primary" onClick={() => void loadData()}>Try again</button></div>;
 
@@ -262,6 +286,7 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
           {view === "plan" && <PlanView data={data} query={query} mutate={mutate} onEdit={setEditor} onDelete={requestDelete}/>}
           {view === "risks" && <RiskView data={data} query={query} onEdit={setEditor} onDelete={requestDelete}/>}
           {view === "meetings" && <MeetingView data={data} query={query} onEdit={setEditor} onDelete={requestDelete}/>}
+          {view === "steerco" && <SteercoWorkbench pmo={data} workspaceSecret={workspaceSecret}/>}
           {view === "activity" && <ActivityView data={data} storageConfigured={storageConfigured}/>} 
           {view === "method" && <SkillDesigner workspaceSecret={workspaceSecret}/>}
         </div>

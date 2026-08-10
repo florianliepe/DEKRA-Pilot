@@ -18,6 +18,14 @@ const requiredJson = [
   "data/schemas/agent-tool-registry.schema.json",
   "data/schemas/mapping-evaluation.schema.json",
   "data/evaluation/mapping-golden-baseline.json",
+  "data/schemas/steerco-report.schema.json",
+  "data/schemas/steerco-period.schema.json",
+  "data/schemas/steerco-claim.schema.json",
+  "data/schemas/steerco-rag.schema.json",
+  "data/schemas/steerco-approval.schema.json",
+  "data/schemas/steerco-share.schema.json",
+  "data/schemas/steerco-publication-manifest.schema.json",
+  "data/schemas/steerco-ai-output.schema.json",
 ];
 for (const path of requiredJson) json(path);
 
@@ -44,13 +52,14 @@ if (evaluation.cases?.length < 10 || !evaluation.abstentionThreshold || evaluati
 const workflows = [
   ["docs/n8n-skill-designer-v3.workflow.json", "skill-designer-orchestrator-v3-governed"],
   ["docs/n8n-skill-publisher-v3.workflow.json", "skill-designer-publisher-v3"],
+  ["docs/n8n-steerco-v1.workflow.json", "dekra-steerco-v1"],
 ];
 for (const [path, expectedWebhook] of workflows) {
   const workflow = json(path);
   const webhookPaths = workflow.nodes.filter((node) => node.type === "n8n-nodes-base.webhook").map((node) => node.parameters?.path);
   if (!webhookPaths.includes(expectedWebhook)) throw new Error(`${path} does not expose ${expectedWebhook}.`);
   for (const node of workflow.nodes.filter((node) => typeof node.parameters?.jsCode === "string")) {
-    try { new Function(node.parameters.jsCode); }
+    try { new Function(path.includes("steerco") ? `return (async()=>{${node.parameters.jsCode}})()` : node.parameters.jsCode); }
     catch (reason) { throw new Error(`${path} node ${node.name} contains invalid JavaScript: ${reason.message}`); }
   }
   if (path.includes("publisher") && (!JSON.stringify(workflow).includes("PROFICIENCY-INTEGRITY-001") || !JSON.stringify(workflow).includes("evidenceRecords"))) throw new Error("Publisher v3 must validate and sanitize proficiency, source and evidence contracts.");
@@ -61,6 +70,7 @@ for (const [path, expectedWebhook] of workflows) {
   if (path.includes("designer") && ["ZM-04 AGENT TOOL CONTRACT", "const implementations={", "job_parser", "review_package_generator", "zm04ToolRates", "TOOL_IMPLEMENTATION_MISSING", "RATE_LIMITED", "tool_outputs"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-04 deterministic tool implementations, runtime limits or output references.");
   if (path.includes("designer") && ["ZM-05 MAPPING QUALITY CONTRACT", "MAPPING-ABSTENTION-001", "MAPPING_VALIDATION_FAILED", "mappingEvaluationVersion", "evaluationDatasetVersion", "mapping.validation_failed", "mappingWeights"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-05 weighted score, abstention, lineage or fail-closed validation contract.");
   if (path.includes("designer") && ["ZM-07 PILOT READINESS", "skill.health", "requiredAgentTools", "receiptCount", "auditEvents"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("Orchestrator v3 is missing the ZM-07 bounded operational-health contract.");
+  if (path.includes("steerco") && ["dekra-steerco-v1-read", "steerco.generate", "steerco.approve", "steerco.publish", "steerco.revoke", "steerco.rollback", "steerco.read", "AI claims failed evidence-reference validation", "expectedRevision", "expiresAt", "checksum", "history", "githubCommit"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("SteerCo workflow is missing its governed AI, approval, publication, rollback, revocation, expiry or evidence contract.");
 }
 
-console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 2 n8n v3 workflows.`);
+console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 3 governed n8n workflows.`);

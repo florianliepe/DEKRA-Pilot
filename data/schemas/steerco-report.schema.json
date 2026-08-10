@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/florianliepe/DEKRA-Pilot/schemas/steerco-report/1.0.0",
+  "title": "DEKRA governed SteerCo report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "revision", "status", "period", "generatedAt", "generatedBy", "generatedWith", "sourceRevision", "dataFreshness", "rag", "executiveSummary", "sections", "publication", "audit"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "id": { "type": "string", "pattern": "^STEERCO-" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["draft", "in_review", "rejected", "approved", "published", "revoked"] },
+    "period": { "$ref": "steerco-period.schema.json" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "generatedBy": { "type": "string", "minLength": 1 },
+    "generatedWith": { "type": "object", "required": ["model", "promptVersion", "rulesVersion"], "properties": { "model": { "type": "string" }, "promptVersion": { "type": "string" }, "rulesVersion": { "type": "string" } } },
+    "approvedAt": { "type": "string", "format": "date-time" }, "approvedBy": { "type": "string" }, "approvalReason": { "type": "string" }, "publishedAt": { "type": "string", "format": "date-time" },
+    "sourceRevision": { "type": "object", "required": ["pmo", "skills"], "properties": { "pmo": { "type": "integer" }, "skills": { "type": "integer" } } },
+    "dataFreshness": { "type": "object", "required": ["lastSynchronizedAt", "stale", "notes"], "properties": { "lastSynchronizedAt": { "type": "string", "format": "date-time" }, "stale": { "type": "boolean" }, "notes": { "type": "array", "items": { "type": "string" } } } },
+    "rag": { "$ref": "steerco-rag.schema.json" },
+    "executiveSummary": { "type": "array", "items": { "$ref": "steerco-claim.schema.json" } },
+    "sections": { "type": "object", "required": ["milestones", "deliverables", "risks", "decisions", "overdueActions", "upcoming", "framework", "taxonomy", "mappings", "automation", "governance", "changes"], "additionalProperties": { "type": "array", "items": { "$ref": "steerco-claim.schema.json" } } },
+    "publication": { "$ref": "steerco-share.schema.json" },
+    "audit": { "type": "array", "items": { "type": "object", "required": ["id", "event", "actor", "at"], "properties": { "id": { "type": "string" }, "event": { "type": "string" }, "actor": { "type": "string" }, "at": { "type": "string", "format": "date-time" }, "reason": { "type": "string" } } } }
+  }
+}

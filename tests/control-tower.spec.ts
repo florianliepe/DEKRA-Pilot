@@ -5,6 +5,7 @@ import { bootstrapPmoData as pmoDocument } from "../src/lib/pmo-fixtures";
 import type { PmoDocument } from "../src/lib/pmo-schema";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
 import type { SkillWorkspace } from "../src/lib/skill-schema";
+import { buildSteercoEvidence, resolveSteercoPeriod, type SteercoSnapshot } from "../src/lib/steerco-schema";
 
 const testDocument: PmoDocument = {
   ...pmoDocument,
@@ -60,7 +61,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
-    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }> };
+    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; targetRevision?: number; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }>; evidenceDraft?: SteercoSnapshot; snapshot?: SteercoSnapshot };
     if (body.mode === "skill.read") {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace }) });
       return;
@@ -86,6 +87,31 @@ test.beforeEach(async ({ page }) => {
     if (body.mode === "skill.elicitation" && body.workspace && body.sessionId) {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: body.workspace, message: "AI elicitation assistance saved as a draft." }) });
       return;
+    }
+    if (body.mode === "steerco.generate" && body.evidenceDraft) {
+      const snapshot = { ...body.evidenceDraft, revision: body.evidenceDraft.revision + 1, generatedWith: { model: "claude-sonnet-5", promptVersion: "steerco-prompt-1.0.0", rulesVersion: "steerco-rag-1.0.0" }, executiveSummary: [{ id: "AI-1", text: "Delivery requires attention because a critical risk remains open; the cited project evidence supports escalation.", kind: "ai_narrative" as const, sourceIds: ["R-1"] }] };
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, snapshot }) }); return;
+    }
+    if (body.mode === "steerco.approve" && body.snapshot) {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, snapshot: { ...body.snapshot, status: "approved", revision: body.snapshot.revision + 1 } }) }); return;
+    }
+    if (body.mode === "steerco.reject" && body.snapshot) {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, snapshot: { ...body.snapshot, status: "rejected", revision: body.snapshot.revision + 1 } }) }); return;
+    }
+    if (body.mode === "steerco.publish" && body.snapshot) {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, snapshot: { ...body.snapshot, status: "published", revision: body.snapshot.revision + 1, publishedAt: new Date().toISOString(), publication: { ...body.snapshot.publication, shareId: "public-safe-share-123", checksum: "a".repeat(64) } } }) }); return;
+    }
+    if (body.mode === "steerco.rollback") {
+      const period = resolveSteercoPeriod("custom", testDocument, new Date(), { from: "2026-08-01", to: "2026-08-31" });
+      const base = buildSteercoEvidence(testDocument, bootstrapSkillWorkspace, period, "PMO Lead");
+      const snapshot: SteercoSnapshot = { ...base, status: "published", revision: (body.targetRevision || 1) + 5, approvedAt: "2026-08-10T10:00:00.000Z", approvedBy: "Programme Sponsor", approvalReason: "Reviewed cited evidence.", publishedAt: new Date().toISOString(), executiveSummary: [{ id: "AI-1", text: "A prior immutable release was restored through accountable governance.", kind: "ai_narrative", sourceIds: ["R-1"] }], publication: { classification: "steerco_read_only", shareId: "restored-safe-share-456", checksum: "b".repeat(64), githubPath: "knowledge/steerco/releases/restored.json", githubCommit: "rollback-commit-receipt" } };
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, snapshot }) }); return;
+    }
+    if (body.mode === "steerco.read") {
+      const period = resolveSteercoPeriod("custom", testDocument, new Date(), { from: "2026-08-01", to: "2026-08-31" });
+      const base = buildSteercoEvidence(testDocument, bootstrapSkillWorkspace, period, "PMO Lead");
+      const snapshot: SteercoSnapshot = { ...base, status: "published", approvedAt: "2026-08-10T10:00:00.000Z", approvedBy: "Programme Sponsor", approvalReason: "Reviewed cited evidence.", publishedAt: "2026-08-10T11:00:00.000Z", executiveSummary: [{ id: "AI-1", text: "Delivery remains under active Steering Committee attention.", kind: "ai_narrative", sourceIds: ["R-1"] }], publication: { classification: "steerco_read_only", shareId: "public-safe-share-123", checksum: "a".repeat(64), githubPath: "knowledge/steerco/releases/test.json", githubCommit: "commit-receipt" } };
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, snapshot }) }); return;
     }
     if (body.mode === "pmo.save" && body.document) {
       await route.fulfill({
@@ -778,4 +804,60 @@ test("records accountable review edits and controlled re-evaluation requests", a
   await page.getByLabel("Re-evaluation reason").fill("Run the allowlisted validators against the clarified evidence.");
   await page.getByRole("button", { name: "Request controlled re-evaluation" }).click();
   await expect(page.getByRole("heading", { name: /decisions pending/ })).toBeVisible();
+});
+
+test("opens an opaque accessible KFLA deep dive and restores focus", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  const trigger = page.getByRole("button", { name: /Open .* competency deep dive/ }).first();
+  await trigger.focus();
+  await expect(trigger).toBeFocused();
+  await trigger.press("Enter");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(dialog).toHaveAttribute("aria-modal", "true");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
+
+test("generates, approves and publishes a governed SteerCo snapshot", async ({ page }) => {
+  await page.getByRole("button", { name: "SteerCo summary" }).click();
+  await expect(page.getByRole("heading", { name: "Prepare a Steering Committee view" })).toBeVisible();
+  await page.getByLabel("Reporting period").selectOption("custom");
+  await page.getByRole("textbox", { name: "From", exact: true }).fill("2026-08-01");
+  await page.getByRole("textbox", { name: "To", exact: true }).fill("2026-08-31");
+  await page.getByRole("button", { name: "Generate AI draft" }).click();
+  await expect(page.getByText(/Delivery requires attention/)).toBeVisible();
+  await expect(page.getByText("ai narrative", { exact: true })).toBeVisible();
+  await page.getByLabel("Decision reason").fill("Reviewed cited project and governance evidence for the selected period.");
+  await page.getByRole("button", { name: "Approve snapshot" }).click();
+  await expect(page.getByText("SteerCo snapshot approved and locked for publication.")).toBeVisible();
+  await page.getByRole("button", { name: "Publish read-only snapshot" }).click();
+  await expect(page.getByRole("heading", { name: "Approved SteerCo view is ready" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy read-only link" })).toBeVisible();
+  const answers = ["3", "Restore the last sponsor-approved baseline after a failed publication."];
+  page.on("dialog", (dialog) => void dialog.accept(answers.shift()));
+  await page.getByRole("button", { name: "Restore prior release" }).click();
+  await expect(page.getByText("Revision 3 restored as a new read-only publication.")).toBeVisible();
+});
+
+test("opens a separate mutation-free read-only SteerCo link", async ({ page }) => {
+  await page.goto("/?steerco=public-safe-share-123");
+  await expect(page.getByText("Steering Committee summary", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overall project status" })).toBeVisible();
+  await expect(page.getByText("View only", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Print / Save as PDF" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quick add" })).toHaveCount(0);
+  await expect(page.getByLabel("Shared pilot password")).toHaveCount(0);
+});
+
+test("rejects an AI SteerCo draft and keeps it unpublishable", async ({ page }) => {
+  await page.getByRole("button", { name: "SteerCo summary" }).click();
+  await page.getByRole("button", { name: "Generate AI draft" }).click();
+  await page.getByLabel("Decision reason").fill("The narrative requires stronger decision evidence.");
+  await page.getByRole("button", { name: "Reject draft" }).click();
+  await expect(page.getByRole("heading", { name: "Generate a new governed revision" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publish read-only snapshot" })).toHaveCount(0);
 });

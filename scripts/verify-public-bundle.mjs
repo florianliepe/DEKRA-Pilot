@@ -36,4 +36,8 @@ const forbidden = [
 ];
 for (const [pattern, label] of forbidden) if (pattern.test(bundle)) throw new Error(`Public bundle contains a ${label}.`);
 
+for (const marker of ["SteerCo summary", "Generate AI draft", "Copy read-only link", "Open workspace", "38 KFLA competency names"]) {
+  if (!bundle.includes(marker)) throw new Error(`Public bundle is missing the required application marker: ${marker}.`);
+}
+
 console.log(`Public bundle verified: ${files.length} text assets contain no configured credentials or licensed-content markers.`);
