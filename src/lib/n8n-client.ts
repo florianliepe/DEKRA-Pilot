@@ -4,7 +4,7 @@ const DEFAULT_WEBHOOK_URL =
   "https://eraneos-agentic-platform.azurewebsites.net/webhook/7666d3c6-b63f-4e79-b10a-82a002a9cf47";
 
 const MAX_BATCH_BYTES = 29 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = new Set([".pdf", ".docx", ".json", ".md", ".txt", ".csv", ".xlsx", ".png", ".jpg", ".jpeg"]);
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".docx", ".pptx", ".json", ".md", ".txt", ".csv", ".xlsx", ".png", ".jpg", ".jpeg"]);
 
 export type PmoApiResponse = {
   ok?: boolean;
@@ -27,7 +27,7 @@ export type WorkflowIntakeResponse = {
 
 export type ExtractedEvidence = {
   name: string;
-  type: "text" | "json" | "docx_text" | "xlsx" | "pdf_text" | "image_ocr" | "text_update";
+  type: "text" | "json" | "docx_text" | "pptx_text" | "xlsx" | "pdf_text" | "image_ocr" | "text_update";
   content: string;
   mediaType?: string;
   size?: number;
@@ -126,6 +126,28 @@ export async function extractEvidence(files: File[]): Promise<ExtractedEvidence[
         Array.from(paragraph.getElementsByTagNameNS("*", "t")).map((node) => node.textContent || "").join(""),
       ).filter(Boolean);
       extracted.push({ name: file.name, type: "docx_text", content: paragraphs.join("\n"), ...metadata });
+      continue;
+    }
+
+    if (ext === ".pptx") {
+      const { default: JSZip } = await import("jszip");
+      const zip = await JSZip.loadAsync(bytes);
+      const slidePaths = Object.keys(zip.files)
+        .filter((path) => /^ppt\/slides\/slide\d+\.xml$/i.test(path))
+        .sort((left, right) => Number(left.match(/slide(\d+)\.xml/i)?.[1] || 0) - Number(right.match(/slide(\d+)\.xml/i)?.[1] || 0));
+      if (!slidePaths.length) throw new Error(`PPTX has no readable slides: ${file.name}`);
+      const slides: string[] = [];
+      for (const [index, path] of slidePaths.entries()) {
+        const slideXml = await zip.file(path)?.async("string");
+        if (!slideXml) continue;
+        const xml = new DOMParser().parseFromString(slideXml, "application/xml");
+        const text = Array.from(xml.getElementsByTagNameNS("*", "t"))
+          .map((node) => node.textContent?.trim() || "")
+          .filter(Boolean)
+          .join("\n");
+        slides.push(`## Slide ${index + 1}\n${text || "[No readable text]"}`);
+      }
+      extracted.push({ name: file.name, type: "pptx_text", content: slides.join("\n\n"), ...metadata });
       continue;
     }
 

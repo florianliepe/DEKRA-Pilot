@@ -51,6 +51,16 @@ async function workbookFixture() {
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
+async function presentationFixture() {
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"/>");
+  zip.file("ppt/slides/slide1.xml", `<?xml version="1.0" encoding="UTF-8"?>
+    <p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Application service outcomes</a:t></a:r></a:p><a:p><a:r><a:t>Coordinate incidents and releases</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`);
+  zip.file("ppt/slides/slide2.xml", `<?xml version="1.0" encoding="UTF-8"?>
+    <p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Resolve ownership ambiguity</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`);
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
 test.beforeEach(async ({ page }) => {
   const errors: string[] = [];
   pageErrors.set(page, errors);
@@ -61,7 +71,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
-    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; targetRevision?: number; meta?: { wpId?: string }; extracted?: Array<{ type?: string; content?: string }>; evidenceDraft?: SteercoSnapshot; snapshot?: SteercoSnapshot };
+    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; targetRevision?: number; meta?: { wpId?: string }; extracted?: Array<{ name?: string; type?: string; content?: string }>; evidenceDraft?: SteercoSnapshot; snapshot?: SteercoSnapshot };
     if (body.mode === "skill.read") {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace }) });
       return;
@@ -82,6 +92,10 @@ test.beforeEach(async ({ page }) => {
       const mapped = structuredClone(body.workspace);
       mapped.agentRuns = [{ id: "RUN-TEST", mode: "job_mapping", status: "needs_review", model: "claude-sonnet-5", startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), tools: ["read_catalog", "map_job_skills", "create_review_draft"], trace: [{ step: "Catalog grounding", result: "Approved catalog loaded." }] }, ...mapped.agentRuns];
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: mapped, agentRun: mapped.agentRuns[0], message: "AI mapping draft added to human review." }) });
+      return;
+    }
+    if (body.mode === "skill.ingest_job") {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace, message: "Job evidence normalized into governed working state." }) });
       return;
     }
     if (body.mode === "skill.elicitation" && body.workspace && body.sessionId) {
@@ -433,6 +447,22 @@ test("creates, edits and removes a job-description record", async ({ page }) => 
   await page.getByLabel("Governance reason").fill("Retire the synthetic role after lifecycle verification.");
   await page.getByRole("button", { name: "Archive job" }).click();
   await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toHaveCount(0);
+});
+
+test("extracts PPTX job evidence with ordered slide provenance", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await page.getByRole("button", { name: "Ingest job description" }).click();
+  await page.getByRole("textbox", { name: "Job title" }).fill("UAT Application Manager");
+  await page.getByRole("textbox", { name: "Job family" }).fill("Information Technology");
+  await page.getByRole("button", { name: "Job description files" }).setInputFiles({ name: "legacy-application-manager.pptx", mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", buffer: await presentationFixture() });
+  const requestPromise = page.waitForRequest((request) => request.url().includes("skill-designer-orchestrator") && request.postDataJSON()?.mode === "skill.ingest_job");
+  await page.getByRole("button", { name: "Ingest and normalize" }).click();
+  const body = (await requestPromise).postDataJSON() as { extracted: Array<{ name: string; type: string; content: string }> };
+  expect(body.extracted[0]).toMatchObject({ name: "legacy-application-manager.pptx", type: "pptx_text" });
+  expect(body.extracted[0].content).toContain("## Slide 1\nApplication service outcomes\nCoordinate incidents and releases");
+  expect(body.extracted[0].content).toContain("## Slide 2\nResolve ownership ambiguity");
+  await expect(page.getByText("Job evidence normalized into governed working state.")).toBeVisible();
 });
 
 test("shows traceable job evidence, calibrated score quality, omissions and approved comparison", async ({ page }) => {

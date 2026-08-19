@@ -67,12 +67,21 @@ function unwrap(raw: unknown): SkillWorkflowResponse {
 }
 
 async function call(secret: string, body: unknown, endpoint = url()) {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-n8n-webhook-secret": secret.trim() },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-n8n-webhook-secret": secret.trim() },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(120_000),
+    });
+  } catch (reason) {
+    if (reason instanceof DOMException && reason.name === "TimeoutError") {
+      throw new Error("The governed agent exceeded 120 seconds. Your working state is unchanged; retry with the same source after checking n8n health.");
+    }
+    throw reason;
+  }
   const raw = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : await response.text();
   const payload = unwrap(raw);
   if (!response.ok || payload.ok === false) throw new SkillWorkflowError(payload.error || `Skill workflow returned HTTP ${response.status}.`, response.status, payload);
@@ -126,7 +135,7 @@ export async function ingestJobDescription(
 ) {
   const extracted = await extractEvidence(files);
   if (sourceText.trim()) extracted.unshift({ name: "pasted-job-description.txt", type: "text_update", content: sourceText.trim(), mediaType: "text/plain", size: new Blob([sourceText]).size });
-  if (!extracted.length) throw new Error("Add a DOCX, PDF, JSON or pasted job description.");
+  if (!extracted.length) throw new Error("Add a DOCX, PPTX, PDF, XLSX, JSON or pasted job description.");
   return call(secret, { mode: "skill.ingest_job", metadata, extracted, idempotencyKey });
 }
 
