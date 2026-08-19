@@ -277,6 +277,23 @@ export type MappingScoreBreakdown = {
   missingEvidencePenalty: number;
 };
 
+export type MappingEvidenceAssessment = {
+  evidenceRef: string;
+  classification: "direct" | "inferred" | "unsupported";
+  claim: string;
+  excerpt?: string;
+  sourceLabel?: string;
+};
+
+export type MappingExplanation = {
+  recommendationSummary: string;
+  evidenceAssessments: MappingEvidenceAssessment[];
+  scoreNarrative: Array<{ dimension: keyof MappingScoreBreakdown; score: number; contribution: number; evidenceRefs: string[]; explanation: string }>;
+  relationshipCoverage: { responsibilityRefs: string[]; outcomeRefs: string[]; toolIds: string[]; kflaCompetencyIds: string[] };
+  rejectedAlternatives: Array<{ skillId: string; score: number; reason: string; evidenceRefs: string[] }>;
+  missingSkillSignals: Array<{ label: string; reason: string; evidenceRefs: string[]; recommendedAction: "clarify" | "propose_taxonomy_gap" | "none" }>;
+};
+
 export type JobSkillMapping = {
   id: string;
   jobDescriptionId: string;
@@ -305,6 +322,7 @@ export type JobSkillMapping = {
   evidenceCompleteness?: number;
   agentRunId?: string;
   governance?: GovernanceMeta;
+  explanation?: MappingExplanation;
 };
 
 export type MappingOmission = {
@@ -425,17 +443,46 @@ export type Interview = {
 };
 
 export type JobClarificationDimension = "outcomes" | "critical_incident" | "autonomy" | "complexity" | "performance_level";
-export type JobClarificationQuestion = { id: string; dimension: JobClarificationDimension; question: string; rationale: string; answer?: string; evidenceRecordId?: string; status: "open" | "answered" | "skipped" };
+export type JobClarificationQuestion = {
+  id: string;
+  dimension: JobClarificationDimension;
+  question: string;
+  rationale: string;
+  affectedMappingDimensions?: string[];
+  sourceExcerpts?: Array<{ evidenceId?: string; label: string; excerpt: string }>;
+  gapType?: "missing" | "weak" | "contradictory";
+  priority?: "medium" | "high" | "critical";
+  blocking?: boolean;
+  contradictionId?: string;
+  answer?: string;
+  evidenceRecordId?: string;
+  status: "open" | "answered" | "skipped";
+};
 export type JobClarificationSession = {
   id: string;
   jobDescriptionId: string;
-  status: "draft" | "in_progress" | "complete";
+  status: "draft" | "in_progress" | "needs_resolution" | "complete";
   currentQuestion: number;
   questions: JobClarificationQuestion[];
   startedAt: string;
   updatedAt: string;
   idempotencyKey: string;
   sessionVersion?: number;
+  sufficiencyScore?: number;
+  sufficiencyThreshold?: number;
+  canMap?: boolean;
+  stopReason?: "threshold_met" | "no_material_gaps" | "user_requested_more";
+  contradictions?: Array<{
+    id: string;
+    dimension: JobClarificationDimension;
+    severity: "warning" | "critical";
+    summary: string;
+    statements: string[];
+    resolutionPrompt: string;
+    status: "open" | "resolved";
+    resolution?: string;
+    resolvedAt?: string;
+  }>;
 };
 
 export type ReviewItem = {
@@ -774,6 +821,8 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
   }
   for (const session of workspace.jobClarifications) {
     if (!workspace.jobDescriptions.some((job) => job.id === session.jobDescriptionId) || !session.idempotencyKey.trim() || session.questions.some((question) => question.status === "answered" && (!question.answer?.trim() || !question.evidenceRecordId || !workspace.evidenceRecords.some((record) => record.id === question.evidenceRecordId)))) add("JOB-CLARIFICATION-001", "job_clarification", session.id, "Clarification answers require a job, idempotency key and governed evidence record.", "questions", "Persist each answer as an evidence record before completing the clarification.");
+    if (session.canMap && ((session.sufficiencyScore ?? 0) < (session.sufficiencyThreshold ?? 80) || session.contradictions?.some((item) => item.severity === "critical" && item.status === "open"))) add("JOB-CLARIFICATION-READINESS-001", "job_clarification", session.id, "Mapping readiness cannot be granted below the sufficiency threshold or with a critical contradiction.", "canMap", "Resolve critical contradictions and meet the governed evidence threshold before mapping.");
+    if (session.questions.some((question) => !question.affectedMappingDimensions?.length || !question.gapType || !question.priority)) add("JOB-CLARIFICATION-EXPLAINABILITY-001", "job_clarification", session.id, "Adaptive clarification questions require evidence-gap type, priority and affected mapping dimensions.", "questions", "Regenerate the question with the ZM-11 evidence-grounded clarification contract.", false);
   }
   for (const feedback of workspace.mappingFeedback) {
     if (!workspace.mappings.some((mapping) => mapping.id === feedback.mappingId) || !feedback.reviewer.trim() || !["taxonomy_steward", "job_architect"].includes(feedback.reviewerRole) || !feedback.reason.trim() || feedback.evidenceCompleteness < 0 || feedback.evidenceCompleteness > 100 || !feedback.promptVersion) add("MAPPING-FEEDBACK-001", "mapping_feedback", feedback.id, "Mapping feedback requires an existing mapping, accountable steward or architect, reason, prompt version and valid evidence completeness.", "mappingId", "Link an existing mapping and complete the accountable feedback record.");

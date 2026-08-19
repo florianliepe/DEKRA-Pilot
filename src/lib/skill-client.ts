@@ -144,7 +144,7 @@ export async function ingestJobDescription(
 
 export const runJobClarification = (
   secret: string,
-  payload: { jobDescriptionId: string; sessionId?: string; action: "start" | "answer" | "skip" | "back" | "edit"; questionId?: string; answer?: string; expectedSessionVersion: number; idempotencyKey: string; workspace: SkillWorkspace },
+  payload: { jobDescriptionId: string; sessionId?: string; action: "start" | "answer" | "skip" | "back" | "edit" | "ask_more"; questionId?: string; answer?: string; expectedSessionVersion: number; idempotencyKey: string; workspace: SkillWorkspace },
 ) => call(secret, { mode: "skill.clarify_job", ...payload });
 
 export const runSkillInterview = (secret: string, payload: Record<string, unknown>) => call(secret, { mode: "skill.interview", ...payload });

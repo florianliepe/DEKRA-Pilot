@@ -4,9 +4,23 @@ import { join } from "node:path";
 import { bootstrapSkillWorkspace } from "../src/lib/skill-fixtures";
 import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLifecycle, applyRelationshipLifecycle, applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, applySkillLifecycle, assessElicitationSyntax, authorizeAgentToolCall, calculateEvidenceCompleteness, calculateMappingScore, decideReview, detectReleaseDrift, impactAnalysis, mappingCalibrationSummary, mappingScoreContributions, prepareGovernedExport, prepareRelease, previewGovernedImport, proposeKflaLifecycle, recordMappingFeedback, requestGovernedImport, requestKflaMetadataReview, requestRollback, requestTaxonomyNodeDefinition, requestTaxonomyNodeLifecycle, resolveLocalizedConcept, sanitizeApprovedWorkspace, saveAgentToolDefinition, saveLocalizedConceptLabel, saveTaxonomyRelationship, setLocalizedConceptLabelStatus, validateAgentToolContract } from "../src/lib/skill-governance";
 import { evaluateMappingDataset } from "../src/lib/mapping-evaluation";
+import { assessJobClarification, nextEvidenceGroundedQuestion } from "../src/lib/skill-clarification";
+import { buildMappingExplanation, mappingExplanationFindings } from "../src/lib/mapping-explainability";
 import { compareObjectVersions, compareRoleProfiles, filterAuditEvents, governanceDiagnostics, replacementChain, taxonomyOverlapSignals } from "../src/lib/governance-analytics";
 import { assessPilotReadiness, pilotReadinessSummary } from "../src/lib/pilot-readiness";
 import { migrateSkillWorkspace, validateWorkspace, type MappingEvaluationDataset, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
+
+test("builds a ZM-12 reviewer explanation and blocks unsupported claims", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const mapping = workspace.mappings[0];
+  const job = workspace.jobDescriptions.find((item) => item.id === mapping.jobDescriptionId)!;
+  const explanation = buildMappingExplanation(mapping, job, workspace);
+  expect(explanation.evidenceAssessments[0]).toMatchObject({ classification: "direct", evidenceRef: "SEG-JD-DATA-01" });
+  expect(explanation.scoreNarrative).toHaveLength(13);
+  expect(mappingExplanationFindings({ ...mapping, explanation }, job, workspace)).toEqual([]);
+  const unsupported = { ...explanation, evidenceAssessments: [{ evidenceRef: "UNKNOWN", classification: "unsupported" as const, claim: "Unsupported" }] };
+  expect(mappingExplanationFindings({ ...mapping, explanation: unsupported }, job, workspace)).toEqual(expect.arrayContaining([expect.stringContaining("Unsupported evidence")]))
+});
 
 test("provides deterministic steward analytics for versions, audit, overlap, roles and quality", () => {
   const workspace = structuredClone(bootstrapSkillWorkspace);
@@ -384,6 +398,36 @@ test("persists job clarification answers as governed evidence and supports save 
   expect(answered.answer).toBeTruthy();
   expect(workspace.evidenceRecords.find((record) => record.id === answered.evidenceRecordId)).toMatchObject({ sourceId: "SRC-JD-DATA" });
   expect(validateWorkspace(workspace).some((finding) => finding.ruleId === "JOB-CLARIFICATION-001")).toBe(false);
+});
+
+test("prioritizes critical contradictions and blocks mapping until they are resolved", () => {
+  const job = structuredClone(bootstrapSkillWorkspace.jobDescriptions[0]);
+  job.id = "JD-CONTRADICTORY";
+  job.sourceText = "The role has full authority and works independently. Every decision requires approval and must always escalate.";
+  job.purpose = "Make accountable operational decisions.";
+  job.responsibilities = ["Make operational decisions independently.", "Escalate every decision for approval."];
+  job.outcomes = [];
+  job.activities = [];
+  job.context = [];
+  job.constraints = [];
+  job.qualifications = [];
+  job.evidenceSegments = [];
+  const assessment = assessJobClarification(job);
+  expect(assessment.canMap).toBe(false);
+  expect(assessment.unresolvedCritical).toHaveLength(1);
+  const question = nextEvidenceGroundedQuestion(job);
+  expect(question).toMatchObject({ gapType: "contradictory", priority: "critical", blocking: true, contradictionId: "CONTRADICTION-AUTONOMY" });
+  expect(question?.affectedMappingDimensions).toContain("contradictionPenalty");
+  expect(question?.sourceExcerpts?.length).toBeGreaterThan(0);
+});
+
+test("stops adaptive clarification at the sufficiency threshold and permits an explicit extra question", () => {
+  const job = structuredClone(bootstrapSkillWorkspace.jobDescriptions[0]);
+  const base = { id: "CLAR-THRESHOLD", jobDescriptionId: job.id, status: "in_progress" as const, currentQuestion: 5, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), idempotencyKey: "clarification-threshold", sessionVersion: 6, questions: (["outcomes", "critical_incident", "autonomy", "complexity", "performance_level"] as const).map((dimension, index) => ({ id: `Q-${index}`, dimension, question: dimension, rationale: dimension, affectedMappingDimensions: ["semanticRelevance"], gapType: "missing" as const, priority: "high" as const, answer: `Governed ${dimension} evidence`, evidenceRecordId: `E-${index}`, status: "answered" as const })) };
+  const assessment = assessJobClarification(job, base);
+  expect(assessment).toMatchObject({ sufficiencyScore: 100, canMap: true });
+  expect(nextEvidenceGroundedQuestion(job, base)).toBeUndefined();
+  expect(nextEvidenceGroundedQuestion(job, base, true)).toMatchObject({ gapType: "weak" });
 });
 
 test("excludes working clarifications, omissions and non-approved links from public releases", () => {

@@ -462,6 +462,28 @@ test("creates, edits and removes a job-description record", async ({ page }) => 
   await expect(page.locator(".job-list").getByText("Safety Data Product Owner", { exact: true })).toHaveCount(0);
 });
 
+test("shows ZM-11 evidence rationale, source excerpts and mapping readiness", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await expect(page.getByText("ZM-11 · EVIDENCE-GROUNDED CLARIFICATION")).toBeVisible();
+  await expect(page.getByText("82%", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Why this matters")).toBeVisible();
+  await expect(page.getByText("Proficiency Compatibility", { exact: true })).toBeVisible();
+  await expect(page.getByText("Source evidence considered")).toBeVisible();
+  await expect(page.getByRole("blockquote").getByText("Analyse performance drivers and explain material movements to senior stakeholders.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run governed mapping" })).toBeEnabled();
+});
+
+test("shows ZM-12 reviewer-facing mapping explainability", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await page.getByText("Why this recommendation").first().click();
+  await expect(page.getByText("direct evidence · SEG-JD-DATA-01")).toBeVisible();
+  await expect(page.getByText("Build interactive dashboards to report weekly revenue metrics.", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("review ready").first()).toBeVisible();
+  await expect(page.getByText("1 responsibilities").first()).toBeVisible();
+});
+
 test("extracts PPTX job evidence with ordered slide provenance", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();
@@ -483,7 +505,7 @@ test("shows traceable job evidence, calibrated score quality, omissions and appr
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();
   await expect(page.getByText("TRACEABLE JOB EVIDENCE")).toBeVisible();
   await expect(page.getByText("Normalized evidence")).toBeVisible();
-  await expect(page.getByText("SAVE / RESUME CLARIFICATION")).toBeVisible();
+  await expect(page.getByText("ZM-11 · EVIDENCE-GROUNDED CLARIFICATION")).toBeVisible();
   await expect(page.getByText("Why candidate skills were omitted")).toBeVisible();
   await expect(page.getByText("Proposed versus approved baseline")).toBeVisible();
   await expect(page.getByText("VERSIONED GOLDEN EVALUATION")).toBeVisible();
