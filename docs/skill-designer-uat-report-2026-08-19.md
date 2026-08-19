@@ -26,7 +26,7 @@ The run stops before human approval or JSON publication.
 | UAT-004 | Medium | A newly ingested job appeared in the catalog but the view remained on the previously selected job. | After successful DOCX intake the catalog showed two jobs while the detail view remained Global Reporting Analyst. | Select the newly returned job deterministically by comparing governed job identifiers. |
 | UAT-005 | Medium | Two published n8n workflows share the same Skill Designer Orchestrator v3 name. | n8n workflow IDs `etuCxjr2u5bPYqP2` and `1jgGJdy3wXW6kH87`; only the former received current traffic. | Open: archive or clearly label the stale workflow after owner confirmation; do not delete automatically. |
 | UAT-006 | Medium | The local agent permission registry accumulated duplicate object keys from sequential sync scripts. | Repeated `skill.ingest_job` and `skill.clarify_job` keys in the generated context code. | Rebuilt the registry once with unique mode definitions. |
-| UAT-007 | High | Full mapping validation is not yet complete across all four formats. | Browser control disconnected during the first governed mapping request; no mapping was persisted at revision 19. | Re-run through the governed webhook and live UI after deployment; verify approved-skill grounding, evidence references, 13 scores and omissions. |
+| UAT-007 | High | A governed mapping run could finish successfully with an empty profile, no mapping, no omission and no taxonomy-gap proposal. | Vehicle Inspection Engineer run `RUN-1787143213215` invoked five allowlisted mapping tools successfully, but the approved catalog had no suitable vehicle skill and the workflow persisted an empty draft profile at revision 20. | Expanded the strict response schema with evidence references and omissions; route no-fit concepts to draft taxonomy-gap proposals; block unexplained empty mapping output; do not persist empty profiles. |
 
 ## Baseline quality observations
 
@@ -34,10 +34,12 @@ The DOCX extractor retained source name and block-level locations and correctly 
 
 The governance boundary remained intact during the observed run: normalized jobs and clarification evidence were drafts in n8n working state, the review queue remained human-controlled, and `Release approved JSON` was not invoked.
 
+Targeted cleanup completed at n8n working revision 21: one synthetic job, one empty profile, one clarification session, five clarification evidence records and seven related agent runs were removed. The approved GitHub snapshot and non-UAT records were not changed.
+
 ## Remaining regression gates
 
 - Ingest and compare PPTX, XLSX and the second DOCX after the frontend deployment.
 - Complete one governed mapping per job and compare against the 25-skill / 30-link golden expectation semantically.
 - Verify mapping omissions below the abstention threshold and all thirteen score dimensions.
 - Confirm the agent-tool audit records show allowed calls only and no self-approval/publication.
-- Remove the exact UAT job, clarification, evidence, mappings, reviews and profiles from n8n working state without touching the approved GitHub snapshot.
+- Synchronize the committed ZM-09 workflow artifact to live n8n and repeat the mapping gate against a fresh synthetic record.

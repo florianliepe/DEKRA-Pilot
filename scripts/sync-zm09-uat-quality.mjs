@@ -21,14 +21,25 @@ const permissions = `const permissionsByMode={
 contextNode.parameters.jsCode = contextNode.parameters.jsCode.slice(0, permissionsStart) + permissions + contextNode.parameters.jsCode.slice(permissionsEnd);
 
 const schemaMarker = `"profile_proposal":object|null,"rewritten_session":object|null`;
-if (!agentNode.parameters.options.systemMessage.includes(schemaMarker)) throw new Error("Agent response schema marker was not found.");
+const currentSchemaMarker = `"profile_proposal":object|null,"clarification_questions":[{"dimension":"outcomes|critical_incident|autonomy|complexity|performance_level","question":string,"rationale":string}],"rewritten_session":object|null`;
+if (agentNode.parameters.options.systemMessage.includes(schemaMarker)) {
+  agentNode.parameters.options.systemMessage = agentNode.parameters.options.systemMessage.replace(schemaMarker, currentSchemaMarker);
+} else if (!agentNode.parameters.options.systemMessage.includes(currentSchemaMarker)) throw new Error("Agent response schema marker was not found.");
 agentNode.parameters.options.systemMessage = agentNode.parameters.options.systemMessage.replace(
-  schemaMarker,
-  `"profile_proposal":object|null,"clarification_questions":[{"dimension":"outcomes|critical_incident|autonomy|complexity|performance_level","question":string,"rationale":string}],"rewritten_session":object|null`,
+  `"mapping_proposals":[{"skillId":string,"targetLevel":number,"weight":number,"critical":boolean,"rationale":string,"evidence":string,"toolIds":[],"strategicVectorIds":[],`,
+  `"mapping_proposals":[{"skillId":string,"targetLevel":number,"weight":number,"critical":boolean,"rationale":string,"evidence":string,"evidenceRefs":[],"kflaCompetencyIds":[],"toolIds":[],"strategicVectorIds":[],`,
+);
+agentNode.parameters.options.systemMessage = agentNode.parameters.options.systemMessage.replace(
+  `"confidence":number}],"profile_proposal":object|null`,
+  `"confidence":number}],"mapping_omissions":[{"skillId":string,"reason":string,"evidenceRefs":[],"score":number}],"profile_proposal":object|null`,
 );
 agentNode.parameters.options.systemMessage = agentNode.parameters.options.systemMessage.replace(
   "For skill.clarify_job return clarification_questions for outcomes, critical_incident, autonomy, complexity and performance_level; answers must be evidence-seeking.",
   "For skill.clarify_job return job-specific clarification_questions for the material ambiguities found in this job evidence. Cover outcomes, critical_incident, autonomy, complexity and performance_level; include the source ambiguity in each rationale and seek observable evidence rather than generic opinions.",
+);
+agentNode.parameters.options.systemMessage = agentNode.parameters.options.systemMessage.replace(
+  /For skill\.map_job[\s\S]*?Never approve or publish\./,
+  "For skill.map_job return mapping_proposals grounded only in approved taxonomy and direct evidenceRefs, kflaCompetencyIds, toolIds, strategicVectorIds and all thirteen score fields. Return mapping_omissions only for below-threshold approved candidates, with reasons and evidenceRefs. When no approved skill fits, return evidence-grounded new_skill_proposals as taxonomy-gap drafts and do not force a mapping or an empty profile. Never approve or publish.",
 );
 
 const handlerStart = storeNode.parameters.jsCode.indexOf("if($json.mode==='skill.clarify_job'){");
@@ -66,6 +77,21 @@ const clarificationHandler = `if($json.mode==='skill.clarify_job'){
   session.idempotencyKey=idempotencyKey;
 }`;
 storeNode.parameters.jsCode = storeNode.parameters.jsCode.slice(0, handlerStart) + clarificationHandler + storeNode.parameters.jsCode.slice(handlerEnd);
+
+const emptyMappingMarker = "const mappingFindings=[];for(const [index,item] of (result.mapping_proposals||[]).entries())";
+if (!storeNode.parameters.jsCode.includes(emptyMappingMarker) && !storeNode.parameters.jsCode.includes("MAPPING-EMPTY-001")) throw new Error("Mapping validation marker was not found.");
+storeNode.parameters.jsCode = storeNode.parameters.jsCode.replace(
+  emptyMappingMarker,
+  "const mappingFindings=[];if(!(result.mapping_proposals||[]).length&&!(result.mapping_omissions||[]).length&&!(result.new_skill_proposals||[]).length)mappingFindings.push({id:`FND-MAPPING-EMPTY-${body.jobDescriptionId}`,ruleId:'MAPPING-EMPTY-001',severity:'error',entityType:'job_description',entityId:String(body.jobDescriptionId),affectedField:'mapping_proposals',explanation:'The agent returned neither approved-skill mappings, explained omissions nor taxonomy-gap proposals.',suggestedCorrection:'Return evidence-grounded omissions or draft new-skill proposals when the approved catalog has no suitable concept.',blocking:true,frameworkVersion,evidenceReference:(job?.evidenceSegments||[])[0]?.id});for(const [index,item] of (result.mapping_proposals||[]).entries())",
+);
+storeNode.parameters.jsCode = storeNode.parameters.jsCode.replace(
+  "if($json.mode==='skill.ingest'){for(const [index,item] of (result.new_skill_proposals||[]).entries())",
+  "if(['skill.ingest','skill.map_job'].includes($json.mode)){for(const [index,item] of (result.new_skill_proposals||[]).entries())",
+);
+storeNode.parameters.jsCode = storeNode.parameters.jsCode.replace(
+  "if(result.profile_proposal){const profileId=",
+  "if(result.profile_proposal&&(result.profile_proposal.skills||[]).length){const profileId=",
+);
 
 writeFileSync(path, `${JSON.stringify(workflow, null, 2)}\n`);
 console.log("ZM-09 UAT quality improvements synchronized to the Skill Designer v3 workflow artifact.");
