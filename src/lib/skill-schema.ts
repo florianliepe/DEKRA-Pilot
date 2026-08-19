@@ -386,8 +386,19 @@ export type AgentToolInvocation = {
 export type AgentRun = {
   id: string;
   mode: "ingest" | "interview" | "job_mapping" | "regression" | "elicitation";
-  status: "running" | "completed" | "needs_review" | "failed";
+  status: "queued" | "running" | "validating" | "interrupt_requested" | "interrupted" | "retrying" | "needs_review" | "completed" | "failed" | "stale";
   jobDescriptionId?: string;
+  projectId?: string;
+  requestedBy?: string;
+  stage?: string;
+  progress?: number;
+  sessionVersion?: number;
+  inputRevision?: string;
+  frameworkVersion?: string;
+  rulesVersion?: string;
+  resultReference?: string;
+  interruptRequested?: boolean;
+  updatedAt?: string;
   startedAt: string;
   completedAt?: string;
   model: string;
@@ -424,6 +435,7 @@ export type JobClarificationSession = {
   startedAt: string;
   updatedAt: string;
   idempotencyKey: string;
+  sessionVersion?: number;
 };
 
 export type ReviewItem = {

@@ -16,6 +16,9 @@ export type SkillWorkflowResponse = {
   interview?: SkillWorkspace["interviews"][number];
   message?: string;
   agentRun?: SkillWorkspace["agentRuns"][number];
+  mappingRun?: SkillWorkspace["agentRuns"][number];
+  pollAfterMs?: number;
+  statusUrl?: string;
   jobDescription?: SkillWorkspace["jobDescriptions"][number];
   clarification?: SkillWorkspace["jobClarifications"][number];
   idempotencyKey?: string;
@@ -66,7 +69,7 @@ function unwrap(raw: unknown): SkillWorkflowResponse {
   return (raw || {}) as SkillWorkflowResponse;
 }
 
-async function call(secret: string, body: unknown, endpoint = url()) {
+async function call(secret: string, body: unknown, endpoint = url(), timeoutMs = 240_000) {
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -74,11 +77,11 @@ async function call(secret: string, body: unknown, endpoint = url()) {
       headers: { "Content-Type": "application/json", "x-n8n-webhook-secret": secret.trim() },
       body: JSON.stringify(body),
       cache: "no-store",
-      signal: AbortSignal.timeout(240_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (reason) {
     if (reason instanceof DOMException && reason.name === "TimeoutError") {
-      throw new Error("The governed agent exceeded 240 seconds. The server may still be completing the idempotent request; reload the working state before retrying.");
+      throw new Error(`The governed workflow did not respond within ${Math.round(timeoutMs / 1000)} seconds. Its persisted run state is unchanged; resume monitoring before retrying.`);
     }
     throw reason;
   }
@@ -141,12 +144,29 @@ export async function ingestJobDescription(
 
 export const runJobClarification = (
   secret: string,
-  payload: { jobDescriptionId: string; action: "start" | "answer" | "skip"; questionId?: string; answer?: string; idempotencyKey: string; workspace: SkillWorkspace },
+  payload: { jobDescriptionId: string; sessionId?: string; action: "start" | "answer" | "skip" | "back" | "edit"; questionId?: string; answer?: string; expectedSessionVersion: number; idempotencyKey: string; workspace: SkillWorkspace },
 ) => call(secret, { mode: "skill.clarify_job", ...payload });
 
 export const runSkillInterview = (secret: string, payload: Record<string, unknown>) => call(secret, { mode: "skill.interview", ...payload });
+const mappingStartUrl = () => process.env.NEXT_PUBLIC_N8N_SKILL_MAPPING_START_URL?.trim() ||
+  "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-mapping-async-v1";
+const mappingControlUrl = () => process.env.NEXT_PUBLIC_N8N_SKILL_MAPPING_CONTROL_URL?.trim() ||
+  "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-mapping-control-v1";
+
+export const startJobMapping = (secret: string, payload: { runId: string; jobDescriptionId: string; workspace: SkillWorkspace; idempotencyKey: string; retryOfRunId?: string }) =>
+  call(secret, { mode: "skill.map_job.start", ...payload }, mappingStartUrl(), 20_000);
+export const getJobMappingStatus = (secret: string, runId: string) =>
+  call(secret, { mode: "skill.map_job.status", runId }, mappingControlUrl(), 15_000);
+export const interruptJobMapping = (secret: string, runId: string, idempotencyKey = governedIdempotencyKey("skill.map_job.interrupt", runId)) =>
+  call(secret, { mode: "skill.map_job.interrupt", runId, idempotencyKey }, mappingControlUrl(), 15_000);
+export const retryJobMapping = (secret: string, runId: string, jobDescriptionId: string, workspace: SkillWorkspace, nextRunId = crypto.randomUUID()) =>
+  startJobMapping(secret, { runId: nextRunId, jobDescriptionId, workspace, idempotencyKey: governedIdempotencyKey("skill.map_job.retry", runId), retryOfRunId: runId });
+export const getJobMappingResult = (secret: string, runId: string) =>
+  call(secret, { mode: "skill.map_job.result", runId }, mappingControlUrl(), 20_000);
+
+/** @deprecated ZM-10 callers should use startJobMapping and status polling. */
 export const runJobMapping = (secret: string, jobDescriptionId: string, workspace: SkillWorkspace, idempotencyKey = governedIdempotencyKey("skill.map_job", jobDescriptionId), retryOfRunId?: string) =>
-  call(secret, { mode: "skill.map_job", jobDescriptionId, workspace, idempotencyKey, retryOfRunId });
+  startJobMapping(secret, { runId: crypto.randomUUID(), jobDescriptionId, workspace, idempotencyKey, retryOfRunId });
 export const runTaxonomyRegression = (secret: string, workspace: SkillWorkspace) =>
   call(secret, { mode: "skill.regression", workspace });
 export const runSkillElicitation = (secret: string, sessionId: string, action: "rewrite" | "validate", workspace: SkillWorkspace) =>

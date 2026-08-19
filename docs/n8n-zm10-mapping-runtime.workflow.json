@@ -1,0 +1,1456 @@
+{
+  "name": "DEKRA Skill Mapping Runtime — ZM-10",
+  "nodes": [
+    {
+      "id": "zm10-start-webhook",
+      "name": "Async Mapping Start",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -900,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XeRspTWURk5bdcPi",
+          "name": "DEKRA PMO Webhook Auth"
+        }
+      },
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "skill-designer-mapping-async-v1",
+        "responseMode": "onReceived",
+        "options": {
+          "allowedOrigins": "https://florianliepe.github.io"
+        }
+      }
+    },
+    {
+      "id": "zm10-prepare",
+      "name": "Prepare Queued Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -680,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const body=$json.body||{};if(body.mode!=='skill.map_job.start'||!body.runId||!body.jobDescriptionId||!body.workspace||!body.idempotencyKey)throw new Error('Invalid governed mapping start command.');const now=new Date().toISOString();const run={id:String(body.runId),mode:'job_mapping',status:body.retryOfRunId?'retrying':'queued',jobDescriptionId:String(body.jobDescriptionId),projectId:'dekra-pilot',requestedBy:'authenticated-pilot-user',stage:'Preparing evidence',progress:5,sessionVersion:1,inputRevision:`workspace-${body.workspace.revision}:job-${body.workspace.jobDescriptions.find(j=>j.id===body.jobDescriptionId)?.version||0}`,frameworkVersion:body.workspace.framework?.version,rulesVersion:body.workspace.framework?.rulesVersion,startedAt:now,updatedAt:now,model:'governed-agent',tools:[],trace:[],idempotencyKey:String(body.idempotencyKey),retryOfRunId:body.retryOfRunId,attempt:body.retryOfRunId?2:1};return[{json:{runId:run.id,jobDescriptionId:run.jobDescriptionId,status:run.status,runJson:JSON.stringify(run),requestJson:JSON.stringify(body),resultJson:'',workspaceJson:'',idempotencyKey:run.idempotencyKey,interruptRequested:false}}];"
+      }
+    },
+    {
+      "id": "zm10-persist-queued-run",
+      "name": "Persist Queued Run",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -460,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ZTrdtZu10soIyPDV",
+          "mode": "list",
+          "cachedResultName": "DEKRA Skill Mapping Runs",
+          "cachedResultUrl": "/projects/tYB0YoTCoB3cCCKR/datatables/ZTrdtZu10soIyPDV"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "runId",
+              "condition": "eq",
+              "keyValue": "={{ $json.runId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "runId": "={{ $json.runId }}",
+            "jobDescriptionId": "={{ $json.jobDescriptionId }}",
+            "status": "={{ $json.status }}",
+            "runJson": "={{ $json.runJson }}",
+            "requestJson": "={{ $json.requestJson }}",
+            "resultJson": "={{ $json.resultJson || '' }}",
+            "workspaceJson": "={{ $json.workspaceJson || '' }}",
+            "idempotencyKey": "={{ $json.idempotencyKey }}",
+            "interruptRequested": "={{ $json.interruptRequested }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobDescriptionId",
+              "displayName": "jobDescriptionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runJson",
+              "displayName": "runJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requestJson",
+              "displayName": "requestJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultJson",
+              "displayName": "resultJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workspaceJson",
+              "displayName": "workspaceJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "idempotencyKey",
+              "displayName": "idempotencyKey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interruptRequested",
+              "displayName": "interruptRequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "zm10-running",
+      "name": "Mark Run Running",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const row=$json;const run=JSON.parse(row.runJson);Object.assign(run,{status:'running',stage:'Generating candidate skills',progress:30,updatedAt:new Date().toISOString()});return[{json:{...row,status:run.status,runJson:JSON.stringify(run)}}];"
+      }
+    },
+    {
+      "id": "zm10-persist-running-run",
+      "name": "Persist Running Run",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -20,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ZTrdtZu10soIyPDV",
+          "mode": "list",
+          "cachedResultName": "DEKRA Skill Mapping Runs",
+          "cachedResultUrl": "/projects/tYB0YoTCoB3cCCKR/datatables/ZTrdtZu10soIyPDV"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "runId",
+              "condition": "eq",
+              "keyValue": "={{ $json.runId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "runId": "={{ $json.runId }}",
+            "jobDescriptionId": "={{ $json.jobDescriptionId }}",
+            "status": "={{ $json.status }}",
+            "runJson": "={{ $json.runJson }}",
+            "requestJson": "={{ $json.requestJson }}",
+            "resultJson": "={{ $json.resultJson || '' }}",
+            "workspaceJson": "={{ $json.workspaceJson || '' }}",
+            "idempotencyKey": "={{ $json.idempotencyKey }}",
+            "interruptRequested": "={{ $json.interruptRequested }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobDescriptionId",
+              "displayName": "jobDescriptionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runJson",
+              "displayName": "runJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requestJson",
+              "displayName": "requestJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultJson",
+              "displayName": "resultJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workspaceJson",
+              "displayName": "workspaceJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "idempotencyKey",
+              "displayName": "idempotencyKey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interruptRequested",
+              "displayName": "interruptRequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "zm10-map-command",
+      "name": "Prepare Deferred Mapping Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const row=$json;return[{json:{...JSON.parse(row.requestJson),mode:'skill.map_job',deferPersistence:true}}];"
+      }
+    },
+    {
+      "id": "zm10-map",
+      "name": "Execute Deferred Mapping",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "fveyWpcJhgxGLXxZ",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "zm10-check-input",
+      "name": "Prepare Interruption Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const start=$('Persist Running Run').first().json;return[{json:{runId:start.runId,jobDescriptionId:start.jobDescriptionId,mappingResponse:$json}}];"
+      }
+    },
+    {
+      "id": "zm10-read-interruption-flag",
+      "name": "Read Interruption Flag",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        0
+      ],
+      "alwaysOutputData": true,
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ZTrdtZu10soIyPDV",
+          "mode": "list",
+          "cachedResultName": "DEKRA Skill Mapping Runs",
+          "cachedResultUrl": "/projects/tYB0YoTCoB3cCCKR/datatables/ZTrdtZu10soIyPDV"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "runId",
+              "condition": "eq",
+              "keyValue": "={{ $json.runId || $json.body?.runId }}"
+            }
+          ]
+        },
+        "returnAll": false,
+        "limit": 1
+      }
+    },
+    {
+      "id": "zm10-finalize",
+      "name": "Finalize Mapping Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const row=$json;const response=$('Prepare Interruption Check').first().json.mappingResponse||{};const run=JSON.parse(row.runJson||'{}');if(row.interruptRequested===true){Object.assign(run,{status:'interrupted',stage:'Interrupted safely',progress:100,interruptRequested:true,completedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});return[{json:{...row,status:run.status,runJson:JSON.stringify(run),shouldSave:false,resultJson:'',workspaceJson:''}}];}if(response.ok===false||!response.workspace){Object.assign(run,{status:'failed',stage:'Mapping failed',progress:100,error:{code:'MAPPING_EXECUTION_FAILED',message:String(response.error||response.message||'No governed workspace returned.'),retryable:true},completedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});return[{json:{...row,status:run.status,runJson:JSON.stringify(run),shouldSave:false,resultJson:JSON.stringify(response),workspaceJson:''}}];}Object.assign(run,{status:'validating',stage:'Running governance validation',progress:85,updatedAt:new Date().toISOString()});return[{json:{...row,status:run.status,runJson:JSON.stringify(run),shouldSave:true,resultJson:JSON.stringify(response),workspaceJson:JSON.stringify(response.workspace)}}];"
+      }
+    },
+    {
+      "id": "zm10-if-save",
+      "name": "If Save Allowed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1300,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "zm10-save-condition",
+              "leftValue": "={{ $json.shouldSave }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "zm10-persist-validating-run",
+      "name": "Persist Validating Run",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1520,
+        -100
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ZTrdtZu10soIyPDV",
+          "mode": "list",
+          "cachedResultName": "DEKRA Skill Mapping Runs",
+          "cachedResultUrl": "/projects/tYB0YoTCoB3cCCKR/datatables/ZTrdtZu10soIyPDV"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "runId",
+              "condition": "eq",
+              "keyValue": "={{ $json.runId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "runId": "={{ $json.runId }}",
+            "jobDescriptionId": "={{ $json.jobDescriptionId }}",
+            "status": "={{ $json.status }}",
+            "runJson": "={{ $json.runJson }}",
+            "requestJson": "={{ $json.requestJson }}",
+            "resultJson": "={{ $json.resultJson || '' }}",
+            "workspaceJson": "={{ $json.workspaceJson || '' }}",
+            "idempotencyKey": "={{ $json.idempotencyKey }}",
+            "interruptRequested": "={{ $json.interruptRequested }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobDescriptionId",
+              "displayName": "jobDescriptionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runJson",
+              "displayName": "runJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requestJson",
+              "displayName": "requestJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultJson",
+              "displayName": "resultJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workspaceJson",
+              "displayName": "workspaceJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "idempotencyKey",
+              "displayName": "idempotencyKey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interruptRequested",
+              "displayName": "interruptRequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "zm10-save-command",
+      "name": "Prepare Governed Save Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        -100
+      ],
+      "parameters": {
+        "jsCode": "return[{json:{mode:'skill.save',workspace:JSON.parse($json.workspaceJson),expectedRevision:JSON.parse($json.requestJson).workspace.revision,idempotencyKey:'skill.map_job.commit:'+$json.runId}}];"
+      }
+    },
+    {
+      "id": "zm10-save",
+      "name": "Persist Governed Result",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1960,
+        -100
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "fveyWpcJhgxGLXxZ",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "zm10-complete",
+      "name": "Complete Mapping Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2180,
+        -100
+      ],
+      "parameters": {
+        "jsCode": "const row=$('Persist Validating Run').first().json;const saved=$json;const run=JSON.parse(row.runJson);if(saved.ok===false||!saved.workspace){Object.assign(run,{status:'failed',stage:'Failed-publication recovery required',progress:100,error:{code:'WORKSPACE_SAVE_FAILED',message:String(saved.error||saved.message||'Governed save failed.'),retryable:true},completedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});}else{Object.assign(run,{status:'needs_review',stage:'Preparing review suggestion',progress:100,resultReference:`n8n-data-table://DEKRA-Skill-Mapping-Runs/${run.id}`,completedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});}return[{json:{...row,status:run.status,runJson:JSON.stringify(run),workspaceJson:saved.workspace?JSON.stringify(saved.workspace):row.workspaceJson,resultJson:JSON.stringify(saved),interruptRequested:false}}];"
+      }
+    },
+    {
+      "id": "zm10-persist-terminal-run",
+      "name": "Persist Terminal Run",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2400,
+        -100
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ZTrdtZu10soIyPDV",
+          "mode": "list",
+          "cachedResultName": "DEKRA Skill Mapping Runs",
+          "cachedResultUrl": "/projects/tYB0YoTCoB3cCCKR/datatables/ZTrdtZu10soIyPDV"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "runId",
+              "condition": "eq",
+              "keyValue": "={{ $json.runId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "runId": "={{ $json.runId }}",
+            "jobDescriptionId": "={{ $json.jobDescriptionId }}",
+            "status": "={{ $json.status }}",
+            "runJson": "={{ $json.runJson }}",
+            "requestJson": "={{ $json.requestJson }}",
+            "resultJson": "={{ $json.resultJson || '' }}",
+            "workspaceJson": "={{ $json.workspaceJson || '' }}",
+            "idempotencyKey": "={{ $json.idempotencyKey }}",
+            "interruptRequested": "={{ $json.interruptRequested }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobDescriptionId",
+              "displayName": "jobDescriptionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runJson",
+              "displayName": "runJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requestJson",
+              "displayName": "requestJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultJson",
+              "displayName": "resultJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workspaceJson",
+              "displayName": "workspaceJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "idempotencyKey",
+              "displayName": "idempotencyKey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interruptRequested",
+              "displayName": "interruptRequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "zm10-persist-interrupted-run",
+      "name": "Persist Interrupted Run",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1520,
+        140
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ZTrdtZu10soIyPDV",
+          "mode": "list",
+          "cachedResultName": "DEKRA Skill Mapping Runs",
+          "cachedResultUrl": "/projects/tYB0YoTCoB3cCCKR/datatables/ZTrdtZu10soIyPDV"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "runId",
+              "condition": "eq",
+              "keyValue": "={{ $json.runId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "runId": "={{ $json.runId }}",
+            "jobDescriptionId": "={{ $json.jobDescriptionId }}",
+            "status": "={{ $json.status }}",
+            "runJson": "={{ $json.runJson }}",
+            "requestJson": "={{ $json.requestJson }}",
+            "resultJson": "={{ $json.resultJson || '' }}",
+            "workspaceJson": "={{ $json.workspaceJson || '' }}",
+            "idempotencyKey": "={{ $json.idempotencyKey }}",
+            "interruptRequested": "={{ $json.interruptRequested }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobDescriptionId",
+              "displayName": "jobDescriptionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runJson",
+              "displayName": "runJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requestJson",
+              "displayName": "requestJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultJson",
+              "displayName": "resultJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workspaceJson",
+              "displayName": "workspaceJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "idempotencyKey",
+              "displayName": "idempotencyKey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interruptRequested",
+              "displayName": "interruptRequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "zm10-control-webhook",
+      "name": "Mapping Control API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -720,
+        240
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "XeRspTWURk5bdcPi",
+          "name": "DEKRA PMO Webhook Auth"
+        }
+      },
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "skill-designer-mapping-control-v1",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "https://florianliepe.github.io"
+        }
+      }
+    },
+    {
+      "id": "zm10-control-command",
+      "name": "Validate Mapping Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const body=$json.body||{};const allowed=['skill.map_job.status','skill.map_job.result','skill.map_job.interrupt'];if(!allowed.includes(body.mode)||!body.runId)return[{json:{ok:false,statusCode:400,error:'Invalid mapping control command.'}}];return[{json:{...body,runId:String(body.runId)}}];"
+      }
+    },
+    {
+      "id": "zm10-read-mapping-run",
+      "name": "Read Mapping Run",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -280,
+        240
+      ],
+      "alwaysOutputData": true,
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ZTrdtZu10soIyPDV",
+          "mode": "list",
+          "cachedResultName": "DEKRA Skill Mapping Runs",
+          "cachedResultUrl": "/projects/tYB0YoTCoB3cCCKR/datatables/ZTrdtZu10soIyPDV"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "runId",
+              "condition": "eq",
+              "keyValue": "={{ $json.runId || $json.body?.runId }}"
+            }
+          ]
+        },
+        "returnAll": false,
+        "limit": 1
+      }
+    },
+    {
+      "id": "zm10-control-response",
+      "name": "Apply Mapping Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const command=$('Validate Mapping Command').first().json;if(!$json.runId)return[{json:{ok:false,statusCode:404,error:'Mapping run was not found.'}}];const run=JSON.parse($json.runJson||'{}');if(command.mode==='skill.map_job.interrupt'&&!['interrupted','needs_review','completed','failed','stale'].includes(run.status)){Object.assign(run,{status:'interrupt_requested',stage:'Stopping at a controlled checkpoint',interruptRequested:true,updatedAt:new Date().toISOString()});return[{json:{...$json,status:run.status,runJson:JSON.stringify(run),interruptRequested:true,write:true,response:{ok:true,mappingRun:run,message:'Interruption requested. The run will stop at its next controlled checkpoint.'}}}];}const response={ok:true,mappingRun:run};if(command.mode==='skill.map_job.result'){if(!['needs_review','completed'].includes(run.status))return[{json:{ok:false,statusCode:409,error:'Mapping result is not ready.',mappingRun:run,write:false}}];response.workspace=$json.workspaceJson?JSON.parse($json.workspaceJson):undefined;const result=$json.resultJson?JSON.parse($json.resultJson):{};response.message=result.message||'Mapping completed and its governed suggestion is ready for human review.';}return[{json:{...response,write:false}}];"
+      }
+    },
+    {
+      "id": "zm10-if-control-write",
+      "name": "If Control Write",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        180,
+        240
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "zm10-control-write-condition",
+              "leftValue": "={{ $json.write }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "zm10-persist-interrupt-request",
+      "name": "Persist Interrupt Request",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        120
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ZTrdtZu10soIyPDV",
+          "mode": "list",
+          "cachedResultName": "DEKRA Skill Mapping Runs",
+          "cachedResultUrl": "/projects/tYB0YoTCoB3cCCKR/datatables/ZTrdtZu10soIyPDV"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "runId",
+              "condition": "eq",
+              "keyValue": "={{ $json.runId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "runId": "={{ $json.runId }}",
+            "jobDescriptionId": "={{ $json.jobDescriptionId }}",
+            "status": "={{ $json.status }}",
+            "runJson": "={{ $json.runJson }}",
+            "requestJson": "={{ $json.requestJson }}",
+            "resultJson": "={{ $json.resultJson || '' }}",
+            "workspaceJson": "={{ $json.workspaceJson || '' }}",
+            "idempotencyKey": "={{ $json.idempotencyKey }}",
+            "interruptRequested": "={{ $json.interruptRequested }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobDescriptionId",
+              "displayName": "jobDescriptionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runJson",
+              "displayName": "runJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "requestJson",
+              "displayName": "requestJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultJson",
+              "displayName": "resultJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workspaceJson",
+              "displayName": "workspaceJson",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "idempotencyKey",
+              "displayName": "idempotencyKey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interruptRequested",
+              "displayName": "interruptRequested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "zm10-interrupt-response",
+      "name": "Format Interrupt Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        120
+      ],
+      "parameters": {
+        "jsCode": "return[{json:$('Apply Mapping Command').first().json.response}];"
+      }
+    },
+    {
+      "id": "zm10-control-respond",
+      "name": "Respond to Mapping Control",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        720,
+        240
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode || 200 }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Async Mapping Start": {
+      "main": [
+        [
+          {
+            "node": "Prepare Queued Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Queued Run": {
+      "main": [
+        [
+          {
+            "node": "Persist Queued Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Queued Run": {
+      "main": [
+        [
+          {
+            "node": "Mark Run Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Run Running": {
+      "main": [
+        [
+          {
+            "node": "Persist Running Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Running Run": {
+      "main": [
+        [
+          {
+            "node": "Prepare Deferred Mapping Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Deferred Mapping Command": {
+      "main": [
+        [
+          {
+            "node": "Execute Deferred Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Deferred Mapping": {
+      "main": [
+        [
+          {
+            "node": "Prepare Interruption Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Interruption Check": {
+      "main": [
+        [
+          {
+            "node": "Read Interruption Flag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Interruption Flag": {
+      "main": [
+        [
+          {
+            "node": "Finalize Mapping Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Mapping Decision": {
+      "main": [
+        [
+          {
+            "node": "If Save Allowed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Save Allowed": {
+      "main": [
+        [
+          {
+            "node": "Persist Validating Run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Persist Interrupted Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Validating Run": {
+      "main": [
+        [
+          {
+            "node": "Prepare Governed Save Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Governed Save Command": {
+      "main": [
+        [
+          {
+            "node": "Persist Governed Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Governed Result": {
+      "main": [
+        [
+          {
+            "node": "Complete Mapping Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Mapping Run": {
+      "main": [
+        [
+          {
+            "node": "Persist Terminal Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapping Control API": {
+      "main": [
+        [
+          {
+            "node": "Validate Mapping Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Mapping Command": {
+      "main": [
+        [
+          {
+            "node": "Read Mapping Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Mapping Run": {
+      "main": [
+        [
+          {
+            "node": "Apply Mapping Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Mapping Command": {
+      "main": [
+        [
+          {
+            "node": "If Control Write",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Control Write": {
+      "main": [
+        [
+          {
+            "node": "Persist Interrupt Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Mapping Control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Interrupt Request": {
+      "main": [
+        [
+          {
+            "node": "Format Interrupt Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Interrupt Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Mapping Control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "zielmodus": "ZM-10",
+    "dataTableId": "ZTrdtZu10soIyPDV",
+    "contract": "async-mapping-1.0.0"
+  },
+  "pinData": {},
+  "active": false
+}

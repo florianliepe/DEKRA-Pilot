@@ -63,6 +63,8 @@ async function presentationFixture() {
 
 test.beforeEach(async ({ page }) => {
   const errors: string[] = [];
+  let mappingRunState: SkillWorkspace["agentRuns"][number] | undefined;
+  let mappedWorkspace: SkillWorkspace | undefined;
   pageErrors.set(page, errors);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("https://api.github.com/repos/florianliepe/DEKRA-Pilot/contents/data/skill-workspace.approved.json**", async (route) => {
@@ -71,7 +73,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
-    const body = request.postDataJSON() as { mode?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; targetRevision?: number; meta?: { wpId?: string }; extracted?: Array<{ name?: string; type?: string; content?: string }>; evidenceDraft?: SteercoSnapshot; snapshot?: SteercoSnapshot };
+    const body = request.postDataJSON() as { mode?: string; runId?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; targetRevision?: number; meta?: { wpId?: string }; extracted?: Array<{ name?: string; type?: string; content?: string }>; evidenceDraft?: SteercoSnapshot; snapshot?: SteercoSnapshot };
     if (body.mode === "skill.read") {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace }) });
       return;
@@ -88,10 +90,20 @@ test.beforeEach(async ({ page }) => {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace, proposals: bootstrapSkillWorkspace.reviewQueue, message: "2 governed proposals added to review." }) });
       return;
     }
-    if (body.mode === "skill.map_job" && body.workspace && body.jobDescriptionId) {
-      const mapped = structuredClone(body.workspace);
-      mapped.agentRuns = [{ id: "RUN-TEST", mode: "job_mapping", status: "needs_review", model: "claude-sonnet-5", startedAt: new Date().toISOString(), completedAt: new Date().toISOString(), tools: ["read_catalog", "map_job_skills", "create_review_draft"], trace: [{ step: "Catalog grounding", result: "Approved catalog loaded." }] }, ...mapped.agentRuns];
-      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: mapped, agentRun: mapped.agentRuns[0], message: "AI mapping draft added to human review." }) });
+    if (body.mode === "skill.map_job.start" && body.workspace && body.jobDescriptionId && body.runId) {
+      mappedWorkspace = structuredClone(body.workspace);
+      mappingRunState = { id: body.runId, mode: "job_mapping", status: "queued", jobDescriptionId: body.jobDescriptionId, stage: "Preparing evidence", progress: 5, model: "claude-sonnet-5", startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tools: [], trace: [] };
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, mappingRun: mappingRunState, pollAfterMs: 2000, message: "Mapping run queued. It will continue if this page is closed." }) });
+      return;
+    }
+    if (body.mode === "skill.map_job.status" && mappingRunState && mappedWorkspace) {
+      mappingRunState = { ...mappingRunState, status: "needs_review", stage: "Preparing review suggestion", progress: 100, completedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), tools: ["read_catalog", "map_job_skills", "create_review_draft"], trace: [{ step: "Catalog grounding", result: "Approved catalog loaded." }] };
+      mappedWorkspace.agentRuns = [mappingRunState, ...mappedWorkspace.agentRuns.filter((run) => run.id !== mappingRunState!.id)];
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, mappingRun: mappingRunState, workspace: mappedWorkspace }) });
+      return;
+    }
+    if (body.mode === "skill.map_job.result" && mappingRunState && mappedWorkspace) {
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, mappingRun: mappingRunState, workspace: mappedWorkspace, message: "AI mapping draft added to human review." }) });
       return;
     }
     if (body.mode === "skill.ingest_job") {
@@ -394,12 +406,13 @@ test("runs document intake through the separate Skill Designer workflow", async 
 test("runs a governed AI mapping and records the agent trace", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Jobs & mapping" }).click();
-  const requestPromise = page.waitForRequest((request) => request.url().includes("skill-designer-orchestrator") && request.postDataJSON()?.mode === "skill.map_job");
+  const requestPromise = page.waitForRequest((request) => request.url().includes("skill-designer-mapping-async") && request.postDataJSON()?.mode === "skill.map_job.start");
   await page.getByRole("button", { name: "Run governed mapping" }).click();
   const body = (await requestPromise).postDataJSON() as { jobDescriptionId: string; workspace: SkillWorkspace };
   expect(body.jobDescriptionId).toBe("JD-DATA");
   expect(body.workspace.schemaVersion).toBe(3);
-  await expect(page.getByText("AI mapping draft added to human review.")).toBeVisible();
+  await expect(page.getByText("Mapping run queued. It will continue if this page is closed.")).toBeVisible();
+  await expect(page.getByText("AI mapping draft added to human review.")).toBeVisible({ timeout: 12_000 });
   await page.getByRole("tab", { name: "Agent runs" }).click();
   await expect(page.getByText("Catalog grounding")).toBeVisible();
   await expect(page.getByText("Cannot approve")).toBeVisible();

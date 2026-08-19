@@ -20,6 +20,7 @@
     "sync:n8n-zm05": "node scripts/sync-zm05-mapping-quality.mjs",
     "sync:n8n-zm07": "node scripts/sync-zm07-pilot-readiness.mjs",
     "sync:n8n-zm09": "node scripts/sync-zm09-uat-quality.mjs",
+    "sync:n8n-zm10": "node scripts/sync-n8n-zm10-runtime.mjs",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

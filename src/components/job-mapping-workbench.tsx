@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icons } from "./icons";
-import { governedIdempotencyKey, ingestJobDescription, runJobClarification, runJobMapping } from "@/lib/skill-client";
+import { getJobMappingResult, getJobMappingStatus, governedIdempotencyKey, ingestJobDescription, interruptJobMapping, retryJobMapping, runJobClarification, startJobMapping } from "@/lib/skill-client";
+import { isActiveMappingRun, isTerminalMappingRun, mappingRunStage, mappingRunStorageKey, nextMappingPollDelay, normalizeMappingProgress } from "@/lib/skill-run-runtime";
 import { decideReview, impactAnalysis, mappingCalibrationSummary, mappingQualityFindings, mappingScoreContributions, recalculateMapping, recordGovernedVersion, recordMappingFeedback } from "@/lib/skill-governance";
 import { evaluateMappingDataset } from "@/lib/mapping-evaluation";
 import goldenBaseline from "../../data/evaluation/mapping-golden-baseline.json";
-import { proficiencyLevels, type JobDescription, type JobSkillMapping, type MappingEvaluationDataset, type MappingFeedback, type MappingScoreBreakdown, type SkillWorkspace } from "@/lib/skill-schema";
+import { proficiencyLevels, type AgentRun, type JobDescription, type JobSkillMapping, type MappingEvaluationDataset, type MappingFeedback, type MappingScoreBreakdown, type SkillWorkspace } from "@/lib/skill-schema";
 
 type Props = {
   workspace: SkillWorkspace;
@@ -40,14 +41,16 @@ export function JobMappingWorkbench({ workspace, approvedWorkspace, secret, muta
   const [editing, setEditing] = useState<JobDescription | "new" | null>(null);
   const [editingMapping, setEditingMapping] = useState<JobSkillMapping | "new" | null>(null);
   const [feedbackMapping, setFeedbackMapping] = useState<JobSkillMapping | null>(null);
-  const [busy, setBusy] = useState(false);
-  const busySeconds = useBusyElapsed(busy);
+  const [starting, setStarting] = useState(false);
   const [impactOpen, setImpactOpen] = useState(false);
   const [archiveActor, setArchiveActor] = useState("");
   const [archiveReason, setArchiveReason] = useState("");
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [selectedEvidence, setSelectedEvidence] = useState("");
-  const [mappingRunKey, setMappingRunKey] = useState("");
+  const [mappingRun, setMappingRun] = useState<AgentRun | null>(null);
+  const [lastRunUpdate, setLastRunUpdate] = useState("");
+  const [connectionDegraded, setConnectionDegraded] = useState(false);
+  const resultLoadedFor = useRef("");
   const job = activeJobs.find((item) => item.id === selected) || activeJobs[0];
   const mappings = workspace.mappings.filter((item) => item.jobDescriptionId === job?.id && item.status !== "rejected").sort((a, b) => b.relevance - a.relevance);
   const calibration = mappingCalibrationSummary(workspace);
@@ -66,20 +69,93 @@ export function JobMappingWorkbench({ workspace, approvedWorkspace, secret, muta
     setSelected(""); setImpactOpen(false); setArchiveActor(""); setArchiveReason(""); onMessage(`${job.title} archived with its draft mappings preserved in version history.`);
   }
 
-  async function analyse() {
+  const busySeconds = useBusyElapsed(starting || isActiveMappingRun(mappingRun));
+
+  async function analyse(retryOfRunId?: string) {
     if (!job) return;
-    setBusy(true); onError("");
+    setStarting(true); onError("");
     try {
-      const idempotencyKey = mappingRunKey || governedIdempotencyKey("skill.map_job", job.id);
-      setMappingRunKey(idempotencyKey);
-      const failedRun = workspace.agentRuns.find((run) => run.jobDescriptionId === job.id && run.status === "failed");
-      const payload = await runJobMapping(secret, job.id, workspace, idempotencyKey, failedRun?.id);
-      if (payload.workspace) onWorkspace(payload.workspace);
-      setMappingRunKey("");
-      onMessage(payload.message || "AI profile proposal added to the governance queue.");
+      const runId = crypto.randomUUID();
+      const optimistic: AgentRun = { id: runId, mode: "job_mapping", status: retryOfRunId ? "retrying" : "queued", jobDescriptionId: job.id, projectId: "dekra-pilot", requestedBy: "authenticated-pilot-user", stage: "Preparing evidence", progress: 5, sessionVersion: 1, inputRevision: `workspace-${workspace.revision}:job-${job.version}`, frameworkVersion: workspace.framework.version, rulesVersion: workspace.framework.rulesVersion, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), model: "governed-agent", tools: [], trace: [], idempotencyKey: governedIdempotencyKey(retryOfRunId ? "skill.map_job.retry" : "skill.map_job.start", job.id), retryOfRunId, attempt: retryOfRunId ? 2 : 1 };
+      setMappingRun(optimistic);
+      localStorage.setItem(mappingRunStorageKey(job.id), runId);
+      const payload = retryOfRunId
+        ? await retryJobMapping(secret, retryOfRunId, job.id, workspace, runId)
+        : await startJobMapping(secret, { runId, jobDescriptionId: job.id, workspace, idempotencyKey: optimistic.idempotencyKey! });
+      setMappingRun(payload.mappingRun || payload.agentRun || optimistic);
+      setLastRunUpdate(new Date().toISOString());
+      onMessage(payload.message || "Mapping run queued. It will continue if this page is closed.");
     } catch (reason) { onError(reason instanceof Error ? reason.message : "AI job mapping failed."); }
-    finally { setBusy(false); }
+    finally { setStarting(false); }
   }
+
+  async function interruptRun() {
+    if (!mappingRun || !window.confirm("Interrupt this mapping run? Completed intermediate work will remain in the audit record, but no review suggestion will be created unless validation has finished.")) return;
+    try {
+      const payload = await interruptJobMapping(secret, mappingRun.id);
+      setMappingRun(payload.mappingRun || payload.agentRun || { ...mappingRun, status: "interrupt_requested", interruptRequested: true, updatedAt: new Date().toISOString() });
+      onMessage(payload.message || "Interruption requested. The run will stop at its next controlled checkpoint.");
+    } catch (reason) { onError(reason instanceof Error ? reason.message : "The mapping run could not be interrupted."); }
+  }
+
+  useEffect(() => {
+    if (!job) return;
+    let cancelled = false;
+    const restoreRun = async () => {
+      await Promise.resolve();
+      const storedRunId = localStorage.getItem(mappingRunStorageKey(job.id));
+      const workspaceRun = workspace.agentRuns.find((run) => run.jobDescriptionId === job.id && (run.id === storedRunId || isActiveMappingRun(run)));
+      if (workspaceRun) {
+        if (!cancelled) setMappingRun(workspaceRun);
+        return;
+      }
+      if (!storedRunId) return;
+      try {
+        const payload = await getJobMappingStatus(secret, storedRunId);
+        if (!cancelled) setMappingRun(payload.mappingRun || payload.agentRun || null);
+      } catch {
+        if (!cancelled) setConnectionDegraded(true);
+      }
+    };
+    void restoreRun();
+    return () => { cancelled = true; };
+  }, [job, secret, workspace.agentRuns]);
+
+  useEffect(() => {
+    if (!job || !mappingRun || !isActiveMappingRun(mappingRun)) return;
+    let cancelled = false;
+    let timer: number | undefined;
+    let delay = 2_000;
+    const poll = async () => {
+      if (cancelled) return;
+      if (document.hidden) { timer = window.setTimeout(poll, 2_000); return; }
+      try {
+        const payload = await getJobMappingStatus(secret, mappingRun.id);
+        if (cancelled) return;
+        const next = payload.mappingRun || payload.agentRun;
+        if (!next) throw new Error("The run status response did not contain a governed run record.");
+        setMappingRun(next); setLastRunUpdate(new Date().toISOString()); setConnectionDegraded(false);
+        if (payload.workspace) onWorkspace(payload.workspace);
+        if (isTerminalMappingRun(next)) {
+          localStorage.removeItem(mappingRunStorageKey(job.id));
+          if (["needs_review", "completed"].includes(next.status) && resultLoadedFor.current !== next.id) {
+            resultLoadedFor.current = next.id;
+            const result = await getJobMappingResult(secret, next.id);
+            if (result.workspace) onWorkspace(result.workspace);
+            onMessage(result.message || "Mapping completed and its governed suggestion is ready for human review.");
+          }
+          return;
+        }
+        delay = nextMappingPollDelay(delay);
+      } catch {
+        setConnectionDegraded(true);
+        delay = nextMappingPollDelay(delay);
+      }
+      timer = window.setTimeout(poll, delay);
+    };
+    timer = window.setTimeout(poll, delay);
+    return () => { cancelled = true; if (timer) window.clearTimeout(timer); };
+  }, [job, mappingRun, onMessage, onWorkspace, secret]);
 
   function saveMapping(mapping: JobSkillMapping, actor: string, reason: string) {
     if (!job) return;
@@ -98,7 +174,7 @@ export function JobMappingWorkbench({ workspace, approvedWorkspace, secret, muta
     <section className="mapping-main">
       <article className="panel job-source"><header><div><span className="section-kicker">TRACEABLE JOB EVIDENCE</span><h3>{job.title}</h3><p>{job.purpose}</p></div><div className="record-actions"><button aria-label={`Edit ${job.title}`} onClick={() => setEditing(job)}><Icons.edit/></button><button aria-label={`Delete ${job.title}`} onClick={() => setImpactOpen(true)}><Icons.trash/></button></div></header><div className="job-meta"><span>{job.jobFamily}</span><span>{job.country}</span><span>{job.language}</span><span>Version {job.version}</span><span>{job.sourceFiles.length} source file(s)</span></div><div className="evidence-split"><div><b>Source text</b><div className="job-source-text">{job.sourceText}</div></div><div><b>Normalized evidence</b><div className="evidence-segments">{job.evidenceSegments.map((segment) => <button key={segment.id} className={segment.id === selectedEvidence ? "active" : ""} onClick={() => setSelectedEvidence(segment.id)}><span>{segment.normalizedType} · {displayConfidence(segment.confidence)}%</span><b>{segment.normalizedValue}</b><small>{segment.sourceName} · {segment.location}</small></button>)}</div></div></div>{job.intakeFindings.length > 0 && <details><summary>{job.intakeFindings.length} intake quality finding(s)</summary>{job.intakeFindings.map((finding) => <p key={`${finding.code}-${finding.message}`} className={`finding ${finding.severity}`}><b>{finding.code}</b> {finding.message}</p>)}</details>}<footer><span>{job.responsibilities.length} responsibilities</span><span>{job.outcomes.length} outcomes</span><span>{job.activities.length} activities</span><span>{job.tools.length} tools</span></footer></article>
       <JobClarificationPanel workspace={workspace} job={job} secret={secret} onWorkspace={onWorkspace} onMessage={onMessage} onError={onError}/>
-      <article className="panel ai-mapping-command"><div className="agent-orb"><Icons.spark/></div><div><span className="section-kicker">AI SKILL DESIGN AGENT</span><h3>Map this job against approved skills and controlled tools</h3><p>The agent uses eleven allowlisted tools, retains evidence and creates drafts only. It cannot approve, publish, delete or access licensed definitions.</p>{busy && <p role="status" className="helper-text">Analysing evidence, taxonomy fit and governance rules · {busySeconds}s elapsed · usually 60–210s</p>}<div className="tool-chips">{workspace.agentTools.filter((tool) => tool.lifecycleStatus === "active").slice(0, 6).map((tool) => <span key={tool.id}>{tool.id}</span>)}</div></div><button className="button primary" disabled={busy} onClick={() => void analyse()}><Icons.spark/>{busy ? `Agent mapping · ${busySeconds}s` : "Run governed mapping"}</button></article>
+      <article className="panel ai-mapping-command"><div className="agent-orb"><Icons.spark/></div><div><span className="section-kicker">AI SKILL DESIGN AGENT · ASYNCHRONOUS</span><h3>Map this job against approved skills and controlled tools</h3><p>The run is persisted in n8n, continues when this page closes, and can create drafts only. Approval and publication remain human-controlled.</p>{mappingRun && <div className={`mapping-run-status ${mappingRun.status}`} role="status"><div><b>{mappingRunStage(mappingRun)}</b><span>{mappingRun.status.replaceAll("_", " ")} · {busySeconds}s elapsed</span></div><span className="progress-track"><i style={{ width: `${normalizeMappingProgress(mappingRun)}%` }}/></span><small>{connectionDegraded ? "Connection degraded — run continues in n8n" : `Last update ${lastRunUpdate ? new Date(lastRunUpdate).toLocaleTimeString("en-GB") : "pending"}`} · {mappingRun.frameworkVersion || workspace.framework.version} · {mappingRun.rulesVersion || workspace.framework.rulesVersion}</small></div>}<div className="tool-chips">{workspace.agentTools.filter((tool) => tool.lifecycleStatus === "active").slice(0, 6).map((tool) => <span key={tool.id}>{tool.id}</span>)}</div></div><div className="mapping-run-actions">{isActiveMappingRun(mappingRun) ? <button className="button danger" disabled={mappingRun?.status === "interrupt_requested"} onClick={() => void interruptRun()}>Interrupt run</button> : mappingRun && ["failed", "interrupted", "stale"].includes(mappingRun.status) ? <button className="button primary" disabled={starting} onClick={() => void analyse(mappingRun.id)}>Retry mapping</button> : <button className="button primary" disabled={starting} onClick={() => void analyse()}><Icons.spark/>{starting ? "Queuing run…" : "Run governed mapping"}</button>}</div></article>
       <article className="panel mapping-table"><header><div><span className="section-kicker">SKILL PROFILE PROPOSAL</span><h3>{mappings.length} mapped skills</h3></div><div className={totalWeight === 100 ? "weight-valid" : "weight-warning"}>{totalWeight}% allocated</div></header><div className="mapping-head"><span>Catalog skill</span><span>Evidence & rationale</span><span>Level</span><span>Weight</span><span>Fit</span><span/></div>{mappings.map((mapping) => <MappingRow key={mapping.id} mapping={mapping} workspace={workspace} mutate={mutate} selectedEvidence={selectedEvidence} onEvidence={setSelectedEvidence} onEdit={() => setEditingMapping(mapping)} onFeedback={() => setFeedbackMapping(mapping)}/>)}<footer><button className="button secondary" onClick={() => setEditingMapping("new")} disabled={mappings.length >= 10}><Icons.plus/>Add catalog skill</button><span>Every agent proposal requires accountable approval · score model {workspace.framework.mappingScoreVersion}</span></footer></article>
       <MappingGovernanceSummary workspace={workspace} approvedWorkspace={approvedWorkspace} job={job} mutate={mutate}/>
       <article className="panel calibration-panel"><header><div><span className="section-kicker">CONFIDENCE CALIBRATION</span><h3>{calibration.sampleSize} accountable review records</h3></div><b>{calibration.evidenceCompleteness}% evidence completeness</b></header><div className="form-row"><p><b>{calibration.predicted}%</b><small>Mean predicted confidence</small></p><p><b>{calibration.observed}%</b><small>Confirmed by reviewers</small></p><p><b>{calibration.calibrationGap > 0 ? "+" : ""}{calibration.calibrationGap}</b><small>Calibration gap</small></p></div>{calibration.bins.map((bin) => <p key={bin.label}><b>{bin.label}</b><span>{bin.count} reviews · predicted {bin.predicted}% · observed {bin.observed}%</span></p>)}</article>
@@ -157,22 +233,23 @@ function JobIntakeEditor({ secret, workspace, onClose, onWorkspace, onMessage, o
 
 function JobClarificationPanel({ workspace, job, secret, onWorkspace, onMessage, onError }: { workspace: SkillWorkspace; job: JobDescription; secret: string; onWorkspace: (workspace: SkillWorkspace) => void; onMessage: (message: string) => void; onError: (message: string) => void }) {
   const session = workspace.jobClarifications.find((item) => item.jobDescriptionId === job.id);
-  const question = session?.questions.find((item) => item.status === "open");
+  const [editingQuestionId, setEditingQuestionId] = useState("");
+  const question = session?.questions.find((item) => item.id === editingQuestionId) || session?.questions.find((item) => item.status === "open");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const busySeconds = useBusyElapsed(busy);
-  async function act(action: "start" | "answer" | "skip") {
+  async function act(action: "start" | "answer" | "skip" | "back" | "edit") {
     setBusy(true); onError("");
     try {
-      const payload = await runJobClarification(secret, { jobDescriptionId: job.id, action, questionId: question?.id, answer, idempotencyKey: governedIdempotencyKey(`skill.clarify_job.${action}`, job.id), workspace });
+      const payload = await runJobClarification(secret, { jobDescriptionId: job.id, sessionId: session?.id, action, questionId: question?.id, answer, expectedSessionVersion: session?.sessionVersion || 0, idempotencyKey: governedIdempotencyKey(`skill.clarify_job.${action}`, `${job.id}:${question?.id || "start"}:${session?.sessionVersion || 0}`), workspace });
       if (payload.workspace) onWorkspace(payload.workspace);
-      setAnswer(""); onMessage(payload.message || "Clarification progress saved with governed evidence traceability.");
+      setAnswer(""); setEditingQuestionId(""); onMessage(payload.message || "Clarification progress saved with governed evidence traceability.");
     } catch (reason) { onError(reason instanceof Error ? reason.message : "Job clarification failed."); }
     finally { setBusy(false); }
   }
   const answered = session?.questions.filter((item) => item.status === "answered").length || 0;
   const total = session?.questions.length || 5;
-  return <article className="panel clarification-panel"><header><div><span className="section-kicker">SAVE / RESUME CLARIFICATION</span><h3>Outcome, critical incident, autonomy, complexity and level</h3></div><b>{answered}/{total}</b></header>{busy && <p role="status" className="helper-text">Saving governed evidence and preparing the next question · {busySeconds}s elapsed · usually 30–60s</p>}{!session ? <div><p>Start a job-specific, evidence-seeking agent interview before mapping.</p><button className="button primary" disabled={busy} onClick={() => void act("start")}><Icons.spark/>{busy ? `Preparing · ${busySeconds}s` : "Start clarification"}</button></div> : question ? <div><span className="progress-track"><i style={{ width: `${Math.round(answered / total * 100)}%` }}/></span><small>{question.dimension.replaceAll("_", " ")} · {question.rationale}</small><h4>{question.question}</h4><textarea value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Provide a concrete example and observable evidence…"/><div className="record-actions"><button className="button secondary" disabled={busy} onClick={() => void act("skip")}>Defer question</button><button className="button primary" disabled={busy || !answer.trim()} onClick={() => void act("answer")}>{busy ? `Saving · ${busySeconds}s` : "Save answer and continue"}</button></div></div> : <p>Clarification complete. All answers are stored as governed evidence records.</p>}</article>;
+  return <article className="panel clarification-panel"><header><div><span className="section-kicker">DETERMINISTIC SAVE / RESUME CLARIFICATION</span><h3>Outcome, critical incident, autonomy, complexity and level</h3></div><b>{answered}/{total} · v{session?.sessionVersion || 0}</b></header>{busy && <p role="status" className="helper-text">Applying one versioned clarification transition · {busySeconds}s elapsed</p>}{!session ? <div><p>Start a job-specific, evidence-seeking agent interview before mapping.</p><button className="button primary" disabled={busy} onClick={() => void act("start")}><Icons.spark/>{busy ? `Preparing · ${busySeconds}s` : "Start clarification"}</button></div> : question ? <div><span className="progress-track"><i style={{ width: `${Math.round(answered / total * 100)}%` }}/></span><small>{question.dimension.replaceAll("_", " ")} · {question.rationale}</small><h4>{question.question}</h4><textarea value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Provide a concrete example and observable evidence…"/><div className="record-actions">{answered > 0 && !editingQuestionId && <button className="button secondary" disabled={busy} onClick={() => void act("back")}>Previous question</button>} {!editingQuestionId && <button className="button secondary" disabled={busy} onClick={() => void act("skip")}>Defer question</button>}<button className="button primary" disabled={busy || !answer.trim()} onClick={() => void act(editingQuestionId ? "edit" : "answer")}>{busy ? `Saving · ${busySeconds}s` : editingQuestionId ? "Save corrected answer" : "Save answer and continue"}</button></div>{answered > 0 && <details className="clarification-history"><summary>Review answered evidence</summary>{session.questions.filter((item) => item.status === "answered").map((item) => <div key={item.id}><span><b>{item.dimension.replaceAll("_", " ")}</b><small>{item.answer}</small></span><button type="button" onClick={() => { setEditingQuestionId(item.id); setAnswer(item.answer || ""); }}>Edit</button></div>)}</details>}</div> : <div><p>Clarification complete. All answers are stored as governed evidence records.</p><details className="clarification-history"><summary>Review and correct answers</summary>{session.questions.filter((item) => item.status === "answered").map((item) => <div key={item.id}><span><b>{item.dimension.replaceAll("_", " ")}</b><small>{item.answer}</small></span><button type="button" onClick={() => { setEditingQuestionId(item.id); setAnswer(item.answer || ""); }}>Edit</button></div>)}</details></div>}</article>;
 }
 
 function MappingGovernanceSummary({ workspace, approvedWorkspace, job, mutate }: { workspace: SkillWorkspace; approvedWorkspace?: SkillWorkspace | null; job: JobDescription; mutate: Props["mutate"] }) {
