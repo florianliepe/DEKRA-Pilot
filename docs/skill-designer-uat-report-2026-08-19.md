@@ -27,6 +27,7 @@ The run stops before human approval or JSON publication.
 | UAT-005 | Medium | Two published n8n workflows share the same Skill Designer Orchestrator v3 name. | n8n workflow IDs `etuCxjr2u5bPYqP2` and `1jgGJdy3wXW6kH87`; only the former received current traffic. | Open: archive or clearly label the stale workflow after owner confirmation; do not delete automatically. |
 | UAT-006 | Medium | The local agent permission registry accumulated duplicate object keys from sequential sync scripts. | Repeated `skill.ingest_job` and `skill.clarify_job` keys in the generated context code. | Rebuilt the registry once with unique mode definitions. |
 | UAT-007 | High | A governed mapping run could finish successfully with an empty profile, no mapping, no omission and no taxonomy-gap proposal. | Vehicle Inspection Engineer run `RUN-1787143213215` invoked five allowlisted mapping tools successfully, but the approved catalog had no suitable vehicle skill and the workflow persisted an empty draft profile at revision 20. | Expanded the strict response schema with evidence references and omissions; route no-fit concepts to draft taxonomy-gap proposals; block unexplained empty mapping output; do not persist empty profiles. |
+| UAT-008 | High | n8n's editor-level **Import from file** action merges imported nodes into the current draft rather than replacing the workflow. | Importing the committed ZM-09 artifact into workflow `etuCxjr2u5bPYqP2` produced parallel legacy and v3 node sets in **Current changes** while the published ZM-07 version remained intact. | Do not use editor import for in-place synchronization. Use `scripts/update-live-n8n.mjs`, which updates the five governed node parameter sets by explicit name mapping while preserving the live trigger, connections, credentials and workflow identity. Recover the merged draft from the published version before running the API-based synchronizer. |
 
 ## Baseline quality observations
 
@@ -43,3 +44,4 @@ Targeted cleanup completed at n8n working revision 21: one synthetic job, one em
 - Verify mapping omissions below the abstention threshold and all thirteen score dimensions.
 - Confirm the agent-tool audit records show allowed calls only and no self-approval/publication.
 - Synchronize the committed ZM-09 workflow artifact to live n8n and repeat the mapping gate against a fresh synthetic record.
+- Recover the unintended merged editor draft from the intact published ZM-07 version; this is pending explicit destructive-action confirmation and must happen before synchronization.
