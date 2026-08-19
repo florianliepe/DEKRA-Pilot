@@ -74,11 +74,11 @@ async function call(secret: string, body: unknown, endpoint = url()) {
       headers: { "Content-Type": "application/json", "x-n8n-webhook-secret": secret.trim() },
       body: JSON.stringify(body),
       cache: "no-store",
-      signal: AbortSignal.timeout(120_000),
+      signal: AbortSignal.timeout(180_000),
     });
   } catch (reason) {
     if (reason instanceof DOMException && reason.name === "TimeoutError") {
-      throw new Error("The governed agent exceeded 120 seconds. Your working state is unchanged; retry with the same source after checking n8n health.");
+      throw new Error("The governed agent exceeded 180 seconds. Your working state is unchanged; retry with the same source after checking n8n health.");
     }
     throw reason;
   }
