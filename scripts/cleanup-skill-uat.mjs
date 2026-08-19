@@ -27,10 +27,27 @@ const jobIds = new Set(workspace.jobDescriptions.filter((job) => fixtureName.tes
 const mappingIds = new Set(workspace.mappings.filter((mapping) => jobIds.has(mapping.jobDescriptionId)).map((mapping) => mapping.id));
 const profileIds = new Set(workspace.profiles.filter((profile) => jobIds.has(profile.jobDescriptionId)).map((profile) => profile.id));
 const runIds = new Set(workspace.agentRuns.filter((run) => jobIds.has(run.jobDescriptionId)).map((run) => run.id));
+const knownUatDraftNames = new Set([
+  "Technical Vehicle Inspection",
+  "Statutory Roadworthiness Decision-Making",
+  "Inspection Documentation and Reporting",
+  "Technical Findings Communication",
+  "IT Application Incident and Change Management",
+  "Vendor and Service Provider Coordination",
+  "Application Security and Compliance Assurance",
+  "Cloud Landing Zone Provisioning",
+  "Cloud Incident and Availability Operations",
+  "Cloud Network, Identity and Compliance Configuration",
+  "Cloud Operations Automation",
+  "Cloud Solution Advisory",
+  "Cloud Platform Monitoring and Cost Oversight",
+]);
+const draftSkillIds = new Set(workspace.skills.filter((skill) => skill.status === "draft" && knownUatDraftNames.has(skill.name)).map((skill) => skill.id));
 
 const cleaned = {
   ...workspace,
   jobDescriptions: workspace.jobDescriptions.filter((job) => !jobIds.has(job.id)),
+  skills: workspace.skills.filter((skill) => !draftSkillIds.has(skill.id)),
   mappings: workspace.mappings.filter((mapping) => !mappingIds.has(mapping.id)),
   profiles: workspace.profiles.filter((profile) => !profileIds.has(profile.id)),
   jobClarifications: workspace.jobClarifications.filter((session) => !jobIds.has(session.jobDescriptionId)),
@@ -38,7 +55,7 @@ const cleaned = {
   mappingFeedback: workspace.mappingFeedback.filter((item) => !mappingIds.has(item.mappingId)),
   agentRuns: workspace.agentRuns.filter((run) => !runIds.has(run.id)),
   evidenceRecords: workspace.evidenceRecords.filter((record) => !(record.supportedEntityIds || []).some((id) => jobIds.has(id) || mappingIds.has(id) || profileIds.has(id))),
-  reviewQueue: workspace.reviewQueue.filter((review) => !mappingIds.has(review.entityId) && !profileIds.has(review.entityId) && !jobIds.has(review.entityId)),
+  reviewQueue: workspace.reviewQueue.filter((review) => !mappingIds.has(review.entityId) && !profileIds.has(review.entityId) && !jobIds.has(review.entityId) && !draftSkillIds.has(review.entityId)),
   objectVersions: workspace.objectVersions.filter((version) => !jobIds.has(version.entityId) && !mappingIds.has(version.entityId) && !profileIds.has(version.entityId)),
   auditLog: workspace.auditLog.filter((event) => !jobIds.has(event.entityId) && !mappingIds.has(event.entityId) && !profileIds.has(event.entityId) && !runIds.has(event.entityId)),
 };
@@ -55,4 +72,4 @@ const saved = await call({
   idempotencyKey: `uat-cleanup-${workspace.revision}-${Date.now()}`,
 });
 
-console.log(`Removed ${jobIds.size} UAT job(s), ${mappingIds.size} mapping(s), ${profileIds.size} profile(s), and ${runIds.size} agent run(s); working revision is ${saved.workspace.revision}.`);
+console.log(`Removed ${jobIds.size} UAT job(s), ${mappingIds.size} mapping(s), ${profileIds.size} profile(s), ${draftSkillIds.size} draft skill(s), and ${runIds.size} agent run(s); working revision is ${saved.workspace.revision}.`);

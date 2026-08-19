@@ -17,6 +17,7 @@ type Props = {
 
 type LifecycleDialog = { action: SkillLifecycleAction; skillIds: string[] };
 const title = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+const displayConfidence = (value: number) => Math.round(value > 0 && value <= 1 ? value * 100 : value);
 
 export function GovernedSkillLibrary({ workspace, query, onQuery, onEdit, mutate, onMessage, onError }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -89,7 +90,7 @@ export function GovernedSkillLibrary({ workspace, query, onQuery, onEdit, mutate
           <span className="skill-select"><input aria-label={`Select ${skill.name}`} type="checkbox" checked={selected.includes(skill.id)} onChange={() => toggle(skill.id)}/><span><b>{skill.name}</b><small>{skill.description}</small>{skill.aliases.length > 0 && <em>Aliases: {skill.aliases.join(", ")}</em>}</span></span>
           <span><b>{domain?.name}</b><small>{group?.name}</small></span>
           <span><i className={`dimension-dot ${skill.dimension}`}/>{title(skill.dimension)}{kfla && <small>{kfla.number}. {kfla.name}</small>}</span>
-          <span><b>{skill.confidence}%</b><small>{skill.evidence.length} evidence links</small></span>
+          <span><b>{displayConfidence(skill.confidence)}%</b><small>{skill.evidence.length} evidence links</small></span>
           <span><b>{quality.score}%</b><small>{Object.values(quality.checks).filter(Boolean).length}/6 standards</small></span>
           <span><em className={`lifecycle ${skill.status}`}>{title(skill.status)}</em></span>
           <span className="record-actions skill-lifecycle-actions">
