@@ -23,6 +23,7 @@
     "sync:n8n-zm10": "node scripts/sync-n8n-zm10-runtime.mjs",
     "sync:n8n-zm11": "node scripts/sync-n8n-zm11-clarification.mjs",
     "sync:n8n-zm12": "node scripts/sync-n8n-zm12-explainability.mjs",
+    "sync:n8n-zm13": "node scripts/sync-n8n-zm13-mece-mapping.mjs",
     "uat:zm11:live": "node --env-file=.env.local scripts/smoke-zm11-live.mjs",
     "uat:zm12:live": "node --env-file=.env.local scripts/smoke-zm12-live.mjs",
     "start": "next start",

@@ -12,13 +12,14 @@ import { TaxonomyStandardWorkbench } from "./taxonomy-standard-workbench";
 import { ElicitationWorkbench } from "./elicitation-workbench";
 import { GovernanceWorkbench } from "./governance-workbench";
 import { GovernedSkillLibrary } from "./governed-skill-library";
+import { SkillMappingPlaybook } from "./skill-mapping-playbook";
 import { applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, decideReview, impactAnalysis, prepareRelease, recordGovernedVersion, type RoleProfileLifecycleAction } from "@/lib/skill-governance";
 
-type Tab = "overview" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs" | "governance";
+type Tab = "overview" | "playbook" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs" | "governance";
 type SkillDraft = Pick<Skill, "name" | "description" | "groupId" | "dimension" | "kflaCompetencyId" | "observability" | "futureRelevance" | "status"> & { aliases: string; action: string; object: string; outcome: string };
 
 const tabs: Array<{ id: Tab; label: string }> = [
-  { id: "overview", label: "Overview" }, { id: "intake", label: "Intake & interview" },
+  { id: "overview", label: "Overview" }, { id: "playbook", label: "Mapping playbook" }, { id: "intake", label: "Intake & interview" },
   { id: "elicitation", label: "Elicitation wizard" },
   { id: "library", label: "Skill library" }, { id: "taxonomy", label: "Taxonomy" },
   { id: "jobs", label: "Jobs & mapping" }, { id: "profiles", label: "Role profiles" },
@@ -159,6 +160,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError("")}><Icons.close/></button></div>}
     {message && <div className="success-banner"><span>{message}</span><button onClick={() => setMessage("")}><Icons.close/></button></div>}
     {tab === "overview" && <Overview workspace={workspace} approved={approved} pending={pending} evidence={evidence} onNavigate={setTab}/>}
+    {tab === "playbook" && <SkillMappingPlaybook onOpenJobs={() => setTab("jobs")} onOpenReview={() => setTab("review")}/>}
     {tab === "intake" && <Intake workspace={workspace} secret={workspaceSecret} onWorkspace={setWorkspace} onMessage={setMessage} onError={setError}/>}
     {tab === "elicitation" && <ElicitationWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} mutate={mutate} onMessage={setMessage} onError={setError}/>}
