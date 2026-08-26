@@ -15,19 +15,22 @@ const request = async (path, options = {}) => {
 };
 
 const live = await request(`/api/v1/workflows/${workflowId}`);
-const parameterMap = new Map([
-  ["Request Governor", "Request Governor v3"],
-  ["Build Agent Context", "Build Governed Agent Context"],
-  ["Skill Design Agent", "Governed Skill Design Agent"],
-  ["Controlled Tool Executor", "Deterministic Tool Policy Executor"],
-  ["Governance Gate & Store", "Governance Gate and v3 Store"],
-]);
-for (const [liveName, localName] of parameterMap) {
-  const liveNode = live.nodes.find((item) => item.name === liveName);
+const parameterMappings = [
+  { liveNames: ["Request Governor v3", "Request Governor"], localName: "Request Governor v3" },
+  { liveNames: ["Build Governed Agent Context", "Build Agent Context"], localName: "Build Governed Agent Context" },
+  { liveNames: ["Governed Skill Design Agent", "Skill Design Agent"], localName: "Governed Skill Design Agent" },
+  { liveNames: ["Deterministic Tool Policy Executor", "Controlled Tool Executor"], localName: "Deterministic Tool Policy Executor" },
+  { liveNames: ["Governance Gate and v3 Store", "Governance Gate & Store"], localName: "Governance Gate and v3 Store" },
+];
+for (const { liveNames, localName } of parameterMappings) {
+  const liveNode = live.nodes.find((item) => liveNames.includes(item.name));
   const localNode = local.nodes.find((item) => item.name === localName);
-  if (!liveNode || !localNode) throw new Error(`Unable to map ${liveName} to ${localName}.`);
+  if (!liveNode || !localNode) throw new Error(`Unable to map ${liveNames.join(" or ")} to ${localName}.`);
   let serializedParameters = JSON.stringify(localNode.parameters);
-  for (const [targetName, sourceName] of parameterMap) serializedParameters = serializedParameters.replaceAll(sourceName, targetName);
+  for (const mapping of parameterMappings) {
+    const targetName = live.nodes.find((item) => mapping.liveNames.includes(item.name))?.name || mapping.localName;
+    serializedParameters = serializedParameters.replaceAll(mapping.localName, targetName);
+  }
   liveNode.parameters = JSON.parse(serializedParameters);
 }
 
@@ -37,4 +40,4 @@ await request(`/api/v1/workflows/${workflowId}`, {
 });
 await request(`/api/v1/workflows/${workflowId}/deactivate`, { method: "POST", body: "{}" });
 await request(`/api/v1/workflows/${workflowId}/activate`, { method: "POST", body: "{}" });
-console.log(`Updated and reactivated workflow ${workflowId}; ${parameterMap.size} governed nodes synchronized.`);
+console.log(`Updated and reactivated workflow ${workflowId}; ${parameterMappings.length} governed nodes synchronized.`);

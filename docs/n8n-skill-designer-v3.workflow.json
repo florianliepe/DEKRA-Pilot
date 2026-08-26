@@ -27,8 +27,8 @@
       "webhookId": "skill-designer-orchestrator-v3",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "XeRspTWURk5bdcPi",
-          "name": "DEKRA PMO Webhook Auth"
+          "id": "u1xSkfoz8LNYw5DM",
+          "name": "DEKRA Skill Designer Webhook Auth"
         }
       }
     },

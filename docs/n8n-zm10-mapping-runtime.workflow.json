@@ -12,8 +12,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "XeRspTWURk5bdcPi",
-          "name": "DEKRA PMO Webhook Auth"
+          "id": "u1xSkfoz8LNYw5DM",
+          "name": "DEKRA Skill Designer Webhook Auth"
         }
       },
       "parameters": {
@@ -81,7 +81,9 @@
             "idempotencyKey": "={{ $json.idempotencyKey }}",
             "interruptRequested": "={{ $json.interruptRequested }}"
           },
-          "matchingColumns": [],
+          "matchingColumns": [
+            "runId"
+          ],
           "schema": [
             {
               "id": "runId",
@@ -226,7 +228,9 @@
             "idempotencyKey": "={{ $json.idempotencyKey }}",
             "interruptRequested": "={{ $json.interruptRequested }}"
           },
-          "matchingColumns": [],
+          "matchingColumns": [
+            "runId"
+          ],
           "schema": [
             {
               "id": "runId",
@@ -494,7 +498,9 @@
             "idempotencyKey": "={{ $json.idempotencyKey }}",
             "interruptRequested": "={{ $json.interruptRequested }}"
           },
-          "matchingColumns": [],
+          "matchingColumns": [
+            "runId"
+          ],
           "schema": [
             {
               "id": "runId",
@@ -681,7 +687,9 @@
             "idempotencyKey": "={{ $json.idempotencyKey }}",
             "interruptRequested": "={{ $json.interruptRequested }}"
           },
-          "matchingColumns": [],
+          "matchingColumns": [
+            "runId"
+          ],
           "schema": [
             {
               "id": "runId",
@@ -813,7 +821,9 @@
             "idempotencyKey": "={{ $json.idempotencyKey }}",
             "interruptRequested": "={{ $json.interruptRequested }}"
           },
-          "matchingColumns": [],
+          "matchingColumns": [
+            "runId"
+          ],
           "schema": [
             {
               "id": "runId",
@@ -914,8 +924,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "XeRspTWURk5bdcPi",
-          "name": "DEKRA PMO Webhook Auth"
+          "id": "u1xSkfoz8LNYw5DM",
+          "name": "DEKRA Skill Designer Webhook Auth"
         }
       },
       "parameters": {
@@ -1064,7 +1074,9 @@
             "idempotencyKey": "={{ $json.idempotencyKey }}",
             "interruptRequested": "={{ $json.interruptRequested }}"
           },
-          "matchingColumns": [],
+          "matchingColumns": [
+            "runId"
+          ],
           "schema": [
             {
               "id": "runId",

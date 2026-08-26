@@ -6,8 +6,8 @@ for (const line of readFileSync(new URL("../.env.local", import.meta.url), "utf8
 }
 
 const url = process.env.NEXT_PUBLIC_N8N_SKILL_WEBHOOK_URL || "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-orchestrator-v3-governed";
-const secret = process.env.APP_SHARED_SECRET;
-if (!url || !secret) throw new Error("N8N_WEBHOOK_URL and APP_SHARED_SECRET are required in .env.local.");
+const secret = process.env["x-n8n-webhook-secret"] || process.env.APP_SHARED_SECRET;
+if (!url || !secret) throw new Error("The Skill Designer webhook URL and x-n8n-webhook-secret are required in .env.local.");
 
 async function call(body) {
   const response = await fetch(url, {

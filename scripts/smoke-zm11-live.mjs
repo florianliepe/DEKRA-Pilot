@@ -1,6 +1,6 @@
 const endpoint = process.env.N8N_SKILL_WEBHOOK_URL || "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-orchestrator-v3-governed";
-const secret = process.env.APP_SHARED_SECRET;
-if (!secret) throw new Error("APP_SHARED_SECRET is required.");
+const secret = process.env["x-n8n-webhook-secret"] || process.env.APP_SHARED_SECRET;
+if (!secret) throw new Error("x-n8n-webhook-secret is required.");
 
 const request = async (body) => {
   const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json", "x-n8n-webhook-secret": secret }, body: JSON.stringify(body) });
