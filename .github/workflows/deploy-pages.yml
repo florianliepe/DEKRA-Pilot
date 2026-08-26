@@ -20,9 +20,9 @@ concurrency:
 
 jobs:
   build:
-    # GitHub's Ubuntu pool repeatedly failed before checkout. The application
-    # is already verified on Windows/Node 22, so use the separate runner pool.
-    runs-on: windows-latest
+    # Use GitHub's standard Linux pool so deployment does not depend on the
+    # lower-capacity Windows hosted-runner queue.
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -67,7 +67,7 @@ jobs:
   deploy:
     if: github.event_name != 'pull_request'
     needs: build
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: write
