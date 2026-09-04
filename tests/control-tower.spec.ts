@@ -327,6 +327,38 @@ test("opens the governed Skill Designer with all nine workspaces", async ({ page
   await expect(page.locator(".kfla-grid .kfla-card")).toHaveCount(38);
 });
 
+test("explores the read-only ZM-14 architecture map and exports its Mermaid view", async ({ page }) => {
+  await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Skill designer" }).click();
+  await page.getByRole("tab", { name: "Architecture map" }).click();
+
+  await expect(page.getByRole("heading", { name: "Understand the model before changing it." })).toBeVisible();
+  const thought = page.getByRole("button", { name: /Thought.*3 clusters.*10 competencies/ });
+  await expect(thought).toHaveAttribute("aria-expanded", "false");
+  await thought.click();
+  await expect(thought).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("button", { name: /Business context.*4 competencies/ })).toBeVisible();
+
+  await page.getByRole("button", { name: "Expand all" }).click();
+  await expect(page.getByRole("button", { name: /Data Visualization.*technical.*approved/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Skill Taxonomy Design.*technical.*in_review/ })).toHaveCount(0);
+  await page.getByLabel("In review").check();
+  await expect(page.getByRole("button", { name: /Skill Taxonomy Design.*technical.*in_review/ })).toBeVisible();
+  await page.getByLabel("Draft").check();
+  await expect(page.getByRole("button", { name: /Curiosity.*trait.*draft/ })).toBeVisible();
+
+  await page.getByRole("button", { name: /Managing Complexity.*competency.*approved/ }).click();
+  await expect(page.getByRole("definition").filter({ hasText: /Thought.*Complex decisions/ })).toBeVisible();
+  await expect(page.locator(".architecture-mermaid svg")).toBeVisible({ timeout: 15000 });
+
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download .mmd" }).click();
+  await expect((await download).suggestedFilename()).toBe("dekra-skill-architecture.mmd");
+
+  await page.getByRole("button", { name: /Open taxonomy workbench/ }).first().click();
+  await expect(page.getByRole("heading", { name: "Design, test and release a consistent capability language." })).toBeVisible();
+  expect(pageErrors.get(page)).toEqual([]);
+});
+
 test("explores taxonomy dependencies and overlap without mutating canonical concepts", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await page.getByRole("tab", { name: "Taxonomy" }).click();
