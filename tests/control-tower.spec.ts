@@ -73,7 +73,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.route("**/webhook/**", async (route) => {
     const request = route.request();
-    const body = request.postDataJSON() as { mode?: string; runId?: string; document?: PmoDocument; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; targetRevision?: number; meta?: { wpId?: string }; extracted?: Array<{ name?: string; type?: string; content?: string }>; evidenceDraft?: SteercoSnapshot; snapshot?: SteercoSnapshot };
+    const body = request.postDataJSON() as { mode?: string; runId?: string; document?: PmoDocument; expectedRevision?: number; workspace?: SkillWorkspace; jobDescriptionId?: string; sessionId?: string; idempotencyKey?: string; targetRevision?: number; meta?: { wpId?: string }; extracted?: Array<{ name?: string; type?: string; content?: string }>; evidenceDraft?: SteercoSnapshot; snapshot?: SteercoSnapshot };
     if (body.mode === "skill.read") {
       await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, workspace: bootstrapSkillWorkspace }) });
       return;
@@ -275,8 +275,9 @@ test("publishes local CRUD changes through the protected workflow", async ({ pag
   await page.getByRole("button", { name: "Publish changes" }).click();
   const saveRequest = page.waitForRequest((request) => request.url().includes("/webhook/") && request.postDataJSON()?.mode === "pmo.save");
   await page.getByRole("button", { name: "Publish to GitHub" }).click();
-  const body = (await saveRequest).postDataJSON() as { mode: string; document: PmoDocument };
+  const body = (await saveRequest).postDataJSON() as { mode: string; document: PmoDocument; expectedRevision: number };
   expect(body.mode).toBe("pmo.save");
+  expect(body.expectedRevision).toBe(body.document.revision);
   expect(body.document.risks.some((risk) => risk.title === "Publish-path verification")).toBe(true);
   await expect(page.getByRole("button", { name: "All changes saved" })).toBeDisabled();
 });
@@ -325,6 +326,22 @@ test("opens the governed Skill Designer with all nine workspaces", async ({ page
   await page.getByRole("tab", { name: "Taxonomy" }).click();
   await expect(page.getByRole("heading", { name: "38 KFLA competency names" })).toBeVisible();
   await expect(page.locator(".kfla-grid .kfla-card")).toHaveCount(38);
+});
+
+test("shows a recoverable authentication message instead of a JSON parser error", async ({ page }) => {
+  await page.route("**/webhook/7666d3c6-b63f-4e79-b10a-82a002a9cf47", async (route) => {
+    await route.fulfill({ status: 403, contentType: "application/json", body: "" });
+  });
+  await page.getByRole("button", { name: "Quick add" }).click();
+  await page.getByLabel("Title").fill("Authentication regression");
+  await page.getByLabel("Owner").fill("PMO Lead");
+  await page.getByLabel("Mitigation").fill("Keep the draft in memory and reconnect.");
+  await page.getByLabel("Description").fill("Verifies resilient workflow error handling.");
+  await page.getByRole("button", { name: "Add to workspace" }).click();
+  await page.getByRole("button", { name: "Publish changes" }).click();
+  await page.getByRole("button", { name: "Publish to GitHub" }).click();
+  await expect(page.getByText(/pilot password was rejected by the PMO publication workflow/i)).toBeVisible();
+  await expect(page.getByText(/Unexpected end of JSON input/i)).toHaveCount(0);
 });
 
 test("explores the read-only ZM-14 architecture map and exports its Mermaid view", async ({ page }) => {

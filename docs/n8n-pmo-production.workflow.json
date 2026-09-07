@@ -19,8 +19,8 @@
       "webhookId": "7666d3c6-b63f-4e79-b10a-82a002a9cf47",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "XeRspTWURk5bdcPi",
-          "name": "DEKRA PMO Webhook Auth"
+          "id": "u1xSkfoz8LNYw5DM",
+          "name": "DEKRA Skill Designer Webhook Auth"
         }
       }
     },

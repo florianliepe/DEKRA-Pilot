@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icons } from "./icons";
 import type { Deliverable, Meeting, PmoDocument, Rag, Risk } from "@/lib/pmo-schema";
-import { ingestEvidence, loadPmoDocument, savePmoDocument } from "@/lib/n8n-client";
+import { ingestEvidence, loadPmoDocument, publishPmoDocument } from "@/lib/n8n-client";
 import { DeleteDialog, EntityEditor, type EditableEntity, type EditorTarget } from "./entity-editor";
 import { IntakeWorkbench, type IntakeSubmission } from "./intake-workbench";
 import { SkillDesigner } from "./skill-designer";
@@ -157,7 +157,7 @@ export default function ControlTower({ initialData }: { initialData: PmoDocument
     if (!data) return;
     setSaving(true); setError("");
     try {
-      const payload = await savePmoDocument(workspaceSecret, data);
+      const payload = await publishPmoDocument(workspaceSecret, data);
       if (!payload.ok || !payload.document) throw new Error(payload.error || "Publish failed.");
       setData(payload.document); setSource("github"); setDirty(false); setPublishOpen(false);
     } catch (reason: unknown) { setError(reason instanceof Error ? reason.message : "Publish failed."); }

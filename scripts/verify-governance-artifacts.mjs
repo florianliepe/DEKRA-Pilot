@@ -73,4 +73,18 @@ for (const [path, expectedWebhook] of workflows) {
   if (path.includes("steerco") && ["dekra-steerco-v1-read", "steerco.generate", "steerco.approve", "steerco.publish", "steerco.revoke", "steerco.rollback", "steerco.read", "AI claims failed evidence-reference validation", "expectedRevision", "expiresAt", "checksum", "history", "githubCommit"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("SteerCo workflow is missing its governed AI, approval, publication, rollback, revocation, expiry or evidence contract.");
 }
 
+const protectedWebhookSources = [
+  ["docs/n8n-pmo-production.workflow.json", "7666d3c6-b63f-4e79-b10a-82a002a9cf47"],
+  ["docs/n8n-skill-designer-v3.workflow.json", "skill-designer-orchestrator-v3-governed"],
+  ["docs/n8n-skill-publisher-v3.workflow.json", "skill-designer-publisher-v3"],
+  ["docs/n8n-steerco-v1.workflow.json", "dekra-steerco-v1"],
+];
+const protectedCredentialIds = protectedWebhookSources.map(([path, webhookPath]) => {
+  const workflow = json(path);
+  const webhook = workflow.nodes.find((node) => node.type === "n8n-nodes-base.webhook" && node.parameters?.path === webhookPath);
+  if (!webhook?.credentials?.httpHeaderAuth?.id) throw new Error(`${path} is missing its shared protected Header Auth credential reference.`);
+  return webhook.credentials.httpHeaderAuth.id;
+});
+if (new Set(protectedCredentialIds).size !== 1) throw new Error("Protected PMO, Skill Designer, release and SteerCo webhooks must reference the same rotatable Header Auth credential.");
+
 console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 15 agent tools and 3 governed n8n workflows.`);

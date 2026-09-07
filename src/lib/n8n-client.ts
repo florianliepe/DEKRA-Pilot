@@ -1,4 +1,5 @@
 import type { PmoDocument } from "@/lib/pmo-schema";
+import { readWorkflowResponse, workflowErrorMessage } from "@/lib/workflow-response";
 
 const DEFAULT_WEBHOOK_URL =
   "https://eraneos-agentic-platform.azurewebsites.net/webhook/7666d3c6-b63f-4e79-b10a-82a002a9cf47";
@@ -66,14 +67,13 @@ async function callWorkflow<T>(secret: string, body: unknown): Promise<T> {
     },
     body: JSON.stringify(body),
     cache: "no-store",
+    signal: AbortSignal.timeout(45_000),
   });
 
-  const contentType = response.headers.get("content-type") || "";
-  const raw: unknown = contentType.includes("application/json") ? await response.json() : await response.text();
+  const raw = await readWorkflowResponse(response);
   const payload = unwrap<T & { error?: string }>(raw);
   if (!response.ok) {
-    const message = payload && typeof payload === "object" ? payload.error : undefined;
-    throw new Error(message || `The PMO workflow returned HTTP ${response.status}.`);
+    throw new Error(workflowErrorMessage(payload, response.status, "PMO publication workflow"));
   }
   return payload;
 }
@@ -83,7 +83,16 @@ export function loadPmoDocument(secret: string) {
 }
 
 export function savePmoDocument(secret: string, document: PmoDocument) {
-  return callWorkflow<PmoApiResponse>(secret, { mode: "pmo.save", document });
+  return callWorkflow<PmoApiResponse>(secret, { mode: "pmo.save", document, expectedRevision: document.revision });
+}
+
+export async function publishPmoDocument(secret: string, document: PmoDocument) {
+  const preflight = await loadPmoDocument(secret);
+  if (!preflight.ok || !preflight.document) throw new Error(preflight.error || "The PMO publication preflight could not load the canonical GitHub document.");
+  if (preflight.document.revision !== document.revision) {
+    throw new Error(`Publication stopped because GitHub is at revision ${preflight.document.revision}, while this browser is editing revision ${document.revision}. Reload the workspace and reapply the change before publishing.`);
+  }
+  return savePmoDocument(secret, document);
 }
 
 export async function extractEvidence(files: File[]): Promise<ExtractedEvidence[]> {

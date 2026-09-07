@@ -1,6 +1,7 @@
 import type { PmoDocument } from "./pmo-schema";
 import type { SkillWorkspace } from "./skill-schema";
 import { SteercoSnapshotSchema, type SteercoPeriod, type SteercoSnapshot } from "./steerco-schema";
+import { readWorkflowResponse, workflowErrorMessage } from "./workflow-response";
 
 const DEFAULT_URL = "https://eraneos-agentic-platform.azurewebsites.net/webhook/dekra-steerco-v1";
 
@@ -24,9 +25,9 @@ async function request(body: Record<string, unknown>, secret?: string, target = 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (secret?.trim()) headers["x-n8n-webhook-secret"] = secret.trim();
   const response = await fetch(target, { method: "POST", headers, body: JSON.stringify(body), cache: "no-store" });
-  const raw = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : await response.text();
+  const raw = await readWorkflowResponse(response);
   const payload = unwrap(raw);
-  if (!response.ok || payload.ok === false) throw new Error(payload.error || `SteerCo workflow returned HTTP ${response.status}.`);
+  if (!response.ok || payload.ok === false) throw new Error(payload.error || workflowErrorMessage(payload, response.status, "SteerCo workflow"));
   if (payload.snapshot) payload.snapshot = SteercoSnapshotSchema.parse(payload.snapshot);
   return payload;
 }

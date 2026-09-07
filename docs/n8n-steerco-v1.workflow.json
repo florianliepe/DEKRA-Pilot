@@ -27,7 +27,8 @@
       "webhookId": "dekra-steerco-v1",
       "credentials": {
         "httpHeaderAuth": {
-          "name": "DEKRA PMO Webhook Auth"
+          "id": "u1xSkfoz8LNYw5DM",
+          "name": "DEKRA Skill Designer Webhook Auth"
         }
       }
     },

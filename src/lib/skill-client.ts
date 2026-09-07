@@ -1,5 +1,6 @@
 import { extractEvidence } from "./n8n-client";
 import type { ReleaseManifest, SkillWorkspace } from "./skill-schema";
+import { readWorkflowResponse, workflowErrorMessage } from "./workflow-response";
 
 const DEFAULT_SKILL_WEBHOOK_URL =
   "https://eraneos-agentic-platform.azurewebsites.net/webhook/skill-designer-orchestrator-v3-governed";
@@ -85,9 +86,9 @@ async function call(secret: string, body: unknown, endpoint = url(), timeoutMs =
     }
     throw reason;
   }
-  const raw = (response.headers.get("content-type") || "").includes("application/json") ? await response.json() : await response.text();
+  const raw = await readWorkflowResponse(response);
   const payload = unwrap(raw);
-  if (!response.ok || payload.ok === false) throw new SkillWorkflowError(payload.error || `Skill workflow returned HTTP ${response.status}.`, response.status, payload);
+  if (!response.ok || payload.ok === false) throw new SkillWorkflowError(payload.error || workflowErrorMessage(payload, response.status, "Skill Designer workflow"), response.status, payload);
   return payload;
 }
 
