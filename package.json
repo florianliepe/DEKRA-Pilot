@@ -28,6 +28,8 @@
     "sync:n8n-zm15": "node scripts/sync-n8n-zm15-mapping-architecture.mjs",
     "sync:n8n-zm15:live-registry": "node --env-file=.env.local scripts/sync-live-zm15-registry.mjs",
     "sync:n8n:shared-auth": "node --env-file=.env.local scripts/sync-n8n-shared-webhook-auth.mjs",
+    "sync:n8n:pmo-publisher": "node --env-file=.env.local scripts/sync-live-pmo-publisher.mjs",
+    "recover:n8n:pmo-publication": "node --env-file=.env.local scripts/replay-latest-failed-pmo-publication.mjs",
     "uat:zm11:live": "node --env-file=.env.local scripts/smoke-zm11-live.mjs",
     "uat:zm12:live": "node --env-file=.env.local scripts/smoke-zm12-live.mjs",
     "uat:zm13:live": "node --env-file=.env.local scripts/smoke-zm13-live.mjs",

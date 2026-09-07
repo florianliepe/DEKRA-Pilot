@@ -87,4 +87,9 @@ const protectedCredentialIds = protectedWebhookSources.map(([path, webhookPath])
 });
 if (new Set(protectedCredentialIds).size !== 1) throw new Error("Protected PMO, Skill Designer, release and SteerCo webhooks must reference the same rotatable Header Auth credential.");
 
+const pmoWorkflow = json("docs/n8n-pmo-production.workflow.json");
+const prepareSaveCode = pmoWorkflow.nodes.find((node) => node.name === "PrepareSave")?.parameters?.jsCode || "";
+if (prepareSaveCode.includes("structuredClone")) throw new Error("PMO publication must not use structuredClone because the deployed n8n Code runtime does not provide it.");
+if (!["JSON.parse(JSON.stringify", "expectedRevision", "PMO revision conflict"].every((marker) => prepareSaveCode.includes(marker))) throw new Error("PMO publication is missing its compatible deep clone or optimistic revision guard.");
+
 console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 15 agent tools and 3 governed n8n workflows.`);
