@@ -1,7 +1,9 @@
 import type { JobDescription, JobSkillMapping, SkillWorkspace } from "@/lib/skill-schema";
 
-export const ROLE_SKILL_MIN = 8;
+export const ROLE_SKILL_MIN = 1;
 export const ROLE_SKILL_MAX = 10;
+export const ROLE_TECHNICAL_MAX = 5;
+export const ROLE_BEHAVIORAL_MAX = 5;
 
 export type MappingConfidenceInterval = {
   lower: number;
@@ -20,6 +22,9 @@ export type MappingProfileQuality = {
   duplicateSkillIds: string[];
   totalWeight: number;
   skillCount: number;
+  technicalCount: number;
+  behavioralCount: number;
+  unsupportedFacetCount: number;
   averageConfidence: number;
   averageInterval: MappingConfidenceInterval;
   mece: boolean;
@@ -60,10 +65,18 @@ export function analyseMappingProfile(job: JobDescription, mappings: JobSkillMap
     : { lower: 0, upper: 0, point: 0, margin: 0, method: "evidence-adjusted operational interval" as const };
   const totalWeight = activeMappings.reduce((sum, mapping) => sum + mapping.weight, 0);
   const skillCount = activeMappings.length;
-  const countWithinTarget = skillCount >= ROLE_SKILL_MIN && skillCount <= ROLE_SKILL_MAX;
+  const dimensions = activeMappings.map((mapping) => workspace?.skills.find((skill) => skill.id === mapping.skillId)?.dimension);
+  const technicalCount = dimensions.filter((dimension) => dimension === "technical").length;
+  const behavioralCount = dimensions.filter((dimension) => dimension === "competency").length;
+  const unsupportedFacetCount = dimensions.filter((dimension) => dimension && !["technical", "competency"].includes(dimension)).length;
+  const countWithinTarget = skillCount >= ROLE_SKILL_MIN && skillCount <= ROLE_SKILL_MAX && technicalCount <= ROLE_TECHNICAL_MAX && behavioralCount <= ROLE_BEHAVIORAL_MAX && unsupportedFacetCount === 0;
   const mece = evidenceUniverse.length > 0 && uncoveredEvidence.length === 0 && overlappingEvidence.length === 0 && duplicateSkillIds.length === 0;
   const findings: string[] = [];
-  if (!countWithinTarget) findings.push(skillCount < ROLE_SKILL_MIN ? `Profile needs ${ROLE_SKILL_MIN - skillCount} more distinct skill${ROLE_SKILL_MIN - skillCount === 1 ? "" : "s"}, or governed taxonomy-gap decisions.` : `Profile exceeds the ${ROLE_SKILL_MAX}-skill maximum by ${skillCount - ROLE_SKILL_MAX}.`);
+  if (skillCount < ROLE_SKILL_MIN) findings.push("Profile needs at least one evidence-backed core skill.");
+  if (skillCount > ROLE_SKILL_MAX) findings.push(`Profile exceeds the ${ROLE_SKILL_MAX}-skill maximum by ${skillCount - ROLE_SKILL_MAX}.`);
+  if (technicalCount > ROLE_TECHNICAL_MAX) findings.push(`Technical profile exceeds its five-skill capacity by ${technicalCount - ROLE_TECHNICAL_MAX}.`);
+  if (behavioralCount > ROLE_BEHAVIORAL_MAX) findings.push(`Behavioral profile exceeds its five-competency capacity by ${behavioralCount - ROLE_BEHAVIORAL_MAX}.`);
+  if (unsupportedFacetCount) findings.push(`${unsupportedFacetCount} experience, trait or driver record${unsupportedFacetCount === 1 ? " is" : "s are"} incorrectly counted as a core skill.`);
   if (uncoveredEvidence.length) findings.push(`${uncoveredEvidence.length} responsibility/outcome evidence statement${uncoveredEvidence.length === 1 ? " is" : "s are"} not represented.`);
   if (overlappingEvidence.length) findings.push(`${overlappingEvidence.length} evidence statement${overlappingEvidence.length === 1 ? " has" : "s have"} more than one primary skill owner.`);
   if (duplicateSkillIds.length) findings.push(`${duplicateSkillIds.length} canonical skill${duplicateSkillIds.length === 1 ? " is" : "s are"} duplicated in the role profile.`);
@@ -73,5 +86,5 @@ export function analyseMappingProfile(job: JobDescription, mappings: JobSkillMap
     if (unknown.length) findings.push(`${unknown.length} mapping${unknown.length === 1 ? " does" : "s do"} not resolve to the approved skill library.`);
   }
   const readyForReview = countWithinTarget && mece && totalWeight === 100 && findings.length === 0;
-  return { activeMappings, evidenceUniverse, coveredEvidence, uncoveredEvidence, overlappingEvidence, duplicateSkillIds, totalWeight, skillCount, averageConfidence, averageInterval, mece, countWithinTarget, readyForReview, findings };
+  return { activeMappings, evidenceUniverse, coveredEvidence, uncoveredEvidence, overlappingEvidence, duplicateSkillIds, totalWeight, skillCount, technicalCount, behavioralCount, unsupportedFacetCount, averageConfidence, averageInterval, mece, countWithinTarget, readyForReview, findings };
 }

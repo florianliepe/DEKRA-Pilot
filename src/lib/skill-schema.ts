@@ -151,7 +151,8 @@ export type AgentToolDefinition = {
 export const requiredAgentToolIds = [
   "job_parser", "evidence_extractor", "taxonomy_search", "skill_similarity_search", "syntax_validator",
   "granularity_validator", "kfla_lookup", "controlled_tool_lookup", "mapping_scorer",
-  "draft_suggestion_writer", "review_package_generator",
+  "draft_suggestion_writer", "review_package_generator", "taxonomy_hierarchy_resolver",
+  "skill_type_classifier", "kfla_relationship_mapper", "profile_composition_validator",
 ] as const;
 
 export type AuditEvent = {
@@ -323,6 +324,10 @@ export type JobSkillMapping = {
   agentRunId?: string;
   governance?: GovernanceMeta;
   explanation?: MappingExplanation;
+  classification?: { type: "technical" | "competency"; confidence: number; rationale: string; evidenceRefs: string[]; ruleIds: string[] };
+  taxonomyPath?: { domainId: string; groupId: string; skillId: string; inherited: boolean };
+  primaryKflaCompetencyId?: string;
+  secondaryKflaCompetencyIds?: string[];
 };
 
 export type MappingOmission = {
@@ -699,7 +704,10 @@ export function migrateSkillWorkspace(value: unknown, fallback: SkillWorkspace):
     strategicVectors: arrayOr(source.strategicVectors, fallback.strategicVectors),
     agentRuns: arrayOr(source.agentRuns, fallback.agentRuns),
     tools: arrayOr(source.tools, fallback.tools),
-    agentTools: arrayOr(source.agentTools, fallback.agentTools),
+    agentTools: (() => {
+      const supplied = arrayOr(source.agentTools, fallback.agentTools);
+      return [...supplied, ...fallback.agentTools.filter((tool) => requiredAgentToolIds.includes(tool.id as typeof requiredAgentToolIds[number]) && !supplied.some((candidate) => candidate.id === tool.id))];
+    })(),
     validationRules: arrayOr(source.validationRules, fallback.validationRules),
     proficiencyDefinitions: arrayOr(source.proficiencyDefinitions, fallback.proficiencyDefinitions),
     sources: arrayOr(source.sources, fallback.sources),
@@ -810,6 +818,15 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
       if (mapping.source === "manual" && mapping.relevance !== expected && !mapping.overrideReason?.trim()) add("MAPPING-OVERRIDE-001", "mapping", mapping.id, `Stored fit ${mapping.relevance} differs from calculated fit ${expected}.`, "overrideReason", "Restore the calculated fit or record an accountable evidence-based override reason.");
     }
   }
+  for (const job of workspace.jobDescriptions.filter((item) => item.status !== "archived")) {
+    const profileMappings = workspace.mappings.filter((mapping) => mapping.jobDescriptionId === job.id && !["rejected", "deferred"].includes(mapping.status));
+    const dimensions = profileMappings.map((mapping) => workspace.skills.find((skill) => skill.id === mapping.skillId)?.dimension);
+    const technicalCount = dimensions.filter((dimension) => dimension === "technical").length;
+    const behavioralCount = dimensions.filter((dimension) => dimension === "competency").length;
+    const unsupportedCount = dimensions.filter((dimension) => dimension && !["technical", "competency"].includes(dimension)).length;
+    if (profileMappings.length > 10 || technicalCount > 5 || behavioralCount > 5) add("MAPPING-PROFILE-CAPACITY-001", "job_description", job.id, `Core profile contains ${technicalCount} technical and ${behavioralCount} behavioral mappings (${profileMappings.length} total).`, "mappings", "Retain up to five evidence-backed mappings per category and no more than ten total.");
+    if (unsupportedCount) add("MAPPING-PROFILE-TYPE-001", "job_description", job.id, `${unsupportedCount} experience, trait or driver record is counted in the core profile.`, "classification", "Move supporting whole-person facets outside the core skill profile.");
+  }
   for (const job of workspace.jobDescriptions.filter((item) => ["analysed", "mapped", "approved"].includes(item.status))) {
     if (!job.evidenceSegments.length) add("JOB-EVIDENCE-001", "job_description", job.id, "Analysed job description has no traceable source segments.", "evidenceSegments", "Re-run governed intake and retain source, section, location and quotation for each normalized statement.");
     if (job.intakeFindings.some((finding) => finding.severity === "error")) add("JOB-INTAKE-QUALITY-001", "job_description", job.id, "Job intake contains unresolved blocking quality findings.", "intakeFindings", "Correct unsupported or low-quality source material before mapping.");
@@ -860,7 +877,7 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     agentToolIds.add(tool.id);
   }
   const missingRequiredTools = requiredAgentToolIds.filter((id) => !workspace.agentTools.some((tool) => tool.id === id && tool.lifecycleStatus === "active"));
-  if (missingRequiredTools.length) add("AGENT-REGISTRY-001", "workspace", "AGENT-REGISTRY", `Required active tools are missing: ${missingRequiredTools.join(", ")}.`, "agentTools", "Restore and approve all eleven canonical allowlisted tool implementations before release.");
+  if (missingRequiredTools.length) add("AGENT-REGISTRY-001", "workspace", "AGENT-REGISTRY", `Required active tools are missing: ${missingRequiredTools.join(", ")}.`, "agentTools", "Restore the canonical allowlisted tool implementations before release.");
   for (const mapping of workspace.mappings.filter((item) => item.status !== "rejected" && item.status !== "deferred")) {
     const toolIds = mapping.toolIds || [];
     if (new Set(toolIds).size !== toolIds.length || toolIds.some((id) => !workspace.tools.some((tool) => tool.id === id && !["archived", "retired"].includes(tool.status)))) add("MAPPING-TOOL-001", "mapping", mapping.id, "Mapping contains a duplicate or unavailable controlled-tool reference.", "toolIds", "Select unique active controlled tools or remove obsolete references.");

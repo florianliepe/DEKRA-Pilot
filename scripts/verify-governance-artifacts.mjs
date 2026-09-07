@@ -37,7 +37,7 @@ const workspaceSchema = json("data/schemas/skill-workspace.schema.json");
 if (["jobClarifications", "mappingOmissions"].some((key) => !workspaceSchema.required?.includes(key) || !workspaceSchema.properties?.[key])) throw new Error("Workspace schema is missing the ZM-01 governed collections.");
 
 const registry = json("data/agent-tool-registry.json");
-if (registry.policy?.defaultAccess !== "deny" || registry.tools?.length !== 11) throw new Error("Agent-tool registry must be deny-by-default with exactly eleven tools.");
+if (registry.policy?.defaultAccess !== "deny" || registry.tools?.length !== 15) throw new Error("Agent-tool registry must be deny-by-default with exactly fifteen tools.");
 for (const tool of registry.tools) {
   const required = ["id", "name", "purpose", "inputSchema", "outputSchema", "requiredPermission", "allowedDataClassifications", "timeoutMs", "retryPolicy", "rateLimit", "errorContract", "auditRequirements", "version", "lifecycleStatus", "owner", "allowedAgentActions"];
   if (required.some((key) => tool[key] === undefined)) throw new Error(`Agent tool ${tool.id || "unknown"} has an incomplete contract.`);
@@ -73,4 +73,4 @@ for (const [path, expectedWebhook] of workflows) {
   if (path.includes("steerco") && ["dekra-steerco-v1-read", "steerco.generate", "steerco.approve", "steerco.publish", "steerco.revoke", "steerco.rollback", "steerco.read", "AI claims failed evidence-reference validation", "expectedRevision", "expiresAt", "checksum", "history", "githubCommit"].some((marker) => !JSON.stringify(workflow).includes(marker))) throw new Error("SteerCo workflow is missing its governed AI, approval, publication, rollback, revocation, expiry or evidence contract.");
 }
 
-console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 11 agent tools and 3 governed n8n workflows.`);
+console.log(`Governance artifacts verified: ${requiredJson.length} JSON contracts, 15 agent tools and 3 governed n8n workflows.`);

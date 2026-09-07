@@ -547,6 +547,14 @@ test("shows traceable job evidence, calibrated score quality, omissions and appr
   await expect(page.getByText(/Semantic Relevance · 14% weight/).first()).toBeVisible();
   await page.getByRole("button", { name: "SEG-JD-DATA-01", exact: true }).first().click();
   await expect(page.locator(".evidence-segments button.active")).toContainText("Build interactive dashboards");
+  await expect(page.getByText("PORTFOLIO ASSURANCE")).toBeVisible();
+  await expect(page.getByText("technical + behavioral · max 10")).toBeVisible();
+  await page.getByRole("button", { name: "Domain heatmap" }).click();
+  await expect(page.locator(".domain-heatmap")).toBeVisible();
+  await page.getByRole("button", { name: "KFLA concentration" }).click();
+  await expect(page.locator(".kfla-concentration")).toBeVisible();
+  await page.getByRole("button", { name: "Proposed vs approved" }).click();
+  await expect(page.locator(".release-comparison")).toBeVisible();
 });
 
 test("governs role-profile editing, duplication and archival with accountable impact", async ({ page }) => {

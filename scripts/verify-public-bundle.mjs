@@ -36,7 +36,7 @@ const forbidden = [
 ];
 for (const [pattern, label] of forbidden) if (pattern.test(bundle)) throw new Error(`Public bundle contains a ${label}.`);
 
-for (const marker of ["SteerCo summary", "Generate AI draft", "Copy read-only link", "Open workspace", "38 KFLA competency names", "Mapping playbook", "Mutually exclusive, collectively exhaustive role profile"]) {
+for (const marker of ["SteerCo summary", "Generate AI draft", "Copy read-only link", "Open workspace", "38 KFLA competency names", "Mapping playbook", "Evidence-complete core profile without filler mappings", "PORTFOLIO ASSURANCE"]) {
   if (!bundle.includes(marker)) throw new Error(`Public bundle is missing the required application marker: ${marker}.`);
 }
 

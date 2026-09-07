@@ -157,7 +157,9 @@ export const validationRules: ValidationRule[] = [
   ["KFLA-METADATA-001", "KFLA governance metadata", "Every factor, cluster and competency must retain source, licence, owner, version and review metadata.", "error", "metadata", "Complete the governed provenance metadata before release.", true],
   ["PROFICIENCY-INTEGRITY-001", "Four-level proficiency integrity", "The framework must retain four unique governed proficiency definitions.", "error", "proficiencyDefinitions", "Restore levels one through four and their behavioral indicators.", true],
   ["EVIDENCE-SOURCE-001", "Evidence source integrity", "Every evidence record must resolve to a governed source.", "error", "sourceId", "Select an existing governed source or create one before attaching evidence.", true],
-  ["AGENT-REGISTRY-001", "Agent-tool registry integrity", "All eleven canonical agent tools must be uniquely identified, active and governed by complete callable contracts.", "error", "agentTools", "Restore complete schemas, permissions, data boundaries, runtime policies, error contracts, audit fields, versions and accountable owners.", true],
+  ["AGENT-REGISTRY-001", "Agent-tool registry integrity", "Every canonical agent tool must be uniquely identified, active and governed by a complete callable contract.", "error", "agentTools", "Restore complete schemas, permissions, data boundaries, runtime policies, error contracts, audit fields, versions and accountable owners.", true],
+  ["MAPPING-PROFILE-CAPACITY-001", "Core-profile capacity", "A job profile may contain up to five technical skills and five behavioral competencies, with ten mappings maximum.", "error", "mappings", "Consolidate overlap and retain only evidence-backed core mappings.", true],
+  ["MAPPING-PROFILE-TYPE-001", "Core-profile concept types", "Experiences, traits, drivers, tools, tasks and qualifications must not be counted as core skills.", "error", "classification", "Classify the core proposal as technical skill or behavioral competency, or move the concept to supporting context.", true],
 ].map(([id, name, description, severity, affectedField, suggestedCorrection, blocking]) => ({ id, name, description, severity, affectedField, suggestedCorrection, blocking, frameworkVersion: "3.1.0", status: "approved" })) as ValidationRule[];
 
 const schema = (required: string[], properties: Record<string, { type: string; description?: string }>) => ({ type: "object" as const, required, properties });
@@ -187,6 +189,10 @@ export const agentTools: AgentToolDefinition[] = [
   agentTool("mapping_scorer", "Mapping scorer", "Calculate the versioned thirteen-part mapping score.", ["mappingRef", "evidenceRef"], ["scoreRef"], "skill.mapping.score"),
   agentTool("draft_suggestion_writer", "Draft-suggestion writer", "Create a draft suggestion in the human review queue.", ["suggestionRef"], ["reviewItemRef"], "skill.review.draft"),
   agentTool("review_package_generator", "Review-package generator", "Prepare evidence, validation and impact context for a human decision.", ["reviewItemRef"], ["packageRef"], "skill.review.prepare"),
+  agentTool("taxonomy_hierarchy_resolver", "Taxonomy hierarchy resolver", "Resolve an approved L3 skill to its single governed L2 group and L1 domain.", ["skillId"], ["taxonomyPathRef"], "skill.taxonomy.read"),
+  agentTool("skill_type_classifier", "Core-skill type classifier", "Classify evidence-grounded candidates as technical skill or behavioral competency and expose ambiguity.", ["candidateRef", "evidenceRef"], ["classificationRef"], "skill.validation.run"),
+  agentTool("kfla_relationship_mapper", "KFLA relationship mapper", "Suggest one primary and optional secondary public-metadata KFLA relationships for behavioral competencies.", ["skillRef", "evidenceRef"], ["kflaMappingRef"], "skill.kfla.read_public"),
+  agentTool("profile_composition_validator", "Profile composition validator", "Enforce up to five technical and five behavioral mappings, maximum ten, without filler matches.", ["profileRef", "evidenceRef"], ["findingsRef"], "skill.validation.run"),
 ];
 
 export const frameworkConfig: FrameworkConfig = {

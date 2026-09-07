@@ -6,6 +6,8 @@ import { applyAgentToolLifecycle, applyControlledToolLifecycle, applyReferenceLi
 import { evaluateMappingDataset } from "../src/lib/mapping-evaluation";
 import { assessJobClarification, nextEvidenceGroundedQuestion } from "../src/lib/skill-clarification";
 import { buildMappingExplanation, mappingExplanationFindings } from "../src/lib/mapping-explainability";
+import { analyseMappingProfile } from "../src/lib/mapping-profile-quality";
+import { mappingPortfolioAnalytics } from "../src/lib/mapping-portfolio-analytics";
 import { compareObjectVersions, compareRoleProfiles, filterAuditEvents, governanceDiagnostics, replacementChain, taxonomyOverlapSignals } from "../src/lib/governance-analytics";
 import { assessPilotReadiness, pilotReadinessSummary } from "../src/lib/pilot-readiness";
 import { migrateSkillWorkspace, validateWorkspace, type MappingEvaluationDataset, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
@@ -231,10 +233,10 @@ test("rejects duplicate, unsupported and orphaned localized labels", () => {
   expect(validateWorkspace(invalid).some((finding) => finding.ruleId === "MULTILINGUAL-REFERENCE-001")).toBe(true);
 });
 
-test("defines eleven permissioned and auditable agent tools", () => {
+test("defines fifteen permissioned and auditable agent tools", () => {
   const tools = bootstrapSkillWorkspace.agentTools;
-  expect(tools).toHaveLength(11);
-  expect(new Set(tools.map((tool) => tool.id)).size).toBe(11);
+  expect(tools).toHaveLength(15);
+  expect(new Set(tools.map((tool) => tool.id)).size).toBe(15);
   for (const tool of tools) {
     expect(tool.inputSchema.type).toBe("object");
     expect(tool.outputSchema.type).toBe("object");
@@ -266,7 +268,7 @@ test("validates the complete callable contract before a tool can be activated", 
 test("publishes a fully expanded deny-by-default agent-tool registry", () => {
   const registry = JSON.parse(readFileSync(join(process.cwd(), "data", "agent-tool-registry.json"), "utf8"));
   expect(registry.policy.defaultAccess).toBe("deny");
-  expect(registry.tools).toHaveLength(11);
+  expect(registry.tools).toHaveLength(15);
   for (const tool of registry.tools) {
     expect(tool.inputSchema.type).toBe("object");
     expect(tool.outputSchema.type).toBe("object");
@@ -279,6 +281,23 @@ test("publishes a fully expanded deny-by-default agent-tool registry", () => {
     expect(tool.auditRequirements).toContain("correlationId");
     expect(tool.version).toMatch(/^\d+\.\d+\.\d+$/);
   }
+});
+
+test("enforces the ZM-15 five-plus-five profile policy and produces portfolio diagnostics", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const job = workspace.jobDescriptions[0];
+  const quality = analyseMappingProfile(job, workspace.mappings.filter((mapping) => mapping.jobDescriptionId === job.id), workspace);
+  expect(quality.skillCount).toBeLessThanOrEqual(10);
+  expect(quality.technicalCount).toBeLessThanOrEqual(5);
+  expect(quality.behavioralCount).toBeLessThanOrEqual(5);
+  expect(quality.unsupportedFacetCount).toBe(0);
+
+  const analytics = mappingPortfolioAnalytics(workspace, workspace);
+  expect(analytics.jobs.some((item) => item.id === job.id)).toBe(true);
+  expect(analytics.domainHeatmap).toHaveLength(analytics.jobs.length);
+  expect(analytics.kflaConcentration).toHaveLength(workspace.kflaFactors.length);
+  expect(analytics.comparison.added).toEqual([]);
+  expect(analytics.comparison.removed).toEqual([]);
 });
 
 test("enforces agent-tool permissions, classifications, lifecycle and audit context", () => {
