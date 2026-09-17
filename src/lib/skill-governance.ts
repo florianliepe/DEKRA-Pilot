@@ -1,4 +1,6 @@
 import { validateWorkspace, type AgentToolDefinition, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type ElicitationSession, type EvidenceRecord, type JobSkillMapping, type KflaCluster, type KflaCompetency, type KflaFactor, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type SourceRecord, type TaxonomyRelationship, type ValidationRule } from "./skill-schema";
+import { deriveRoleProfile } from "./derived-role-profile";
+import { analyseMappingProfile } from "./mapping-profile-quality";
 
 const penaltyKeys: Array<keyof MappingScoreBreakdown> = ["duplicatePenalty", "contradictionPenalty", "missingEvidencePenalty"];
 
@@ -805,6 +807,15 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
   const review = workspace.reviewQueue.find((item) => item.id === reviewId);
   if (!review) throw new Error("Review item not found.");
   if (decision === "merged" && !mergeTargetId) throw new Error("A merge target is required.");
+  if (review.type === "profile" && decision === "accepted") {
+    const profile = workspace.profiles.find((item) => item.id === review.entityId);
+    const job = workspace.jobDescriptions.find((item) => item.id === profile?.jobDescriptionId && item.status !== "archived");
+    if (!profile || !job) throw new Error("A profile must be linked to an active source job before approval.");
+    const mappings = workspace.mappings.filter((item) => item.jobDescriptionId === job.id && item.status === "approved");
+    const derived = deriveRoleProfile(job, mappings, workspace, profile);
+    const sameLinks = profile.skills.length === derived.skills.length && profile.skills.every((link) => derived.skills.some((item) => item.skillId === link.skillId && item.targetLevel === link.targetLevel && item.weight === link.weight && item.critical === link.critical));
+    if (!sameLinks || !analyseMappingProfile(job, mappings, workspace).readyForReview) throw new Error("Profile approval requires an evidence-complete, approved mapping set and an exactly matching derived skill profile.");
+  }
   const at = new Date().toISOString();
   const reviewQueue = workspace.reviewQueue.map((item) => item.id === reviewId ? { ...item, status: decision, mergeTargetId, decisionBy: actor.trim(), decisionAt: at, decisionReason: reason.trim() } : item);
   const approved = decision === "accepted";
@@ -832,6 +843,24 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
     snapshot: { ...review, status: decision, mergeTargetId, decisionReason: reason.trim() },
   };
   let next: SkillWorkspace = { ...workspace, reviewQueue, skills, mappings, profiles, agentTools, updatedAt: at };
+  if (review.type === "mapping") {
+    const reviewedMapping = mappings.find((mapping) => mapping.id === review.entityId);
+    const job = next.jobDescriptions.find((item) => item.id === reviewedMapping?.jobDescriptionId);
+    if (job) {
+      const activeForJob = mappings.filter((mapping) => mapping.jobDescriptionId === job.id && !["rejected", "deferred"].includes(mapping.status));
+      const existing = next.profiles.find((profile) => profile.jobDescriptionId === job.id && !["archived", "retired"].includes(profile.status));
+      if (activeForJob.length) {
+        const derived = deriveRoleProfile(job, activeForJob, next, existing);
+        const changed = !existing || JSON.stringify(existing.skills) !== JSON.stringify(derived.skills) || existing.title !== derived.title || existing.purpose !== derived.purpose;
+        if (changed) {
+          next = recordGovernedVersion({ ...next, profiles: existing ? next.profiles.map((profile) => profile.id === existing.id ? derived : profile) : [...next.profiles, derived] }, "role_profile", derived.id, "profile.derived_from_job_mapping", actor.trim(), { sourceJobDescriptionId: job.id, mappingIds: activeForJob.map((mapping) => mapping.id), decisionReason: reason.trim(), profile: derived });
+          if (!next.reviewQueue.some((item) => item.type === "profile" && item.entityId === derived.id && item.status === "pending")) {
+            next.reviewQueue = [{ id: `REV-${derived.id}-${Date.now()}`, entityId: derived.id, title: `Review ${derived.title} derived profile`, type: "profile", summary: "Profile composition derived from governed job mappings; accountable approval is required.", confidence: Math.round(activeForJob.reduce((sum, item) => sum + (item.confidence ?? item.relevance), 0) / activeForJob.length), evidence: activeForJob.flatMap((mapping) => mapping.evidenceRefs || []).join(" · ") || job.title, frameworkVersion: next.framework.version, rulesVersion: next.framework.rulesVersion, status: "pending", payload: { operation: "profile_review", jobDescriptionId: job.id, sourceMappingIds: activeForJob.map((mapping) => mapping.id) } }, ...next.reviewQueue];
+          }
+        }
+      }
+    }
+  }
   if (approved && review.payload?.operation === "taxonomy_node_definition") next = executeTaxonomyNodeDefinition(next, review.payload as unknown as TaxonomyNodeDefinitionRequest, actor.trim(), reason.trim());
   if (approved && review.payload?.operation === "taxonomy_node_lifecycle") next = executeTaxonomyNodeLifecycle(next, review.payload as unknown as TaxonomyNodeLifecycleRequest, actor.trim(), reason.trim());
   if (approved && review.payload?.operation === "kfla_metadata_review") next = executeKflaMetadataReview(next, review.payload as unknown as KflaMetadataRequest, actor.trim(), reason.trim());

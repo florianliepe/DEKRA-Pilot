@@ -182,7 +182,7 @@ export function JobMappingWorkbench({ workspace, approvedWorkspace, secret, muta
     if (!job) return;
     const candidate = { ...mapping, id: mapping.id || `MAP-MANUAL-${workspace.mappings.length + 1}`, jobDescriptionId: job.id, source: mapping.id ? mapping.source : "manual" as const, status: mapping.id ? mapping.status : "proposed" as const };
     const value = candidate.overrideReason?.trim() ? candidate : recalculateMapping(candidate, workspace);
-    mutate((current) => recordGovernedVersion({ ...current, mappings: mapping.id ? current.mappings.map((item) => item.id === mapping.id ? value : item) : [...current.mappings, value], jobDescriptions: current.jobDescriptions.map((item) => item.id === job.id ? { ...item, status: "mapped" } : item) }, "job_mapping", value.id, mapping.id ? "mapping.updated" : "mapping.created", actor.trim(), { ...value, governanceReason: reason.trim() } as unknown as Record<string, unknown>));
+    mutate((current) => recordGovernedVersion({ ...current, mappings: mapping.id ? current.mappings.map((item) => item.id === mapping.id ? value : item) : [...current.mappings, value] }, "job_mapping", value.id, mapping.id ? "mapping.updated" : "mapping.created", actor.trim(), { ...value, governanceReason: reason.trim() } as unknown as Record<string, unknown>));
     setEditingMapping(null);
   }
 

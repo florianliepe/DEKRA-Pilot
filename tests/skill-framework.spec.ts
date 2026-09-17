@@ -494,6 +494,39 @@ test("routes every seeded AI profile and mapping proposal to human review", () =
   expect(mappingReview).toMatchObject({ id: "REV-004", type: "mapping", status: "pending" });
 });
 
+test("derives the stored profile from reviewed job mappings without changing the source job", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const sourceJob = structuredClone(workspace.jobDescriptions.find((job) => job.id === "JD-DATA"));
+  const reviewed = decideReview(workspace, "REV-004", "accepted", "Job Architect", "Direct source evidence supports this skill.");
+  expect(reviewed.jobDescriptions.find((job) => job.id === "JD-DATA")).toEqual(sourceJob);
+  expect(reviewed.profiles.find((profile) => profile.jobDescriptionId === "JD-DATA")).toMatchObject({
+    status: "in_review", skills: [
+      { skillId: "SK-DV", targetLevel: 3, weight: 35 },
+      { skillId: "SK-MC", targetLevel: 2, weight: 20 },
+    ],
+  });
+  expect(reviewed.reviewQueue.some((item) => item.type === "profile" && item.entityId === "ROLE-DATA" && item.status === "pending")).toBe(true);
+  expect(reviewed.objectVersions.some((item) => item.action === "profile.derived_from_job_mapping")).toBe(true);
+});
+
+test("does not approve a profile that diverges from its job-derived mappings", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const sourceJob = structuredClone(workspace.jobDescriptions.find((job) => job.id === "JD-DATA"));
+  expect(() => decideReview(workspace, "REV-003", "accepted", "Job Architect", "Review completed.")).toThrow(/approved mapping set|matching derived/);
+  expect(workspace.jobDescriptions.find((job) => job.id === "JD-DATA")).toEqual(sourceJob);
+});
+
+test("creates a linked in-review profile when mappings exist but the agent supplied none", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  workspace.profiles = [];
+  workspace.reviewQueue = workspace.reviewQueue.filter((item) => item.type !== "profile");
+  const sourceJob = structuredClone(workspace.jobDescriptions.find((job) => job.id === "JD-DATA"));
+  const reviewed = decideReview(workspace, "REV-004", "accepted", "Job Architect", "Evidence checked.");
+  expect(reviewed.jobDescriptions.find((job) => job.id === "JD-DATA")).toEqual(sourceJob);
+  expect(reviewed.profiles.find((profile) => profile.jobDescriptionId === "JD-DATA")).toMatchObject({ id: "PROFILE-JD-DATA", status: "in_review" });
+  expect(reviewed.reviewQueue.some((item) => item.type === "profile" && item.entityId === "PROFILE-JD-DATA" && item.status === "pending")).toBe(true);
+});
+
 test("blocks publication until reviews resolve and protects optimistic concurrency", () => {
   const workspace = structuredClone(bootstrapSkillWorkspace);
   expect(() => prepareRelease(workspace, "Framework Owner", 0)).toThrow(/review/i);
