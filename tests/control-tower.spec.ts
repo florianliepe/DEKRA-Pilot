@@ -328,6 +328,21 @@ test("opens the governed Skill Designer with all nine workspaces", async ({ page
   await expect(page.locator(".kfla-grid .kfla-card")).toHaveCount(38);
 });
 
+test("compares normalized job evidence with its linked skill profile without changing approval", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Job ↔ profile" }).click();
+  await expect(page.getByRole("heading", { name: "Compare source role and governed capability" })).toBeVisible();
+  await expect(page.getByText("JD-DATA", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("ROLE-DATA", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Primary owner: Data Visualization/)).toBeVisible();
+  await expect(page.getByText(/Profile-only skills without an active job mapping/)).toBeVisible();
+  await expect(page.getByText(/Mapped skills absent from the stored profile/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Open Jobs & mapping" }).click();
+  await expect(page.getByRole("heading", { name: "Global Reporting Analyst" }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Compare with skill profile" }).click();
+  await expect(page.getByRole("heading", { name: "Compare source role and governed capability" })).toBeVisible();
+});
+
 test("shows a recoverable authentication message instead of a JSON parser error", async ({ page }) => {
   await page.route("**/webhook/7666d3c6-b63f-4e79-b10a-82a002a9cf47", async (route) => {
     await route.fulfill({ status: 403, contentType: "application/json", body: "" });

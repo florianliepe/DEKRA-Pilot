@@ -6,6 +6,7 @@ import { bootstrapSkillWorkspace } from "@/lib/skill-fixtures";
 import { ingestSkillEvidence, loadApprovedSkillWorkspace, loadSkillWorkflowHealth, loadSkillWorkspace, publishSkillWorkspace, runSkillInterview, saveSkillWorkspace, SkillWorkflowError } from "@/lib/skill-client";
 import { migrateSkillWorkspace, profileGuidance, proficiencyLevels, workspaceFindings, type Lifecycle, type ReleaseManifest, type RoleProfile, type Skill, type SkillDimension, type SkillWorkspace } from "@/lib/skill-schema";
 import { JobMappingWorkbench } from "./job-mapping-workbench";
+import { JobProfileComparison } from "./job-profile-comparison";
 import { StrategicVectors } from "./strategic-vectors";
 import { AgentRunLog } from "./agent-run-log";
 import { TaxonomyStandardWorkbench } from "./taxonomy-standard-workbench";
@@ -16,14 +17,14 @@ import { SkillMappingPlaybook } from "./skill-mapping-playbook";
 import { SkillArchitectureMap } from "./skill-architecture-map";
 import { applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, decideReview, impactAnalysis, prepareRelease, recordGovernedVersion, type RoleProfileLifecycleAction } from "@/lib/skill-governance";
 
-type Tab = "overview" | "playbook" | "architecture" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "profiles" | "vectors" | "review" | "runs" | "governance";
+type Tab = "overview" | "playbook" | "architecture" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "comparison" | "profiles" | "vectors" | "review" | "runs" | "governance";
 type SkillDraft = Pick<Skill, "name" | "description" | "groupId" | "dimension" | "kflaCompetencyId" | "observability" | "futureRelevance" | "status"> & { aliases: string; action: string; object: string; outcome: string };
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: "overview", label: "Overview" }, { id: "playbook", label: "Mapping playbook" }, { id: "architecture", label: "Architecture map" }, { id: "intake", label: "Intake & interview" },
   { id: "elicitation", label: "Elicitation wizard" },
   { id: "library", label: "Skill library" }, { id: "taxonomy", label: "Taxonomy" },
-  { id: "jobs", label: "Jobs & mapping" }, { id: "profiles", label: "Role profiles" },
+  { id: "jobs", label: "Jobs & mapping" }, { id: "comparison", label: "Job ↔ profile" }, { id: "profiles", label: "Role profiles" },
   { id: "vectors", label: "Strategic vectors" }, { id: "review", label: "Review queue" }, { id: "runs", label: "Agent runs" }, { id: "governance", label: "Governance" },
 ];
 const emptySkill = (groupId: string): SkillDraft => ({ name: "", description: "", groupId, dimension: "technical", kflaCompetencyId: "", aliases: "", observability: "", futureRelevance: "core", status: "draft", action: "", object: "", outcome: "" });
@@ -37,6 +38,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [comparisonJobId, setComparisonJobId] = useState("");
   const [editing, setEditing] = useState<Skill | "new" | null>(null);
   const [approvedWorkspace, setApprovedWorkspace] = useState<SkillWorkspace | null>(null);
   const [releaseAttempt, setReleaseAttempt] = useState<{ manifest: ReleaseManifest; approvedBy: string; workspaceRevision: number; workspaceUpdatedAt: string } | null>(null);
@@ -167,7 +169,8 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {tab === "elicitation" && <ElicitationWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} mutate={mutate} onMessage={setMessage} onError={setError}/>}
     {tab === "taxonomy" && <TaxonomyStandardWorkbench workspace={workspace} mutate={mutate}/>}
-    {tab === "jobs" && <JobMappingWorkbench workspace={workspace} approvedWorkspace={approvedWorkspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
+    {tab === "jobs" && <JobMappingWorkbench workspace={workspace} approvedWorkspace={approvedWorkspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError} initialJobId={comparisonJobId} onCompare={(jobId) => { setComparisonJobId(jobId); setTab("comparison"); }}/>}
+    {tab === "comparison" && <JobProfileComparison workspace={workspace} approvedWorkspace={approvedWorkspace} selectedJobId={comparisonJobId} onOpenMapping={(jobId) => { setComparisonJobId(jobId); setTab("jobs"); }} onOpenProfiles={() => setTab("profiles")}/>}
     {tab === "profiles" && <Profiles workspace={workspace} mutate={mutate}/>}
     {tab === "vectors" && <StrategicVectors workspace={workspace} mutate={mutate}/>}
     {tab === "review" && <Review workspace={workspace} mutate={mutate}/>}
