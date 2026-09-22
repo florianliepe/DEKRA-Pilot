@@ -209,6 +209,7 @@ export type Skill = {
   description: string;
   groupId: string;
   dimension: SkillDimension;
+  capabilityType?: "hard" | "technical" | "functional" | "interface";
   kflaCompetencyId?: string;
   aliases: string[];
   evidence: string[];
@@ -223,7 +224,7 @@ export type Skill = {
 
 export type ProfileSkill = { skillId: string; targetLevel: 1 | 2 | 3 | 4; weight: number; critical: boolean };
 export type ProfileExcludedLink = { skillId: string; reason: string; sourceMappingId?: string; status: "unapproved_skill" | "rejected_mapping" | "deferred_mapping" | "coverage_gap" };
-export type RoleProfile = { id: string; title: string; jobFamily: string; purpose: string; status: Lifecycle; skills: ProfileSkill[]; jobDescriptionId?: string; strategicVectorIds?: string[]; excludedLinks?: ProfileExcludedLink[]; agentRunId?: string; governance?: GovernanceMeta };
+export type RoleProfile = { id: string; title: string; jobFamily: string; purpose: string; status: Lifecycle; skills: ProfileSkill[]; jobDescriptionId?: string; compositionExceptionReason?: string; strategicVectorIds?: string[]; excludedLinks?: ProfileExcludedLink[]; agentRunId?: string; governance?: GovernanceMeta };
 export type JobEvidenceKind = "purpose" | "responsibility" | "outcome" | "activity" | "tool" | "qualification" | "context" | "constraint";
 export type JobSourceFile = { name: string; mediaType: string; size: number; contentHash?: string };
 export type JobEvidenceSegment = {
@@ -791,6 +792,7 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     if (!skill.syntax?.action || !skill.syntax.object) add("SKILL-SYNTAX-001", "skill", skill.id, "Action + object syntax is incomplete.", "syntax", "Add one observable action and one enduring object.");
     if (skill.observability.trim().length < 20) add("SKILL-EVIDENCE-001", "skill", skill.id, "Observable outcome evidence is missing or too short.", "observability", "Describe evidence a reviewer can observe in real work.");
     if (!skill.evidence.length) add("SKILL-EVIDENCE-002", "skill", skill.id, "No source evidence is linked.", "evidence", "Attach a source excerpt and location.");
+    if (skill.capabilityType && skill.dimension !== "technical") add("SKILL-CAPABILITY-TYPE-001", "skill", skill.id, "Hard, technical, functional and interface types apply only to the non-behavioural skill category.", "capabilityType", "Clear the subtype or classify this concept as a technical-category skill.");
   }
   for (const group of workspace.groups.filter((item) => !["retired", "archived"].includes(item.status))) {
     if (!workspace.domains.some((domain) => domain.id === group.domainId && !["retired", "archived"].includes(domain.status))) add("TAXONOMY-PARENT-001", "group", group.id, "Parent domain is unavailable.", "domainId", "Move the group to an active domain.");
@@ -848,6 +850,8 @@ export function validateWorkspace(workspace: SkillWorkspace): ValidationFinding[
     const skillIds = profile.skills.map((link) => link.skillId);
     if (new Set(skillIds).size !== skillIds.length || profile.skills.some((link) => !workspace.skills.some((skill) => skill.id === link.skillId && !["archived", "retired"].includes(skill.status)))) add("PROFILE-INTEGRITY-001", "role_profile", profile.id, "Role profile contains a duplicate or unavailable skill link.", "skills", "Remove duplicate links and select active governed skills only.");
     if (profile.status === "approved" && (!profile.jobDescriptionId || !workspace.jobDescriptions.some((job) => job.id === profile.jobDescriptionId && job.status !== "archived"))) add("PROFILE-SOURCE-001", "role_profile", profile.id, "Approved role profile is not grounded in an active job description.", "jobDescriptionId", "Link the profile to its governed source job description before release.");
+    const guidance = profileGuidance(profile, workspace.skills);
+    if (profile.status === "approved" && !guidance.validCount) add("PROFILE-COMPOSITION-001", "role_profile", profile.id, "Approved profile violates a core-skill limit, lacks KFLA allocation or 100% weight, or has an unexplained category imbalance.", "skills", "Use at most ten distinct skills, up to five per category; document any evidence-led departure from an approximately even split.");
   }
   for (const tool of workspace.tools.filter((item) => !["archived", "retired"].includes(item.status))) {
     if (new Set(tool.skillIds).size !== tool.skillIds.length || tool.skillIds.some((id) => !workspace.skills.some((skill) => skill.id === id && !["archived", "retired"].includes(skill.status)))) add("CONTROLLED-TOOL-INTEGRITY-001", "controlled_tool", tool.id, "Controlled tool contains a duplicate or unavailable skill link.", "skillIds", "Retain unique links to active governed skills only.");
@@ -920,11 +924,20 @@ export function profileGuidance(profile: RoleProfile, skills: Skill[]) {
   const mapped = profile.skills.map((item) => skills.find((skill) => skill.id === item.skillId)).filter(Boolean) as Skill[];
   const technical = mapped.filter((skill) => skill.dimension === "technical").length;
   const behavioral = mapped.filter((skill) => skill.dimension === "competency").length;
-  const human = mapped.filter((skill) => skill.dimension === "trait" || skill.dimension === "driver").length;
+  const unsupported = mapped.filter((skill) => !["technical", "competency"].includes(skill.dimension)).length;
+  const unallocatedKfla = mapped.filter((skill) => skill.dimension === "competency" && !skill.kflaCompetencyId).length;
+  const kflaIds = mapped.filter((skill) => skill.dimension === "competency").map((skill) => skill.kflaCompetencyId).filter((id): id is string => Boolean(id));
+  const uniqueKfla = new Set(kflaIds).size === kflaIds.length;
+  const missing = profile.skills.length - mapped.length;
+  const unique = new Set(profile.skills.map((item) => item.skillId)).size === profile.skills.length;
+  const totalWeight = profile.skills.reduce((sum, item) => sum + item.weight, 0);
+  const suggested = profile.skills.length > 0 && Math.abs(technical - behavioral) <= 1;
   return {
     count: profile.skills.length,
-    validCount: profile.skills.length >= 8 && profile.skills.length <= 12,
-    composition: `${technical} technical · ${behavioral} behavioral · ${human} traits/drivers`,
-    suggested: technical >= 5 && technical <= 6 && behavioral >= 3 && behavioral <= 4 && human >= 1 && human <= 2,
+    validCount: profile.skills.length > 0 && profile.skills.length <= 10 && technical <= 5 && behavioral <= 5 && unsupported === 0 && unallocatedKfla === 0 && missing === 0 && unique && uniqueKfla && totalWeight === 100 && (suggested || Boolean(profile.compositionExceptionReason?.trim())),
+    composition: `${technical} hard / functional / technical · ${behavioral} KFLA / leadership · ${unsupported} outside core`,
+    suggested,
+    totalWeight,
+    unallocatedKfla,
   };
 }

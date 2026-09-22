@@ -364,9 +364,17 @@ svg { width: 18px; height: 18px; flex: 0 0 auto; }
 /* Skill Designer */
 .skill-designer, .skill-stack { display: grid; gap: 14px; }
 .skill-command-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 7px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-.skill-tabs { display: flex; gap: 2px; overflow-x: auto; }
+.skill-tabs { display: flex; align-items: center; gap: 2px; min-width: 0; flex-wrap: wrap; }
 .skill-tabs button { display: flex; align-items: center; gap: 6px; min-width: max-content; padding: 9px 11px; border: 0; border-radius: 5px; color: #6d7872; background: transparent; font-size: 8px; font-weight: 700; cursor: pointer; }
 .skill-tabs button.active { color: var(--green-dark); background: var(--green-soft); }
+.skill-more-tabs { position: relative; z-index: 20; color: #59665e; font-size: 9px; font-weight: 700; }
+.skill-more-tabs summary { cursor: pointer; padding: 9px 11px; border-radius: 5px; list-style-position: inside; }
+.skill-more-tabs[open] { padding-bottom: 4px; background: #fff; box-shadow: 0 8px 24px rgb(0 0 0 / 10%); }
+.skill-more-tabs[open] button { display: flex; width: 100%; text-align: left; }
+.skill-designer .skill-tabs button, .skill-designer .skill-more-tabs { font-size: 11px; }
+.skill-designer .skill-hero p, .skill-designer .playbook-hero p { font-size: 13px; }
+.skill-designer .principle-grid strong, .skill-designer .dimension-card b, .skill-designer .profile-guidance b, .skill-designer .playbook-steps h4 { font-size: 12px; }
+.skill-designer .principle-grid small, .skill-designer .dimension-card small, .skill-designer .profile-guidance small, .skill-designer .playbook-steps p, .skill-designer .playbook-principles small, .skill-designer .playbook-help p { font-size: 11px; }
 .skill-tabs em { display: grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; color: #fff; background: #c34f54; font-style: normal; font-size: 7px; }
 .skill-actions { display: flex; align-items: center; gap: 9px; min-width: max-content; }
 .skill-sync { display: flex; align-items: center; gap: 6px; color: #7b8680; font-size: 7px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; }

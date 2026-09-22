@@ -16,6 +16,7 @@ export function deriveRoleProfile(job: JobDescription, mappings: JobSkillMapping
     status: "in_review",
     skills,
     jobDescriptionId: job.id,
+    compositionExceptionReason: existing?.compositionExceptionReason,
     strategicVectorIds: existing?.strategicVectorIds,
     excludedLinks: existing?.excludedLinks,
     agentRunId: active.find((mapping) => mapping.agentRunId)?.agentRunId || existing?.agentRunId,

@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
+import { applyZm16Contract } from "./zm16-agent-contract.mjs";
 
 const apiKey = process.env.N8N_API_KEY;
 const baseUrl = process.env.N8N_BASE_URL || "https://eraneos-agentic-platform.azurewebsites.net";
 const workflowId = process.env.N8N_WORKFLOW_ID || "etuCxjr2u5bPYqP2";
 if (!apiKey) throw new Error("N8N_API_KEY is required.");
 
-const local = JSON.parse(readFileSync("docs/n8n-skill-designer-v3.workflow.json", "utf8"));
+const local = applyZm16Contract(JSON.parse(readFileSync("docs/n8n-skill-designer-v3.workflow.json", "utf8")));
 const headers = { "X-N8N-API-KEY": apiKey, "Content-Type": "application/json" };
 const request = async (path, options = {}) => {
   const response = await fetch(`${baseUrl}${path}`, { ...options, headers });

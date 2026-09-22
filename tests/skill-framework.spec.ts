@@ -8,9 +8,10 @@ import { assessJobClarification, nextEvidenceGroundedQuestion } from "../src/lib
 import { buildMappingExplanation, mappingExplanationFindings } from "../src/lib/mapping-explainability";
 import { analyseMappingProfile } from "../src/lib/mapping-profile-quality";
 import { mappingPortfolioAnalytics } from "../src/lib/mapping-portfolio-analytics";
+import { dekraLeadershipStandards, roleSkillLabel } from "../src/lib/dekra-skill-design";
 import { compareObjectVersions, compareRoleProfiles, filterAuditEvents, governanceDiagnostics, replacementChain, taxonomyOverlapSignals } from "../src/lib/governance-analytics";
 import { assessPilotReadiness, pilotReadinessSummary } from "../src/lib/pilot-readiness";
-import { migrateSkillWorkspace, validateWorkspace, type MappingEvaluationDataset, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
+import { migrateSkillWorkspace, profileGuidance, validateWorkspace, type MappingEvaluationDataset, type MappingScoreBreakdown, type ReleaseManifest } from "../src/lib/skill-schema";
 
 test("builds a ZM-12 reviewer explanation and blocks unsupported claims", () => {
   const workspace = structuredClone(bootstrapSkillWorkspace);
@@ -298,6 +299,28 @@ test("enforces the ZM-15 five-plus-five profile policy and produces portfolio di
   expect(analytics.kflaConcentration).toHaveLength(workspace.kflaFactors.length);
   expect(analytics.comparison.added).toEqual([]);
   expect(analytics.comparison.removed).toEqual([]);
+});
+
+test("uses the ten-skill core rule in stored profiles and keeps DEKRA leadership allocation distinct", () => {
+  const workspace = structuredClone(bootstrapSkillWorkspace);
+  const profile = workspace.profiles[0];
+  expect(profileGuidance(profile, workspace.skills).validCount).toBe(false);
+  const core = { ...profile, skills: [
+    { skillId: "SK-DV", targetLevel: 3 as const, weight: 50, critical: true },
+    { skillId: "SK-MC", targetLevel: 2 as const, weight: 50, critical: true },
+  ] };
+  expect(profileGuidance(core, workspace.skills)).toMatchObject({ validCount: true, suggested: true, totalWeight: 100, unallocatedKfla: 0 });
+  const uneven = { ...core, skills: core.skills.map((link) => link.skillId === "SK-MC" ? { ...link, skillId: "SK-ST" } : link) };
+  expect(profileGuidance(uneven, workspace.skills)).toMatchObject({ validCount: false, suggested: false });
+  expect(profileGuidance({ ...uneven, compositionExceptionReason: "The supplied role evidence supports two specialist capabilities and no additional behavioural allocation." }, workspace.skills).validCount).toBe(true);
+  expect(profileGuidance({ ...core, skills: [...core.skills, ...core.skills] }, workspace.skills).validCount).toBe(false);
+  expect(Object.keys(dekraLeadershipStandards)).toHaveLength(6);
+  expect(roleSkillLabel(workspace.skills.find((skill) => skill.id === "SK-MC")!)).toBe("KFLA behavioural competency");
+  const functional = { ...workspace.skills.find((skill) => skill.id === "SK-DV")!, capabilityType: "functional" as const };
+  expect(roleSkillLabel(functional)).toBe("Functional skill");
+  functional.dimension = "competency";
+  workspace.skills[0] = functional;
+  expect(validateWorkspace(workspace).some((finding) => finding.ruleId === "SKILL-CAPABILITY-TYPE-001")).toBe(true);
 });
 
 test("enforces agent-tool permissions, classifications, lifecycle and audit context", () => {

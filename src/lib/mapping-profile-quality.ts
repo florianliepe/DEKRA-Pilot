@@ -29,6 +29,7 @@ export type MappingProfileQuality = {
   averageInterval: MappingConfidenceInterval;
   mece: boolean;
   countWithinTarget: boolean;
+  balanceAdvisory?: string;
   readyForReview: boolean;
   findings: string[];
 };
@@ -69,7 +70,14 @@ export function analyseMappingProfile(job: JobDescription, mappings: JobSkillMap
   const technicalCount = dimensions.filter((dimension) => dimension === "technical").length;
   const behavioralCount = dimensions.filter((dimension) => dimension === "competency").length;
   const unsupportedFacetCount = dimensions.filter((dimension) => dimension && !["technical", "competency"].includes(dimension)).length;
+  const unallocatedKflaCount = activeMappings.filter((mapping) => {
+    const skill = workspace?.skills.find((candidate) => candidate.id === mapping.skillId);
+    return skill?.dimension === "competency" && !(mapping.primaryKflaCompetencyId || skill.kflaCompetencyId);
+  }).length;
   const countWithinTarget = skillCount >= ROLE_SKILL_MIN && skillCount <= ROLE_SKILL_MAX && technicalCount <= ROLE_TECHNICAL_MAX && behavioralCount <= ROLE_BEHAVIORAL_MAX && unsupportedFacetCount === 0;
+  const balanceAdvisory = skillCount > 1 && Math.abs(technicalCount - behavioralCount) > 1
+    ? `Profile balance is ${technicalCount} hard/functional/technical and ${behavioralCount} KFLA/leadership. Aim for an approximately even split where job evidence supports it; document an exception rather than adding filler.`
+    : undefined;
   const mece = evidenceUniverse.length > 0 && uncoveredEvidence.length === 0 && overlappingEvidence.length === 0 && duplicateSkillIds.length === 0;
   const findings: string[] = [];
   if (skillCount < ROLE_SKILL_MIN) findings.push("Profile needs at least one evidence-backed core skill.");
@@ -77,6 +85,7 @@ export function analyseMappingProfile(job: JobDescription, mappings: JobSkillMap
   if (technicalCount > ROLE_TECHNICAL_MAX) findings.push(`Technical profile exceeds its five-skill capacity by ${technicalCount - ROLE_TECHNICAL_MAX}.`);
   if (behavioralCount > ROLE_BEHAVIORAL_MAX) findings.push(`Behavioral profile exceeds its five-competency capacity by ${behavioralCount - ROLE_BEHAVIORAL_MAX}.`);
   if (unsupportedFacetCount) findings.push(`${unsupportedFacetCount} experience, trait or driver record${unsupportedFacetCount === 1 ? " is" : "s are"} incorrectly counted as a core skill.`);
+  if (unallocatedKflaCount) findings.push(`${unallocatedKflaCount} behavioral mapping${unallocatedKflaCount === 1 ? " lacks" : "s lack"} a primary KFLA competency allocation.`);
   if (uncoveredEvidence.length) findings.push(`${uncoveredEvidence.length} responsibility/outcome evidence statement${uncoveredEvidence.length === 1 ? " is" : "s are"} not represented.`);
   if (overlappingEvidence.length) findings.push(`${overlappingEvidence.length} evidence statement${overlappingEvidence.length === 1 ? " has" : "s have"} more than one primary skill owner.`);
   if (duplicateSkillIds.length) findings.push(`${duplicateSkillIds.length} canonical skill${duplicateSkillIds.length === 1 ? " is" : "s are"} duplicated in the role profile.`);
@@ -86,5 +95,5 @@ export function analyseMappingProfile(job: JobDescription, mappings: JobSkillMap
     if (unknown.length) findings.push(`${unknown.length} mapping${unknown.length === 1 ? " does" : "s do"} not resolve to the approved skill library.`);
   }
   const readyForReview = countWithinTarget && mece && totalWeight === 100 && findings.length === 0;
-  return { activeMappings, evidenceUniverse, coveredEvidence, uncoveredEvidence, overlappingEvidence, duplicateSkillIds, totalWeight, skillCount, technicalCount, behavioralCount, unsupportedFacetCount, averageConfidence, averageInterval, mece, countWithinTarget, readyForReview, findings };
+  return { activeMappings, evidenceUniverse, coveredEvidence, uncoveredEvidence, overlappingEvidence, duplicateSkillIds, totalWeight, skillCount, technicalCount, behavioralCount, unsupportedFacetCount, averageConfidence, averageInterval, mece, countWithinTarget, balanceAdvisory, readyForReview, findings };
 }

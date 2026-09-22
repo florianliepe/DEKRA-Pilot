@@ -1,4 +1,4 @@
-import { validateWorkspace, type AgentToolDefinition, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type ElicitationSession, type EvidenceRecord, type JobSkillMapping, type KflaCluster, type KflaCompetency, type KflaFactor, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type SourceRecord, type TaxonomyRelationship, type ValidationRule } from "./skill-schema";
+import { profileGuidance, validateWorkspace, type AgentToolDefinition, type AgentToolInvocation, type AuditEvent, type ControlledTool, type DataClassification, type ElicitationSession, type EvidenceRecord, type JobSkillMapping, type KflaCluster, type KflaCompetency, type KflaFactor, type LocalizedConceptLabel, type MappingFeedback, type MappingScoreBreakdown, type ObjectVersion, type ReleaseManifest, type ReviewItem, type RoleProfile, type SkillWorkspace, type SourceRecord, type TaxonomyRelationship, type ValidationRule } from "./skill-schema";
 import { deriveRoleProfile } from "./derived-role-profile";
 import { analyseMappingProfile } from "./mapping-profile-quality";
 
@@ -815,6 +815,7 @@ export function decideReview(workspace: SkillWorkspace, reviewId: string, decisi
     const derived = deriveRoleProfile(job, mappings, workspace, profile);
     const sameLinks = profile.skills.length === derived.skills.length && profile.skills.every((link) => derived.skills.some((item) => item.skillId === link.skillId && item.targetLevel === link.targetLevel && item.weight === link.weight && item.critical === link.critical));
     if (!sameLinks || !analyseMappingProfile(job, mappings, workspace).readyForReview) throw new Error("Profile approval requires an evidence-complete, approved mapping set and an exactly matching derived skill profile.");
+    if (!profileGuidance(profile, workspace.skills).validCount) throw new Error("Profile approval requires at most ten distinct core skills, KFLA allocation, 100% weight, and an approximately even category split or a documented exception.");
   }
   const at = new Date().toISOString();
   const reviewQueue = workspace.reviewQueue.map((item) => item.id === reviewId ? { ...item, status: decision, mergeTargetId, decisionBy: actor.trim(), decisionAt: at, decisionReason: reason.trim() } : item);

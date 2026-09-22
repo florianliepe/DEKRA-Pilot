@@ -317,20 +317,26 @@ test("supports mobile navigation", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Meeting hub" })).toBeVisible();
 });
 
-test("opens the governed Skill Designer with all nine workspaces", async ({ page }) => {
+test("opens the job-first Skill Designer and keeps specialist tools available", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "From role evidence to governed capability." })).toBeVisible();
-  for (const name of ["Overview", "Intake & interview", "Skill library", "Taxonomy", "Jobs & mapping", "Role profiles", "Strategic vectors", "Review queue", "Agent runs"]) {
+  await expect(page.getByRole("heading", { name: "From the original role description to a governed skill profile." })).toBeVisible();
+  for (const name of ["Start", "Job intake & mapping", "Compare profile", "Review", "Profiles", "KFLA & taxonomy", "Hierarchy", "Method"]) {
     await expect(page.getByRole("tab", { name: new RegExp(name) })).toBeVisible();
   }
-  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await expect(page.getByText("Up to five hard / functional / technical")).toBeVisible();
+  await expect(page.getByText("Up to five behavioural / leadership")).toBeVisible();
+  await page.getByText("More tools").click();
+  for (const name of ["Skill library", "Skill gap design", "Legacy intake", "Strategic vectors", "Agent runs", "Governance"]) {
+    await expect(page.getByRole("tab", { name })).toBeVisible();
+  }
+  await page.getByRole("tab", { name: /KFLA & taxonomy/i }).click();
   await expect(page.getByRole("heading", { name: "38 KFLA competency names" })).toBeVisible();
   await expect(page.locator(".kfla-grid .kfla-card")).toHaveCount(38);
 });
 
 test("compares normalized job evidence with its linked skill profile without changing approval", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Job ↔ profile" }).click();
+  await page.getByRole("tab", { name: /Compare profile/ }).click();
   await expect(page.getByRole("heading", { name: "Compare source role and governed capability" })).toBeVisible();
   await expect(page.getByText("JD-DATA", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("ROLE-DATA", { exact: true }).first()).toBeVisible();
