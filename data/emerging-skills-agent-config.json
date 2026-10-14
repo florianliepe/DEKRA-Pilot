@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "frameworkVersion": "DEKRA-emerging-skills-1.0.0",
+  "updatedAt": "2026-10-14",
+  "cadence": {
+    "scheduled": "quarterly",
+    "eventDriven": true,
+    "events": ["material regulation published", "authoritative standard updated", "DEKRA strategy or service portfolio changed", "repeated skill gap detected across job descriptions"]
+  },
+  "governance": {
+    "agentAuthority": ["read allowlisted sources", "extract signals", "compare catalogues and role evidence", "score", "draft candidates", "prepare review packages"],
+    "prohibitedAgentAuthority": ["approve", "publish", "edit approved skills", "edit source job descriptions"],
+    "validation": "functional SME",
+    "taxonomyReview": "HR taxonomy steward",
+    "approval": "appointed governance board"
+  },
+  "priorityWeights": {
+    "strategicFit": 0.28,
+    "urgency": 0.22,
+    "valueImpact": 0.20,
+    "roleBreadth": 0.15,
+    "gapMagnitude": 0.15
+  },
+  "catalogueRules": {
+    "categories": ["technical", "functional", "behavioral"],
+    "profileMaximum": 10,
+    "behavioralShareTarget": 0.5,
+    "allowEvidenceBasedExceptions": true,
+    "jobDescriptionIsImmutable": true,
+    "newSkillRequires": ["observable global definition", "distinct catalogue boundary", "evidence reference", "level expectation", "named functional home or provisional group", "SME validation", "governance approval"]
+  },
+  "sources": [
+    { "id": "eu-ai", "name": "European Commission — Artificial Intelligence", "url": "https://commission.europa.eu/topics/artificial-intelligence_en", "type": "regulator" },
+    { "id": "eu-dpp", "name": "European Commission — Digital Product Passport", "url": "https://single-market-economy.ec.europa.eu/single-market/digital-product-passport_en", "type": "regulator" },
+    { "id": "eu-cra", "name": "European Commission — Cyber Resilience Act", "url": "https://digital-strategy.ec.europa.eu/en/policies/cra-summary", "type": "regulator" },
+    { "id": "unece-r155", "name": "UNECE Regulation 155", "url": "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-155-cyber-security-and-cyber-security", "type": "regulator" },
+    { "id": "unece-r156", "name": "UNECE Regulation 156", "url": "https://unece.org/transport/documents/2021/03/standards/un-regulation-no-156-software-update-and-software-update", "type": "regulator" },
+    { "id": "wef-foj-2025", "name": "WEF Future of Jobs Report 2025", "url": "https://www.weforum.org/publications/the-future-of-jobs-report-2025/digest/", "type": "research" },
+    { "id": "iea-ev-2026", "name": "IEA Global EV Outlook 2026", "url": "https://www.iea.org/reports/global-ev-outlook-2026", "type": "research" },
+    { "id": "iea-h2-2025", "name": "IEA Global Hydrogen Review 2025", "url": "https://www.iea.org/reports/global-hydrogen-review-2025", "type": "research" },
+    { "id": "enisa-2026", "name": "ENISA Threat Landscape 2026", "url": "https://www.enisa.europa.eu/publications/enisa-threat-landscape-2026", "type": "agency" },
+    { "id": "c2pa", "name": "C2PA Technical Specification", "url": "https://spec.c2pa.org/specifications/", "type": "standard" },
+    { "id": "dekra-strategy", "name": "DEKRA Strategies and Targets", "url": "https://www.dekra.com/en/strategies-and-targets/", "type": "internal_public" },
+    { "id": "dekra-digital", "name": "DEKRA Digital Services", "url": "https://www.dekra.com/en/digital-services/", "type": "internal_public" },
+    { "id": "dekra-remote", "name": "DEKRA Remote Inspection", "url": "https://www.dekra.com/en/precise-remote-inspections-in-real-time/", "type": "internal_public" }
+  ]
+}

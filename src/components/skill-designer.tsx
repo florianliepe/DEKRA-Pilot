@@ -15,20 +15,22 @@ import { GovernanceWorkbench } from "./governance-workbench";
 import { GovernedSkillLibrary } from "./governed-skill-library";
 import { SkillMappingPlaybook } from "./skill-mapping-playbook";
 import { SkillArchitectureMap } from "./skill-architecture-map";
+import { EmergingSkillRadar } from "./emerging-skill-radar";
 import { dekraDesignPrinciples } from "@/lib/dekra-skill-design";
 import { applyReleaseReceiptToWorkingWorkspace, applyRoleProfileLifecycle, decideReview, impactAnalysis, prepareRelease, recordGovernedVersion, type RoleProfileLifecycleAction } from "@/lib/skill-governance";
 
-type Tab = "overview" | "playbook" | "architecture" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "comparison" | "profiles" | "vectors" | "review" | "runs" | "governance";
+type Tab = "overview" | "playbook" | "architecture" | "trends" | "intake" | "elicitation" | "library" | "taxonomy" | "jobs" | "comparison" | "profiles" | "vectors" | "review" | "runs" | "governance";
 type SkillDraft = Pick<Skill, "name" | "description" | "groupId" | "dimension" | "capabilityType" | "kflaCompetencyId" | "observability" | "futureRelevance" | "status"> & { aliases: string; action: string; object: string; outcome: string };
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: "overview", label: "Start" }, { id: "jobs", label: "1 · Job intake & mapping" }, { id: "comparison", label: "2 · Compare profile" },
   { id: "review", label: "3 · Review" }, { id: "profiles", label: "Profiles" }, { id: "taxonomy", label: "KFLA & taxonomy" },
   { id: "architecture", label: "Hierarchy" }, { id: "playbook", label: "Method" },
+  { id: "trends", label: "Trends & emerging skills" },
   { id: "library", label: "Skill library" }, { id: "elicitation", label: "Skill gap design" }, { id: "intake", label: "Legacy intake" },
   { id: "vectors", label: "Strategic vectors" }, { id: "runs", label: "Agent runs" }, { id: "governance", label: "Governance" },
 ];
-const primaryTabs: Tab[] = ["overview", "jobs", "comparison", "review", "profiles", "taxonomy", "architecture", "playbook"];
+const primaryTabs: Tab[] = ["overview", "jobs", "comparison", "review", "profiles", "taxonomy", "trends", "architecture", "playbook"];
 const emptySkill = (groupId: string): SkillDraft => ({ name: "", description: "", groupId, dimension: "technical", capabilityType: "functional", kflaCompetencyId: "", aliases: "", observability: "", futureRelevance: "core", status: "draft", action: "", object: "", outcome: "" });
 const title = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 const displayConfidence = (value: number) => Math.round(value > 0 && value <= 1 ? value * 100 : value);
@@ -167,6 +169,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {tab === "overview" && <Overview workspace={workspace} approved={approved} pending={pending} evidence={evidence} onNavigate={setTab}/>}
     {tab === "playbook" && <SkillMappingPlaybook onOpenJobs={() => setTab("jobs")} onOpenReview={() => setTab("review")}/>}
     {tab === "architecture" && <SkillArchitectureMap workspace={workspace} onOpenTaxonomy={() => setTab("taxonomy")}/>}
+    {tab === "trends" && <EmergingSkillRadar workspace={workspace}/>}
     {tab === "intake" && <Intake workspace={workspace} secret={workspaceSecret} onWorkspace={setWorkspace} onMessage={setMessage} onError={setError}/>}
     {tab === "elicitation" && <ElicitationWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} mutate={mutate} onMessage={setMessage} onError={setError}/>}

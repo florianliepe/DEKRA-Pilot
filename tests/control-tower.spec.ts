@@ -21,6 +21,12 @@ const testDocument: PmoDocument = {
 
 const pageErrors = new WeakMap<Page, string[]>();
 
+async function openSkillTab(page: Page, name: string | RegExp) {
+  const tab = page.getByRole("tab", { name });
+  if (!await tab.isVisible()) await page.getByText("More tools").click();
+  await tab.click();
+}
+
 async function workbookFixture() {
   const zip = new JSZip();
   zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8"?>
@@ -170,7 +176,7 @@ test("navigates through every core PMO view", async ({ page }) => {
     ["Risks & issues", "Exposure matrix"],
     ["Meeting hub", "Turn discussions into decisions, actions and evidence."],
     ["Activity log", "Connected systems"],
-    ["Skill designer", "From role evidence to governed capability."],
+    ["Skill designer", "Turn role evidence into governed skills, profiles and taxonomy decisions."],
   ];
   const navigationRegion = page.getByRole("navigation", { name: "Primary navigation" });
 
@@ -320,7 +326,7 @@ test("supports mobile navigation", async ({ page }) => {
 test("opens the job-first Skill Designer and keeps specialist tools available", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
   await expect(page.getByRole("heading", { name: "From the original role description to a governed skill profile." })).toBeVisible();
-  for (const name of ["Start", "Job intake & mapping", "Compare profile", "Review", "Profiles", "KFLA & taxonomy", "Hierarchy", "Method"]) {
+  for (const name of ["Start", "Job intake & mapping", "Compare profile", "Review", "Profiles", "KFLA & taxonomy", "Trends & emerging skills", "Hierarchy", "Method"]) {
     await expect(page.getByRole("tab", { name: new RegExp(name) })).toBeVisible();
   }
   await expect(page.getByText("Up to five hard / functional / technical")).toBeVisible();
@@ -332,6 +338,34 @@ test("opens the job-first Skill Designer and keeps specialist tools available", 
   await page.getByRole("tab", { name: /KFLA & taxonomy/i }).click();
   await expect(page.getByRole("heading", { name: "38 KFLA competency names" })).toBeVisible();
   await expect(page.locator(".kfla-grid .kfla-card")).toHaveCount(38);
+});
+
+test("shows governed trend radar, white spots and role impact without agent approval controls", async ({ page }) => {
+  await page.getByRole("button", { name: "Skill designer", exact: true }).click();
+  await page.getByRole("tab", { name: "Trends & emerging skills" }).click();
+  await expect(page.getByRole("heading", { name: "Trends & emerging skills" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "DEKRA trend and innovation radar" })).toBeVisible();
+  await expect(page.getByText("AI conformity assessment", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Value-chain heatmap" }).click();
+  await expect(page.getByRole("heading", { name: "Trend-to-value-chain heatmap" })).toBeVisible();
+  await expect(page.getByText("Digital trust", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Skill white spots" }).click();
+  await expect(page.getByRole("heading", { name: "Emerging skill white spots" })).toBeVisible();
+  await expect(page.getByText("AI Conformity Assessment", { exact: true })).toBeVisible();
+  await expect(page.getByText("candidate skills, not approvals")).toBeVisible();
+  await expect(page.locator(".emerging-radar-page").getByRole("button", { name: /approve/i })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Job-profile impact" }).click();
+  await expect(page.getByText("285 supplied roles")).toBeVisible();
+  await expect(page.getByText("Communications & Corporate Affairs", { exact: true })).toBeVisible();
+  await expect(page.getByText("Marketing", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Sources & method" }).click();
+  await expect(page.getByRole("heading", { name: "From signal to governed candidate" })).toBeVisible();
+  await expect(page.getByText("28%", { exact: true })).toBeVisible();
+  await expect(page.getByText(/governance board approves or rejects/i)).toBeVisible();
 });
 
 test("compares normalized job evidence with its linked skill profile without changing approval", async ({ page }) => {
@@ -367,7 +401,7 @@ test("shows a recoverable authentication message instead of a JSON parser error"
 
 test("explores the read-only ZM-14 architecture map and exports its Mermaid view", async ({ page }) => {
   await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("button", { name: "Skill designer" }).click();
-  await page.getByRole("tab", { name: "Architecture map" }).click();
+  await openSkillTab(page, "Hierarchy");
 
   await expect(page.getByRole("heading", { name: "Understand the model before changing it." })).toBeVisible();
   const thought = page.getByRole("button", { name: /Thought.*3 clusters.*10 competencies/ });
@@ -399,7 +433,7 @@ test("explores the read-only ZM-14 architecture map and exports its Mermaid view
 
 test("explores taxonomy dependencies and overlap without mutating canonical concepts", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await openSkillTab(page, /KFLA & taxonomy/i);
   await page.getByRole("button", { name: "Graph & overlap" }).click();
   await expect(page.getByRole("heading", { name: "Explore structure, overlap and dependency impact" })).toBeVisible();
   await page.getByLabel("Search taxonomy graph").fill("Data Visualization");
@@ -418,7 +452,7 @@ test("explores taxonomy dependencies and overlap without mutating canonical conc
 
 test("creates and edits a governed core skill", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Skill library" }).click();
+  await openSkillTab(page, "Skill library");
   await page.getByRole("button", { name: "Create skill", exact: true }).first().click();
   await page.getByLabel("Canonical name").fill("Semantic Skill Extraction");
   await page.getByLabel("Action").fill("Extract");
@@ -435,13 +469,13 @@ test("creates and edits a governed core skill", async ({ page }) => {
   await page.getByLabel("Governance reason").fill("Route the validated capability to accountable approval.");
   await page.getByRole("button", { name: "Apply changes" }).click();
   await expect(page.locator(".skill-table > div").filter({ hasText: "Semantic Skill Extraction" }).getByText("In Review", { exact: true })).toBeVisible();
-  await page.getByRole("tab", { name: /Review queue/ }).click();
+  await openSkillTab(page, /Review/);
   await expect(page.getByRole("heading", { name: "Review Semantic Skill Extraction" })).toBeVisible();
 });
 
 test("previews impact and records governed skill lifecycle and bulk operations", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Skill library" }).click();
+  await openSkillTab(page, "Skill library");
   await page.getByRole("button", { name: "Duplicate Data Visualization" }).click();
   await expect(page.getByRole("heading", { name: "Duplicate 1 skill" })).toBeVisible();
   await expect(page.getByText(/dependencies affected/)).toBeVisible();
@@ -465,7 +499,7 @@ test("previews impact and records governed skill lifecycle and bulk operations",
 
 test("runs document intake through the separate Skill Designer workflow", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Intake & interview" }).click();
+  await openSkillTab(page, "Legacy intake");
   await page.getByText("Role brief or responsibility statements").locator("..").getByRole("textbox").fill("Builds dashboards to explain weekly revenue movement to executive stakeholders.");
   const requestPromise = page.waitForRequest((request) => request.url().includes("skill-designer-orchestrator") && request.postDataJSON()?.mode === "skill.ingest");
   await page.getByRole("button", { name: "Extract skill proposals" }).click();
@@ -475,7 +509,7 @@ test("runs document intake through the separate Skill Designer workflow", async 
 
 test("runs a governed AI mapping and records the agent trace", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await openSkillTab(page, /Job intake & mapping/);
   const requestPromise = page.waitForRequest((request) => request.url().includes("skill-designer-mapping-async") && request.postDataJSON()?.mode === "skill.map_job.start");
   await page.getByRole("button", { name: "Run governed mapping" }).click();
   const body = (await requestPromise).postDataJSON() as { jobDescriptionId: string; workspace: SkillWorkspace };
@@ -483,14 +517,14 @@ test("runs a governed AI mapping and records the agent trace", async ({ page }) 
   expect(body.workspace.schemaVersion).toBe(3);
   await expect(page.getByText("Mapping run queued. It will continue if this page is closed.")).toBeVisible();
   await expect(page.getByText("AI mapping draft added to human review.")).toBeVisible({ timeout: 12_000 });
-  await page.getByRole("tab", { name: "Agent runs" }).click();
+  await openSkillTab(page, "Agent runs");
   await expect(page.getByText("Catalog grounding")).toBeVisible();
   await expect(page.getByText("Cannot approve")).toBeVisible();
 });
 
 test("creates a strategic vector linked to an approved skill", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Strategic vectors" }).click();
+  await openSkillTab(page, "Strategic vectors");
   await page.getByRole("button", { name: "Create vector" }).click();
   await page.getByLabel("Name").fill("Safety Innovation");
   await page.getByLabel("Strategic intent").fill("Advance safety outcomes through governed digital capabilities.");
@@ -508,12 +542,12 @@ test("creates a strategic vector linked to an approved skill", async ({ page }) 
 
 test("creates, edits and removes a job-description record", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await openSkillTab(page, /Job intake & mapping/);
   await page.getByRole("button", { name: "Create job description" }).click();
   await page.getByLabel("Job title").fill("Safety Data Product Owner");
   await page.getByLabel("Job family").fill("Digital Safety");
   await page.getByLabel("Role purpose").fill("Own safety data products that improve operational decisions.");
-  await page.getByLabel("Full job description").fill("Translates safety priorities into governed data products and measurable operational outcomes. Aligns stakeholders around product decisions and validates adoption evidence.");
+  await page.getByLabel("Original job description").fill("Translates safety priorities into governed data products and measurable operational outcomes. Aligns stakeholders around product decisions and validates adoption evidence.");
   await page.getByLabel("Accountable actor").fill("Job Architecture Owner");
   await page.getByLabel("Governance reason").fill("Register a governed synthetic role for job-mapping verification.");
   await page.getByRole("button", { name: "Save job description" }).click();
@@ -534,7 +568,7 @@ test("creates, edits and removes a job-description record", async ({ page }) => 
 
 test("shows ZM-11 evidence rationale, source excerpts and mapping readiness", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await openSkillTab(page, /Job intake & mapping/);
   await expect(page.getByText("ZM-11 · EVIDENCE-GROUNDED CLARIFICATION")).toBeVisible();
   await expect(page.getByText("82%", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Why this matters")).toBeVisible();
@@ -546,7 +580,7 @@ test("shows ZM-11 evidence rationale, source excerpts and mapping readiness", as
 
 test("shows ZM-12 reviewer-facing mapping explainability", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await openSkillTab(page, /Job intake & mapping/);
   await page.getByText("Why this recommendation").first().click();
   await expect(page.getByText("direct evidence · SEG-JD-DATA-01")).toBeVisible();
   await expect(page.getByText("Build interactive dashboards to report weekly revenue metrics.", { exact: true }).first()).toBeVisible();
@@ -556,7 +590,7 @@ test("shows ZM-12 reviewer-facing mapping explainability", async ({ page }) => {
 
 test("extracts PPTX job evidence with ordered slide provenance", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await openSkillTab(page, /Job intake & mapping/);
   await page.getByRole("button", { name: "Ingest job description" }).click();
   await page.getByRole("textbox", { name: "Job title" }).fill("UAT Application Manager");
   await page.getByRole("textbox", { name: "Job family" }).fill("Information Technology");
@@ -572,7 +606,7 @@ test("extracts PPTX job evidence with ordered slide provenance", async ({ page }
 
 test("shows traceable job evidence, calibrated score quality, omissions and approved comparison", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await openSkillTab(page, /Job intake & mapping/);
   await expect(page.getByText("TRACEABLE JOB EVIDENCE")).toBeVisible();
   await expect(page.getByText("Normalized evidence")).toBeVisible();
   await expect(page.getByText("ZM-11 · EVIDENCE-GROUNDED CLARIFICATION")).toBeVisible();
@@ -597,7 +631,7 @@ test("shows traceable job evidence, calibrated score quality, omissions and appr
 
 test("governs role-profile editing, duplication and archival with accountable impact", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Role profiles" }).click();
+  await openSkillTab(page, "Profiles");
   await page.getByRole("button", { name: "Edit Global Reporting Analyst profile" }).click();
   await page.getByLabel("Profile purpose").fill("Turn governed operational data into trusted management insight.");
   await page.getByLabel("Accountable actor").fill("Profile Owner");
@@ -627,7 +661,7 @@ test("governs role-profile editing, duplication and archival with accountable im
 
 test("governs controlled-tool duplication and merge with dependency migration", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await openSkillTab(page, /KFLA & taxonomy/i);
   await page.getByRole("button", { name: "Controlled tools" }).click();
   await page.getByRole("button", { name: "Duplicate Power BI" }).click();
   await expect(page.getByRole("heading", { name: "Duplicate Power BI" })).toBeVisible();
@@ -647,7 +681,7 @@ test("governs controlled-tool duplication and merge with dependency migration", 
 
 test("creates and archives a governed validation rule", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   await page.getByRole("button", { name: "Configuration" }).click();
   await page.getByRole("button", { name: "Save configuration" }).click();
   await expect(page.getByRole("heading", { name: "Save framework configuration" })).toBeVisible();
@@ -673,7 +707,7 @@ test("creates and archives a governed validation rule", async ({ page }) => {
 
 test("governs source, evidence and proficiency records", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   await page.getByRole("button", { name: "Evidence & levels" }).click();
   await page.getByRole("button", { name: "Add source" }).click();
   await page.getByLabel("Source title").fill("Synthetic safety role workshop");
@@ -707,7 +741,7 @@ test("governs source, evidence and proficiency records", async ({ page }) => {
 
 test("creates, edits and archives a governed multilingual label", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   await page.getByRole("button", { name: "Languages" }).click();
   await page.getByRole("button", { name: "Add localized label" }).click();
   await page.getByLabel("Concept type").selectOption("skill");
@@ -728,7 +762,7 @@ test("creates, edits and archives a governed multilingual label", async ({ page 
 
 test("governs agent-tool edits and lifecycle through accountable review", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   await page.getByRole("button", { name: "Agent tools" }).click();
   await expect(page.getByText("Deny", { exact: true })).toBeVisible();
   await page.locator(".agent-tool-cards > button").filter({ hasText: "Mapping scorer" }).click();
@@ -753,7 +787,7 @@ test("governs agent-tool edits and lifecycle through accountable review", async 
 
 test("previews governed workspace imports before submitting them for review", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   await page.getByRole("button", { name: "Versions & release" }).click();
   const candidate = structuredClone(bootstrapSkillWorkspace);
   candidate.framework = { ...candidate.framework, supportedLanguages: [...candidate.framework.supportedLanguages, "fr"] };
@@ -770,7 +804,7 @@ test("previews governed workspace imports before submitting them for review", as
 
 test("exports working JSON with an accountable audit receipt", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   await page.getByRole("button", { name: "Versions & release" }).click();
   await page.getByRole("button", { name: "Export working JSON" }).click();
   await page.getByLabel("Accountable actor").fill("Data Steward");
@@ -786,7 +820,7 @@ test("exports working JSON with an accountable audit receipt", async ({ page }) 
 
 test("supports steward diagnostics, audit search, overlap analysis and cross-role comparison", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   await page.getByRole("button", { name: "Data quality" }).click();
   await expect(page.getByRole("heading", { name: /findings$/ })).toBeVisible();
   await page.getByRole("button", { name: "Record diagnostic snapshot" }).click();
@@ -806,7 +840,7 @@ test("supports steward diagnostics, audit search, overlap analysis and cross-rol
 
 test("runs a bounded live workflow health check from the pilot readiness control room", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   await expect(page.getByText("PILOT CONTROL ROOM", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Run health check" }).click();
   await expect(page.getByRole("heading", { name: "operational" })).toBeVisible();
@@ -818,7 +852,7 @@ test("keeps the pilot readiness workspace keyboard-labelled and responsive", asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Governance" }).click();
+  await openSkillTab(page, "Governance");
   const unnamedButtons = await page.locator(".governance-workbench button").evaluateAll((buttons) => buttons.filter((button) => !(button.getAttribute("aria-label") || button.textContent || "").trim()).length);
   expect(unnamedButtons).toBe(0);
   expect(await page.locator(".governance-workbench").evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
@@ -828,7 +862,7 @@ test("keeps the pilot readiness workspace keyboard-labelled and responsive", asy
 
 test("submits KFLA structural lifecycle changes for human approval before mutation", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await openSkillTab(page, /KFLA & taxonomy/i);
   await page.getByLabel("Select KFLA metadata record").selectOption("KFLA-08");
   await page.getByRole("button", { name: "Govern lifecycle" }).click();
   await expect(page.getByText("No structural mutation occurs now.")).toBeVisible();
@@ -843,7 +877,7 @@ test("submits KFLA structural lifecycle changes for human approval before mutati
 
 test("submits KFLA metadata edits as accountable non-mutating candidates", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await openSkillTab(page, /KFLA & taxonomy/i);
   await page.getByRole("button", { name: "38 KFLA dimensions" }).click();
   await page.getByRole("button", { name: "Edit competency" }).click();
   const candidateSummary = "Reviewed public-safe interpretation for the accountable pilot evidence package.";
@@ -858,7 +892,7 @@ test("submits KFLA metadata edits as accountable non-mutating candidates", async
 
 test("submits taxonomy group moves with dependency impact and accountable review", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await openSkillTab(page, /KFLA & taxonomy/i);
   await page.getByRole("button", { name: "Hierarchy CRUD" }).click();
   await page.getByRole("button", { name: "Move Data & Analytics" }).click();
   await expect(page.getByText("Dependency impact before change")).toBeVisible();
@@ -874,7 +908,7 @@ test("submits taxonomy group moves with dependency impact and accountable review
 
 test("submits taxonomy definitions as non-mutating review candidates", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await openSkillTab(page, /KFLA & taxonomy/i);
   await page.getByRole("button", { name: "Hierarchy CRUD" }).click();
   await page.getByRole("button", { name: "Add group" }).click();
   await page.getByLabel("Canonical name").fill("Safety Analytics");
@@ -889,7 +923,7 @@ test("submits taxonomy definitions as non-mutating review candidates", async ({ 
 
 test("aligns mapping evidence and strategic vectors with the enriched job draft", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Jobs & mapping" }).click();
+  await openSkillTab(page, /Job intake & mapping/);
   await page.getByRole("button", { name: "Edit Data Visualization mapping" }).click();
   await page.getByLabel("Mapping rationale").fill("The role must translate performance evidence into operational decisions.");
   await page.getByLabel("Job-description evidence").fill("Builds governed dashboards for executive and operational decision-making.");
@@ -911,7 +945,7 @@ test("aligns mapping evidence and strategic vectors with the enriched job draft"
 
 test("requires accountable context before elicitation save or AI assistance", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Elicitation wizard" }).click();
+  await openSkillTab(page, "Skill gap design");
   await expect(page.getByRole("button", { name: "Save draft" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "AI-assisted rewrite" })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "Syntax readiness" })).toBeVisible();
@@ -934,7 +968,7 @@ test("requires accountable context before elicitation save or AI assistance", as
 
 test("records accountable review edits and controlled re-evaluation requests", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: /Review queue/ }).click();
+  await openSkillTab(page, /Review/);
   await page.getByRole("button", { name: "Edit" }).first().click();
   await page.getByLabel("Review summary").fill("Refined evidence summary retained as a pending proposal.");
   await page.getByLabel("Reviewer name").fill("Skill Governance Lead");
@@ -951,7 +985,7 @@ test("records accountable review edits and controlled re-evaluation requests", a
 
 test("opens an opaque accessible KFLA deep dive and restores focus", async ({ page }) => {
   await page.getByRole("button", { name: "Skill designer", exact: true }).click();
-  await page.getByRole("tab", { name: "Taxonomy" }).click();
+  await openSkillTab(page, /KFLA & taxonomy/i);
   const trigger = page.getByRole("button", { name: /Open .* competency deep dive/ }).first();
   await trigger.focus();
   await expect(trigger).toBeFocused();
