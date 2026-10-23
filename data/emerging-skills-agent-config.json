@@ -1,7 +1,17 @@
 {
-  "schemaVersion": "1.0.0",
-  "frameworkVersion": "DEKRA-emerging-skills-1.0.0",
-  "updatedAt": "2026-10-14",
+  "schemaVersion": "1.1.0",
+  "frameworkVersion": "DEKRA-emerging-skills-1.1.0",
+  "updatedAt": "2026-10-23",
+  "runtime": {
+    "contract": "async-trend-radar-1.0.0",
+    "startWebhook": "skill-designer-trend-radar-async-v1",
+    "controlWebhook": "skill-designer-trend-radar-control-v1",
+    "persistence": "n8n Data Table",
+    "polling": { "initialMilliseconds": 2000, "maximumMilliseconds": 15000, "backoffMultiplier": 1.55 },
+    "terminalStates": ["completed", "failed", "interrupted", "stale"],
+    "humanReviewRequired": true,
+    "publicationAllowed": false
+  },
   "cadence": {
     "scheduled": "quarterly",
     "eventDriven": true,
@@ -28,6 +38,16 @@
     "allowEvidenceBasedExceptions": true,
     "jobDescriptionIsImmutable": true,
     "newSkillRequires": ["observable global definition", "distinct catalogue boundary", "evidence reference", "level expectation", "named functional home or provisional group", "SME validation", "governance approval"]
+  },
+  "proficiencyModel": {
+    "levels": [
+      { "level": 1, "label": "Guided application", "summary": "Applies the skill with direction, examples and review." },
+      { "level": 2, "label": "Independent application", "summary": "Applies the skill independently in recurring work." },
+      { "level": 3, "label": "Broad application", "summary": "Applies the skill across complex contexts and guides others." },
+      { "level": 4, "label": "Strategic contribution", "summary": "Shapes standards, direction and functional capability through the skill." }
+    ],
+    "differentiationLevers": ["knowledge & collaboration", "problem solving", "accountability", "impact"],
+    "requireSkillSpecificObservableDescriptions": true
   },
   "sources": [
     { "id": "eu-ai", "name": "European Commission — Artificial Intelligence", "url": "https://commission.europa.eu/topics/artificial-intelligence_en", "type": "regulator" },

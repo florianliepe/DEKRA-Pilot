@@ -356,6 +356,14 @@ test("shows governed trend radar, white spots and role impact without agent appr
   await expect(page.getByText("AI Conformity Assessment", { exact: true })).toBeVisible();
   await expect(page.getByText("candidate skills, not approvals")).toBeVisible();
   await expect(page.locator(".emerging-radar-page").getByRole("button", { name: /approve/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Run trend scan" })).toBeVisible();
+  const proficiencyGuide = page.locator(".candidate-level-guide").first();
+  await proficiencyGuide.locator("summary").click();
+  await expect(proficiencyGuide.locator("section")).toHaveCount(4);
+  for (const lever of ["Knowledge & collaboration", "Problem solving", "Accountability", "Impact"]) {
+    await expect(proficiencyGuide.getByText(lever, { exact: true }).first()).toBeVisible();
+  }
+  await expect(proficiencyGuide.locator("section.target")).toHaveCount(1);
 
   await page.getByRole("button", { name: "Job-profile impact" }).click();
   await expect(page.getByText("285 supplied roles")).toBeVisible();

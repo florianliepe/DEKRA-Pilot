@@ -169,7 +169,7 @@ export function SkillDesigner({ workspaceSecret }: { workspaceSecret: string }) 
     {tab === "overview" && <Overview workspace={workspace} approved={approved} pending={pending} evidence={evidence} onNavigate={setTab}/>}
     {tab === "playbook" && <SkillMappingPlaybook onOpenJobs={() => setTab("jobs")} onOpenReview={() => setTab("review")}/>}
     {tab === "architecture" && <SkillArchitectureMap workspace={workspace} onOpenTaxonomy={() => setTab("taxonomy")}/>}
-    {tab === "trends" && <EmergingSkillRadar workspace={workspace}/>}
+    {tab === "trends" && <EmergingSkillRadar workspace={workspace} secret={workspaceSecret} onMessage={setMessage} onError={setError}/>}
     {tab === "intake" && <Intake workspace={workspace} secret={workspaceSecret} onWorkspace={setWorkspace} onMessage={setMessage} onError={setError}/>}
     {tab === "elicitation" && <ElicitationWorkbench workspace={workspace} secret={workspaceSecret} mutate={mutate} onWorkspace={(next) => setWorkspace(migrateSkillWorkspace(next, workspace))} onMessage={setMessage} onError={setError}/>}
     {tab === "library" && <Library workspace={workspace} query={query} onQuery={setQuery} onEdit={setEditing} mutate={mutate} onMessage={setMessage} onError={setError}/>}

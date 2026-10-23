@@ -113,9 +113,9 @@ export type EmergingSkillAssessment = EmergingSkillCandidate & {
   scoreParts: { strategicFit: number; urgency: number; valueImpact: number; roleBreadth: number; gapMagnitude: number };
 };
 
-export function buildEmergingSkillAnalysis(workspace: SkillWorkspace): EmergingSkillAssessment[] {
-  return emergingSkillCandidates.map((candidate) => {
-    const relatedTrends = trendSignals.filter((trend) => candidate.trendIds.includes(trend.id));
+export function buildEmergingSkillAnalysis(workspace: SkillWorkspace, candidates: EmergingSkillCandidate[] = emergingSkillCandidates, signals: TrendSignal[] = trendSignals): EmergingSkillAssessment[] {
+  return candidates.map((candidate) => {
+    const relatedTrends = signals.filter((trend) => candidate.trendIds.includes(trend.id));
     const best = workspace.skills.map((skill) => ({ skill, similarity: similarity(candidate, skill) })).sort((a, b) => b.similarity - a.similarity)[0];
     const gapState: GapState = best?.similarity >= 0.72 ? "covered" : best?.similarity >= 0.34 ? "partial" : "white_spot";
     const impactedRoles = workspace.jobDescriptions.filter((job) => {
